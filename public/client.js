@@ -121,11 +121,11 @@ function render(){
   }
   updateHUD();
 }
-// carriles de las torres: si una torre tiene más de N casillas libres en una
-// dirección, ese tramo se dibuja como una línea tenue (cruzarla cuesta +1)
+// carriles de las torres: SOLO la dirección donde la torre tenga más de N casillas
+// libres se activa — ese tramo se dibuja (y es el único donde cobra el peaje)
 function drawRookLines(bd){
   const rules = window.RSConfig.rules;
-  const showLen = (rules && rules.rookLineShowLen != null) ? rules.rookLineShowLen : 4;
+  const showLen = (rules && rules.rookLineLen != null) ? rules.rookLineLen : 4;
   for (let r=0; r<8; r++) for (let c=0; c<8; c++){
     const p = bd[r][c];
     if (!p || p.type !== 'r') continue;

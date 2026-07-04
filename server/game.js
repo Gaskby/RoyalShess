@@ -16,6 +16,7 @@ const LATE_MS         = CONFIG.energy.lateSeconds * 1000;
 const GRACE_MS        = CONFIG.rules.kingGraceMs;
 const QUEEN_MIN       = CONFIG.rules.queenMinCost;
 const ROOK_TOLL       = CONFIG.rules.rookLineToll;
+const LINE_LEN        = CONFIG.rules.rookLineLen;
 const MATCH_MS        = CONFIG.match.minutes * 60 * 1000;
 const COUNTDOWN_MS    = CONFIG.match.countdownSeconds * 1000;
 const AI_TICK_MS      = CONFIG.ai.tickMs;
@@ -74,15 +75,21 @@ class Game {
     this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
   }
 
-  // ¿alguna torre RIVAL de `color` ataca (r,c) con línea despejada?
+  // ¿(r,c) está en un carril ACTIVO de torre rival? El carril solo cuenta en la
+  // dirección donde la torre tiene más de LINE_LEN casillas libres (igual que el dibujo).
   _rookAttacks(color, r, c) {
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      let rr = r + dr, cc = c + dc;
-      while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
-        const q = this.board[rr][cc];
-        if (q) { if (q.type === 'r' && q.color !== color) return true; break; }
-        rr += dr; cc += dc;
-      }
+      // camina desde (r,c) hasta la primera pieza en esta dirección
+      let rr = r + dr, cc = c + dc, dist = 1;
+      while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && !this.board[rr][cc]) { rr += dr; cc += dc; dist++; }
+      if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue;
+      const q = this.board[rr][cc];
+      if (!q || q.type !== 'r' || q.color === color) continue;
+      // largo del carril: casillas libres desde la torre pasando por (r,c) y más allá
+      let run = dist;                       // entre torre y (r,c), incluida (r,c)
+      let r2 = r - dr, c2 = c - dc;
+      while (r2 >= 0 && r2 < 8 && c2 >= 0 && c2 < 8 && !this.board[r2][c2]) { run++; r2 -= dr; c2 -= dc; }
+      if (run > LINE_LEN) return true;
     }
     return false;
   }
