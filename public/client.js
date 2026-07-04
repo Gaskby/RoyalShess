@@ -16,6 +16,7 @@ let drag = null;          // arrastre en curso {r,c,id,el,lifted,sx,sy}
 let justDragged = false;  // evita que el 'click' posterior a un arrastre reseleccione
 let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
 let myName = localStorage.getItem('rs-name') || '';
+let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de fondo
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -301,7 +302,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'Error de red');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; showScreen('menu'); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -323,6 +324,7 @@ function onState(msg){
   // gestión de fase
   if (state.phase === 'countdown'){
     showScreen(null);
+    if (prevPhase !== 'countdown') window.RSBG.newScene();   // fondo nuevo por partida
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
     cdNum.textContent = secs > 0 ? secs : '¡YA!';
@@ -335,7 +337,23 @@ function onState(msg){
     if (prevPhase !== 'over'){ showResult(); sfx('end'); }
   }
   prevPhase = state.phase;
+  updateAmbience();
   render();
+}
+
+// música y fondo reaccionan a la fase y al reloj (0 al empezar -> 1 al agotarse)
+function updateAmbience(){
+  if (!state){ window.RSMusic.stop(); window.RSBG.setIntensity(0); return; }
+  if (state.phase === 'countdown' || state.phase === 'live'){
+    if (musicOn) window.RSMusic.start(audioCtx); else window.RSMusic.stop();
+    const p = state.matchMs ? Math.max(0, Math.min(1, 1 - state.timeLeft / state.matchMs)) : 0;
+    const inten = state.phase === 'live' ? Math.pow(p, 1.35) : 0;
+    window.RSMusic.setIntensity(inten);
+    window.RSBG.setIntensity(inten);
+  } else {
+    window.RSMusic.stop();
+    window.RSBG.setIntensity(0);
+  }
 }
 
 function handleReject(reason){
@@ -424,6 +442,14 @@ btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
 $('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; this.textContent=sfxOn?'🔊 SFX':'🔇 SFX'; ensureAudio(); });
+$('musicBtn').textContent = musicOn ? '🎵 Música' : '🔇 Música';
+$('musicBtn').addEventListener('click', function(){
+  musicOn = !musicOn;
+  localStorage.setItem('rs-music', musicOn ? '1' : '0');
+  this.textContent = musicOn ? '🎵 Música' : '🔇 Música';
+  ensureAudio();
+  updateAmbience();
+});
 
 // opciones del menú: nombre + arrastre (persisten en localStorage)
 nameInput.value = myName;

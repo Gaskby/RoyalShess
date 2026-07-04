@@ -24,6 +24,8 @@ body::before{
   background-size:44px 44px; opacity:.08;
   mask-image:radial-gradient(circle at 50% 40%,#000 30%,transparent 80%);
 }
+/* fondo animado (bgfx.js): detrás de todo, la rejilla de body::before queda encima */
+#bgfx{ position:fixed; inset:0; z-index:-1; pointer-events:none; }
 .app{ position:relative; z-index:1; max-width:1120px; margin:0 auto; padding:18px 16px 40px; }
 
 .topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
