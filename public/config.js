@@ -30,12 +30,12 @@
 
     // ---------------- COSTE DE MOVER cada pieza ----------------
     //   (en jaque se suma el checkSurcharge de arriba)
-    moveCost: { p: 2, n: 3, b: 4, r: 5, q: 6, k: 2 },
+    moveCost: { p: 1, n: 3, b: 3, r: 4, q: 4, k: 2 },
 
     // ---------------- VALOR de material de cada pieza ----------------
     //   Sirve para: cuánto recuperas al comerla, y quién gana por tiempo.
     //   El rey vale 0 aquí porque capturarlo termina la partida directamente.
-    value:    { p: 2, n: 4, b: 4, r: 4, q: 6, k: 0 },
+    value:    { p: 1, n: 2, b: 2, r: 2, q: 2, k: 0 },
 
     // ---------------- CPU (modo práctica) ----------------
     ai: {
