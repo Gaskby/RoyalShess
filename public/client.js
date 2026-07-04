@@ -127,18 +127,25 @@ function updateHUD(){
   $('cardB').classList.toggle('check', state.check.b);
   boardWrap.classList.toggle('edge-w', state.check.w);
   boardWrap.classList.toggle('edge-b', state.check.b);
-  // etiquetas TÚ / Rival según tu color
-   const myCard  = document.getElementById(you === 'w' ? 'cardW' : 'cardB');
-  const oppCard = document.getElementById(you === 'w' ? 'cardB' : 'cardW');
-  if (myCard && oppCard) {
-    document.getElementById('sideBottom').appendChild(myCard);
-    document.getElementById('sideTop').appendChild(oppCard);
+
+  // Optimización: Solo mover las barras al contenedor si cambiaron de posición
+  const myCard  = $(you === 'w' ? 'cardW' : 'cardB');
+  const oppCard = $(you === 'w' ? 'cardB' : 'cardW');
+  const sideBottom = $('sideBottom');
+  const sideTop = $('sideTop');
+  if (myCard && sideBottom && myCard.parentElement !== sideBottom) {
+    sideBottom.appendChild(myCard);
   }
+  if (oppCard && sideTop && oppCard.parentElement !== sideTop) {
+    sideTop.appendChild(oppCard);
+  }
+
   const oppTag = state.vsCPU ? '· CPU' : '· Rival';
   $('tagW').textContent = you==='w' ? '· TÚ' : oppTag;
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
   $('tagB').textContent = you==='b' ? '· TÚ' : oppTag;
   $('tagB').style.color = you==='b' ? 'var(--black-acc)' : 'var(--ink-dim)';
+  
   // reloj
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
