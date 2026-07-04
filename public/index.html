@@ -20,8 +20,27 @@
     </div>
   </div>
 
-  <div class="stage">
-    <div class="side side-b">
+<div class="stage">
+    <div class="side-top" id="sideTop"></div>
+
+    <div class="board-col">
+      <div class="clock" id="clock">5:00</div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="grid" id="grid"></div>
+        <div class="pieces" id="pieces"></div>
+        <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
+      </div>
+      
+      <div class="side-bottom" id="sideBottom"></div>
+
+      <div class="legend">
+        <h3>Coste de mover · recuperas al comer (½)</h3>
+        <div class="row" id="legendRow"></div>
+        <p>Empiezas con 10 de energía y regeneras <b style="color:var(--energy-a)">1 cada 3&nbsp;s</b> (continuo). Sin energía no puedes mover. Comer devuelve la mitad del valor de lo comido. En <b style="color:var(--danger)">jaque</b>, mover cualquier pieza cuesta +1. Ganas por capturar el rey; al agotarse el tiempo, gana quien tenga más material. <b>El servidor valida todo.</b></p>
+      </div>
+    </div>
+
+    <div style="display:none;">
       <div class="pcard" id="cardB">
         <div class="phead">
           <div class="pname"><span class="dot"></span> Negras <span class="tag" id="tagB"></span></div>
@@ -31,23 +50,7 @@
         <div class="ebar"><div class="efill" id="efB"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
         <div class="pstats"><div class="stat"><div class="k">Material</div><div class="v" id="matB">39</div></div></div>
       </div>
-    </div>
 
-    <div class="board-col">
-      <div class="clock" id="clock">5:00</div>
-      <div class="board-wrap" id="boardWrap">
-        <div class="grid" id="grid"></div>
-        <div class="pieces" id="pieces"></div>
-        <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
-      </div>
-      <div class="legend">
-        <h3>Coste de mover · recuperas al comer (½)</h3>
-        <div class="row" id="legendRow"></div>
-        <p>Empiezas con 10 de energía y regeneras <b style="color:var(--energy-a)">1 cada 3&nbsp;s</b> (continuo). Sin energía no puedes mover. Comer devuelve la mitad del valor de lo comido. En <b style="color:var(--danger)">jaque</b>, mover cualquier pieza cuesta +1. Ganas por capturar el rey; al agotarse el tiempo, gana quien tenga más material. <b>El servidor valida todo.</b></p>
-      </div>
-    </div>
-
-    <div class="side side-w">
       <div class="pcard" id="cardW">
         <div class="phead">
           <div class="pname"><span class="dot"></span> Blancas <span class="tag" id="tagW"></span></div>
@@ -59,7 +62,6 @@
       </div>
     </div>
   </div>
-</div>
 
 <div class="toast" id="toast">Sin energía</div>
 
