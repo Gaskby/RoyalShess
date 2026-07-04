@@ -128,10 +128,12 @@ function updateHUD(){
   boardWrap.classList.toggle('edge-w', state.check.w);
   boardWrap.classList.toggle('edge-b', state.check.b);
   // etiquetas TÚ / Rival según tu color
-   const myCard  = document.getElementById(myColor === 'w' ? 'cardW' : 'cardB');
-const oppCard = document.getElementById(myColor === 'w' ? 'cardB' : 'cardW');
-document.getElementById('sideBottom').appendChild(myCard);
-document.getElementById('sideTop').appendChild(oppCard);
+   const myCard  = document.getElementById(you === 'w' ? 'cardW' : 'cardB');
+  const oppCard = document.getElementById(you === 'w' ? 'cardB' : 'cardW');
+  if (myCard && oppCard) {
+    document.getElementById('sideBottom').appendChild(myCard);
+    document.getElementById('sideTop').appendChild(oppCard);
+  }
   const oppTag = state.vsCPU ? '· CPU' : '· Rival';
   $('tagW').textContent = you==='w' ? '· TÚ' : oppTag;
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
