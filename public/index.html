@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>RoyalShess</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="brand"><h1>RoyalShess</h1><small>fase 3 · online</small></div>
+    <div class="controls">
+      <div class="status" id="status"><span class="led"></span><span id="statusTxt">Conectando…</span></div>
+      <button class="btn" id="soundBtn">🔊 SFX</button>
+      <button class="btn" id="menuBtn">☰ Menú</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="side side-b">
+      <div class="pcard" id="cardB">
+        <div class="phead">
+          <div class="pname"><span class="dot"></span> Negras <span class="tag" id="tagB"></span></div>
+          <span class="badge-check">JAQUE +1</span>
+        </div>
+        <div class="energy-top"><span class="energy-label">Energía</span><span class="energy-num"><span id="enB">10</span><small>/10</small></span></div>
+        <div class="ebar"><div class="efill" id="efB"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="pstats"><div class="stat"><div class="k">Material</div><div class="v" id="matB">39</div></div></div>
+      </div>
+    </div>
+
+    <div class="board-col">
+      <div class="clock" id="clock">5:00</div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="grid" id="grid"></div>
+        <div class="pieces" id="pieces"></div>
+        <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
+      </div>
+      <div class="legend">
+        <h3>Coste de mover · recuperas al comer (½)</h3>
+        <div class="row" id="legendRow"></div>
+        <p>Empiezas con 10 de energía y regeneras <b style="color:var(--energy-a)">1 cada 3&nbsp;s</b> (continuo). Sin energía no puedes mover. Comer devuelve la mitad del valor de lo comido. En <b style="color:var(--danger)">jaque</b>, mover cualquier pieza cuesta +1. Ganas por capturar el rey; al agotarse el tiempo, gana quien tenga más material. <b>El servidor valida todo.</b></p>
+      </div>
+    </div>
+
+    <div class="side side-w">
+      <div class="pcard" id="cardW">
+        <div class="phead">
+          <div class="pname"><span class="dot"></span> Blancas <span class="tag" id="tagW"></span></div>
+          <span class="badge-check">JAQUE +1</span>
+        </div>
+        <div class="energy-top"><span class="energy-label">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
+        <div class="ebar"><div class="efill" id="efW"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="pstats"><div class="stat"><div class="k">Material</div><div class="v" id="matW">39</div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Sin energía</div>
+
+<div class="overlay" id="overlay">
+  <div class="panelbig">
+    <div class="title">RoyalShess</div>
+    <div class="sub" id="overlaySub">ajedrez en tiempo real</div>
+
+    <!-- MENÚ -->
+    <div id="screenMenu">
+      <div class="menu-btns">
+        <button class="playbtn" id="btnQueue" disabled>Buscar partida</button>
+        <button class="btn big" id="btnFriend" disabled>Jugar con un amigo</button>
+        <button class="btn big" id="btnCPU" disabled>Jugar vs CPU</button>
+      </div>
+      <div class="small-note"><b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>vs CPU:</b> práctica. No hay turnos: cada quien mueve cuando tiene energía. La partida dura 5 minutos.</div>
+    </div>
+
+    <!-- AMIGO: crear / unirse con código -->
+    <div id="screenFriend" style="display:none">
+      <input id="codeInput" class="code-input" type="text" maxlength="12" placeholder="CÓDIGO / CONTRASEÑA" autocomplete="off" spellcheck="false">
+      <div class="code-err" id="codeErr"></div>
+      <div class="menu-btns">
+        <button class="playbtn" id="btnCreate">Crear sala</button>
+        <button class="btn big" id="btnJoin">Unirse a sala</button>
+        <button class="btn" id="btnBack">Volver</button>
+      </div>
+      <div class="small-note">Para <b>crear</b>: elige un código y compártelo (si lo dejas vacío se genera uno). Para <b>unirte</b>: escribe el mismo código que tu amigo creó.</div>
+    </div>
+
+    <!-- ESPERANDO a que entre el amigo -->
+    <div id="screenWaiting" style="display:none">
+      <div class="searching-txt">Sala creada · esperando…</div>
+      <div class="code-box"><span class="code-label">Código</span><span class="code-value" id="codeValue">----</span></div>
+      <div class="small-note" style="margin-top:14px">Comparte este código con tu amigo. Cuando lo escriba en “Unirse a sala”, empieza la partida.</div>
+      <button class="btn" id="btnCancelWait" style="margin-top:14px">Cancelar</button>
+    </div>
+
+    <!-- BUSCANDO -->
+    <div id="screenSearch" style="display:none">
+      <div class="spinner"></div>
+      <div class="searching-txt">Buscando rival…</div>
+      <button class="btn" id="btnCancel">Cancelar</button>
+    </div>
+
+    <!-- RESULTADO -->
+    <div id="screenResult" style="display:none">
+      <div class="result" id="resultTxt"></div>
+      <div class="menu-btns">
+        <button class="playbtn" id="btnAgain">Buscar otra</button>
+        <button class="btn big" id="btnCPU2">vs CPU</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/config.js"></script>
+<script src="/engine.js"></script>
+<script src="/client.js"></script>
+</body>
+</html>
