@@ -69,8 +69,9 @@ function render(){
 
   [...gridEl.children].forEach(sq => {
     sq.classList.remove('sel','lastmove');
-    [...sq.querySelectorAll('.hint')].forEach(h => h.remove());
+    [...sq.querySelectorAll('.hint,.rbeam')].forEach(h => h.remove());
   });
+  drawRookLines(bd);
 
   const present = new Set();
   for (let r=0; r<8; r++) for (let c=0; c<8; c++){
@@ -120,6 +121,30 @@ function render(){
   }
   updateHUD();
 }
+// carriles de las torres: si una torre tiene más de N casillas libres en una
+// dirección, ese tramo se dibuja como una línea tenue (cruzarla cuesta +1)
+function drawRookLines(bd){
+  const rules = window.RSConfig.rules;
+  const showLen = (rules && rules.rookLineShowLen != null) ? rules.rookLineShowLen : 4;
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
+    const p = bd[r][c];
+    if (!p || p.type !== 'r') continue;
+    for (const [dr2, dc2] of [[-1,0],[1,0],[0,-1],[0,1]]){
+      let run = 0, rr = r+dr2, cc = c+dc2;
+      while (rr>=0 && rr<8 && cc>=0 && cc<8 && !bd[rr][cc]){ run++; rr+=dr2; cc+=dc2; }
+      if (run <= showLen) continue;
+      rr = r+dr2; cc = c+dc2;
+      for (let i=0; i<run; i++){
+        const d = toDisplay(rr, cc);
+        const beam = document.createElement('div');
+        beam.className = 'rbeam ' + (dr2 === 0 ? 'h' : 'v') + ' ' + p.color;
+        displaySquareEl(d.dr, d.dc).appendChild(beam);
+        rr+=dr2; cc+=dc2;
+      }
+    }
+  }
+}
+
 function updateHUD(){
   if (!state || !state.energy) return;
 

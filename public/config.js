@@ -29,6 +29,10 @@
       kingGraceMs: 2000,         // tras caer en jaque, el rey no se puede capturar
                                  //   hasta pasado este tiempo (margen para reaccionar)
       queenMinCost: 3,           // la dama se abarata 1 por captura, sin bajar de esto
+      rookLineToll: 1,           // energía EXTRA por cruzar la línea de ataque de una
+                                 //   torre rival (por cada casilla del trayecto que cruce)
+      rookLineShowLen: 4,        // la línea de la torre se dibuja en el tablero cuando
+                                 //   supera estas casillas libres en una dirección
     },
 
     // ---------------- PARTIDA ----------------

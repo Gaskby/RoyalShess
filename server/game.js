@@ -15,6 +15,7 @@ const LATE_BOOST      = CONFIG.energy.lateBoost;
 const LATE_MS         = CONFIG.energy.lateSeconds * 1000;
 const GRACE_MS        = CONFIG.rules.kingGraceMs;
 const QUEEN_MIN       = CONFIG.rules.queenMinCost;
+const ROOK_TOLL       = CONFIG.rules.rookLineToll;
 const MATCH_MS        = CONFIG.match.minutes * 60 * 1000;
 const COUNTDOWN_MS    = CONFIG.match.countdownSeconds * 1000;
 const AI_TICK_MS      = CONFIG.ai.tickMs;
@@ -73,6 +74,34 @@ class Game {
     this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
   }
 
+  // ¿alguna torre RIVAL de `color` ataca (r,c) con línea despejada?
+  _rookAttacks(color, r, c) {
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+      let rr = r + dr, cc = c + dc;
+      while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+        const q = this.board[rr][cc];
+        if (q) { if (q.type === 'r' && q.color !== color) return true; break; }
+        rr += dr; cc += dc;
+      }
+    }
+    return false;
+  }
+
+  // Peaje de torre: +TOLL por cada casilla intermedia del trayecto que esté
+  // en la línea de ataque de una torre rival (cruzar su "carril" cuesta).
+  _rookLineToll(color, fr, fc, tr, tc) {
+    // solo los trayectos rectos/diagonales tienen casillas intermedias (el caballo salta)
+    if (!(fr === tr || fc === tc || Math.abs(tr - fr) === Math.abs(tc - fc))) return 0;
+    const dr = Math.sign(tr - fr), dc = Math.sign(tc - fc);
+    let toll = 0;
+    let rr = fr + dr, cc = fc + dc;
+    while (rr !== tr || cc !== tc) {
+      if (this._rookAttacks(color, rr, cc)) toll += ROOK_TOLL;
+      rr += dr; cc += dc;
+    }
+    return toll;
+  }
+
   // registra desde cuándo está cada rey en jaque (para la gracia de captura)
   _updateChecks(now) {
     for (const color of ['w', 'b']) {
@@ -124,6 +153,8 @@ class Game {
     if (p.type === 'p' && this.lastMoveId[color] === p.id) cost += this.moveStreak[color];
     // Caballo: si venía de comer y este movimiento NO come, cuesta 1 menos.
     if (p.type === 'n' && !target && this.knightDiscount.has(p.id)) cost -= 1;
+    // Peaje de torre: cruzar la línea de ataque de una torre rival cuesta extra.
+    cost += this._rookLineToll(color, fr, fc, tr, tc);
     if (cost < 0) cost = 0;
 
     if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
