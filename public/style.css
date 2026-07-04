@@ -110,6 +110,7 @@ body::before{
 .piece.dragging span{ transform:scale(1.28); }
 @keyframes settle{ 0%{ transform:scale(1.28); } 55%{ transform:scale(.9); } 100%{ transform:scale(1); } }
 .grid{ touch-action:none; }
+body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 @keyframes pop{ 0%{ transform:scale(.6);} 60%{ transform:scale(1.18);} 100%{ transform:scale(1);} }
 
 .legend{ width:min(90vw,560px); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }

@@ -224,35 +224,37 @@ function onPointerDown(e){
   const { r, c } = toBoard(+sq.dataset.dr, +sq.dataset.dc);
   const p = state.board[r][c];
   if (!p || p.color !== you) return;                        // solo tus piezas
+  e.preventDefault();
   justDragged = false;
   selected = { r, c };
-  render();                                                 // muestra las pistas
-  drag = { r, c, id:p.id, el:pieceEls.get(p.id), lifted:false, sx:e.clientX, sy:e.clientY };
+  // la pieza se "agarra" AL INSTANTE: nada de umbrales ni esperar a mover
+  drag = { r, c, id: p.id, el: pieceEls.get(p.id), lifted: true };
+  if (drag.el) drag.el.classList.add('dragging');
+  document.body.classList.add('grabbing');
+  render();                                                 // pistas (no recoloca la pieza en drag)
+  positionDragEl(e);                                        // la pieza salta al cursor ya
 }
-function onPointerMove(e){
-  if (!drag) return;
-  if (!drag.lifted && Math.hypot(e.clientX-drag.sx, e.clientY-drag.sy) < 6) return;  // umbral toque/arrastre
-  if (!drag.lifted){ drag.lifted = true; if (drag.el) drag.el.classList.add('dragging'); }
-  if (!drag.el) return;
+function positionDragEl(e){
+  if (!drag || !drag.el) return;
   const rect = piecesEl.getBoundingClientRect();
   const size = rect.width / 8;
-  const left = e.clientX - rect.left - size/2;
-  const top  = e.clientY - rect.top  - size/2;
-  drag.el.style.transform = `translate(${left}px, ${top}px)`;
+  drag.el.style.transform = `translate(${e.clientX - rect.left - size/2}px, ${e.clientY - rect.top - size/2}px)`;
 }
+function onPointerMove(e){ positionDragEl(e); }
 function onPointerUp(e){
   if (!drag) return;
   const d = drag; drag = null;
+  document.body.classList.remove('grabbing');
   if (d.el) d.el.classList.remove('dragging');
-  if (!d.lifted){ render(); return; }                       // fue un toque: deja actuar al clic
   justDragged = true;
   setTimeout(() => { justDragged = false; }, 0);            // solo anula el clic de ESTE gesto
+  settleAnim(d.id);                                         // animación de "asentarse" al soltar
   const at = squareUnderPointer(e.clientX, e.clientY);
   if (at){
     const { r, c } = toBoard(at.dr, at.dc);
+    if (r === d.r && c === d.c){ render(); return; }        // soltó donde agarró: queda seleccionada
     if (E.genMoves(state.board, d.r, d.c).some(m => m.r===r && m.c===c)) sendMove({r:d.r,c:d.c}, {r,c});
   }
-  settleAnim(d.id);                                         // animación de "asentarse" al soltar
   selected = null;
   render();
 }
@@ -269,6 +271,7 @@ function settleAnim(id){
 function onPointerCancel(){
   if (!drag) return;
   const d = drag; drag = null;
+  document.body.classList.remove('grabbing');
   if (d.el) d.el.classList.remove('dragging');
   selected = null; render();
 }
