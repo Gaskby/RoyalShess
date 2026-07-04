@@ -14,7 +14,7 @@
 
     // ---------------- ENERGÍA ----------------
     energy: {
-      start: 0,                 // energía con la que empiezas
+      start: 2,                 // energía con la que empiezas
       max: 10,                   // tope máximo (no puede subir de aquí)
       regenSecondsPerPoint: 3,   // segundos para ganar 1 de energía (3 = 1 cada 3 s)
       checkSurcharge: 1,         // energía EXTRA que cuesta mover si estás en jaque
@@ -30,7 +30,7 @@
 
     // ---------------- COSTE DE MOVER cada pieza ----------------
     //   (en jaque se suma el checkSurcharge de arriba)
-    moveCost: { p: 2, n: 4, b: 4, r: 4, q: 6, k: 2 },
+    moveCost: { p: 2, n: 3, b: 4, r: 5, q: 6, k: 2 },
 
     // ---------------- VALOR de material de cada pieza ----------------
     //   Sirve para: cuánto recuperas al comerla, y quién gana por tiempo.
