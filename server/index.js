@@ -25,6 +25,9 @@ app.get('/health', (_req, res) => res.json({ ok: true, ...lobby.stats() }));
 
 let clientSeq = 1;
 
+// nombre de jugador: sin caracteres de control, máx 14
+function cleanName(x) { let out = ''; for (const ch of String(x || '')) if (ch.charCodeAt(0) >= 32) out += ch; return out.trim().slice(0, 14); }
+
 wss.on('connection', (ws) => {
   // adaptador: envuelve el socket como "cliente" genérico para el lobby
   const client = {
@@ -40,6 +43,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let m; try { m = JSON.parse(raw); } catch (_e) { return; }
     switch (m.t) {
+      case 'name':   client.name = cleanName(m.name); break; // nombre del jugador
       case 'queue':  lobby.enqueue(client); break;        // buscar rival online
       case 'cpu':    lobby.startCPU(client); break;        // jugar vs CPU
       case 'create': lobby.createPrivate(client, m.code); break; // crear sala privada

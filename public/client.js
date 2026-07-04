@@ -12,6 +12,10 @@ let state = null;         // último snapshot
 let you = 'w';            // tu color
 let lastYou = null;       // para rehacer el tablero si cambia la orientación
 let selected = null;      // {r,c} en coords de tablero
+let drag = null;          // arrastre en curso {r,c,id,el,lifted,sx,sy}
+let justDragged = false;  // evita que el 'click' posterior a un arrastre reseleccione
+let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
+let myName = localStorage.getItem('rs-name') || '';
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -25,7 +29,8 @@ const btnQueue = $('btnQueue'), btnCPU = $('btnCPU'), btnCancel = $('btnCancel')
       btnAgain = $('btnAgain'), btnCPU2 = $('btnCPU2'), menuBtn = $('menuBtn'),
       btnFriend = $('btnFriend'), btnCreate = $('btnCreate'), btnJoin = $('btnJoin'),
       btnBack = $('btnBack'), btnCancelWait = $('btnCancelWait'),
-      codeInput = $('codeInput'), codeErr = $('codeErr'), codeValue = $('codeValue');
+      codeInput = $('codeInput'), codeErr = $('codeErr'), codeValue = $('codeValue'),
+      nameInput = $('nameInput'), dragToggle = $('dragToggle');
 let curScreen = null;
 
 // ============================================================
@@ -74,14 +79,16 @@ function render(){
     if (!el){
       el = document.createElement('div');
       el.className = 'piece ' + p.color + ' pop';
+      el.appendChild(document.createElement('span'));   // el glifo vive en un span (animaciones de escala)
       piecesEl.appendChild(el);
       pieceEls.set(p.id, el);
       setTimeout(() => el.classList.remove('pop'), 240);
     }
-    el.textContent = GLYPH[p.type];
-    el.className = 'piece ' + p.color;
+    el.firstChild.textContent = GLYPH[p.type];
+    el.className = 'piece ' + p.color + ((drag && drag.lifted && drag.id === p.id) ? ' dragging' : '');
     const { dr, dc } = toDisplay(r, c);
-    el.style.transform = `translate(${dc*100}%, ${dr*100}%)`;
+    // Si esta pieza se está arrastrando, no la recolocamos: la controla el puntero.
+    if (!(drag && drag.lifted && drag.id === p.id)) el.style.transform = `translate(${dc*100}%, ${dr*100}%)`;
   }
   for (const [id, el] of pieceEls){
     if (!present.has(id)){ el.classList.add('dead'); pieceEls.delete(id); setTimeout(()=>el.remove(),200); }
@@ -157,11 +164,12 @@ function updateHUD(){
     sideTop.appendChild(oppCard);
   }
 
-  // Etiquetas de usuario y reloj
-  const oppTag = state.vsCPU ? '· CPU' : '· Rival';
-  $('tagW').textContent = you==='w' ? '· TÚ' : oppTag;
+  // Etiquetas de usuario y reloj (nombre si lo hay; si no, TÚ / Rival / CPU)
+  const names = state.names || {};
+  const label = (side) => names[side] || (side === you ? 'TÚ' : (state.vsCPU ? 'CPU' : 'Rival'));
+  $('tagW').textContent = '· ' + label('w');
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
-  $('tagB').textContent = you==='b' ? '· TÚ' : oppTag;
+  $('tagB').textContent = '· ' + label('b');
   $('tagB').style.color = you==='b' ? 'var(--black-acc)' : 'var(--ink-dim)';
   
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
@@ -173,6 +181,7 @@ function updateHUD(){
 //  Interacción -> intención al servidor
 // ============================================================
 function onSquareClick(e){
+  if (justDragged){ justDragged = false; return; }   // ese clic venía de soltar un arrastre
   if (!state || state.phase!=='live') return;
   const dr = +e.currentTarget.dataset.dr, dc = +e.currentTarget.dataset.dc;
   const { r, c } = toBoard(dr, dc);
@@ -190,6 +199,78 @@ function onSquareClick(e){
 }
 function sendMove(from, to){ send({ t:'move', from:[from.r,from.c], to:[to.r,to.c] }); }
 function send(obj){ if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj)); }
+function sendName(){
+  myName = (nameInput.value || '').trim().slice(0, 14);
+  localStorage.setItem('rs-name', myName);
+  send({ t:'name', name: myName });
+}
+
+// ============================================================
+//  Arrastrar piezas (drag & drop) — convive con el clic
+// ============================================================
+function squareUnderPointer(x, y){
+  const el = document.elementFromPoint(x, y);
+  const sq = el && el.closest ? el.closest('.sq') : null;
+  if (!sq || sq.parentElement !== gridEl) return null;
+  return { dr:+sq.dataset.dr, dc:+sq.dataset.dc };
+}
+function onPointerDown(e){
+  if (!dragEnabled) return;                                 // opción del menú desactivada
+  if (e.button != null && e.button !== 0) return;          // solo botón principal
+  if (!state || state.phase!=='live') return;
+  const sq = e.target.closest && e.target.closest('.sq');
+  if (!sq) return;
+  const { r, c } = toBoard(+sq.dataset.dr, +sq.dataset.dc);
+  const p = state.board[r][c];
+  if (!p || p.color !== you) return;                        // solo tus piezas
+  justDragged = false;
+  selected = { r, c };
+  render();                                                 // muestra las pistas
+  drag = { r, c, id:p.id, el:pieceEls.get(p.id), lifted:false, sx:e.clientX, sy:e.clientY };
+}
+function onPointerMove(e){
+  if (!drag) return;
+  if (!drag.lifted && Math.hypot(e.clientX-drag.sx, e.clientY-drag.sy) < 6) return;  // umbral toque/arrastre
+  if (!drag.lifted){ drag.lifted = true; if (drag.el) drag.el.classList.add('dragging'); }
+  if (!drag.el) return;
+  const rect = piecesEl.getBoundingClientRect();
+  const size = rect.width / 8;
+  const left = e.clientX - rect.left - size/2;
+  const top  = e.clientY - rect.top  - size/2;
+  drag.el.style.transform = `translate(${left}px, ${top}px)`;
+}
+function onPointerUp(e){
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.el) d.el.classList.remove('dragging');
+  if (!d.lifted){ render(); return; }                       // fue un toque: deja actuar al clic
+  justDragged = true;
+  setTimeout(() => { justDragged = false; }, 0);            // solo anula el clic de ESTE gesto
+  const at = squareUnderPointer(e.clientX, e.clientY);
+  if (at){
+    const { r, c } = toBoard(at.dr, at.dc);
+    if (E.genMoves(state.board, d.r, d.c).some(m => m.r===r && m.c===c)) sendMove({r:d.r,c:d.c}, {r,c});
+  }
+  settleAnim(d.id);                                         // animación de "asentarse" al soltar
+  selected = null;
+  render();
+}
+// escala 1.28 -> rebote -> 1 sobre el span (estilo inline: sobrevive a los re-render)
+function settleAnim(id){
+  const el = pieceEls.get(id);
+  if (!el || !el.firstChild) return;
+  const s = el.firstChild;
+  s.style.animation = 'none';
+  void s.offsetWidth;                                       // reinicia la animación
+  s.style.animation = 'settle .28s cubic-bezier(.3,1.5,.5,1)';
+  setTimeout(() => { s.style.animation = ''; }, 300);
+}
+function onPointerCancel(){
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.el) d.el.classList.remove('dragging');
+  selected = null; render();
+}
 
 // ============================================================
 //  Pantallas del overlay
@@ -215,7 +296,7 @@ function setStatus(ok, txt){ statusEl.classList.toggle('ok', ok); statusTxt.text
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
-  ws.onopen  = () => { setStatus(true, 'Conectado'); enableMenu(true); };
+  ws.onopen  = () => { setStatus(true, 'Conectado'); enableMenu(true); sendName(); };
   ws.onclose = () => { setStatus(false, 'Sin conexión'); enableMenu(false); showScreen('menu'); setTimeout(connect, 1500); };
   ws.onerror = () => setStatus(false, 'Error de red');
   ws.onmessage = (ev) => {
@@ -328,21 +409,36 @@ function buildLegend(){
 // ============================================================
 //  Botones
 // ============================================================
-btnQueue.addEventListener('click', () => { ensureAudio(); send({t:'queue'}); });
-btnAgain.addEventListener('click', () => { ensureAudio(); send({t:'queue'}); });
-btnCPU .addEventListener('click', () => { ensureAudio(); send({t:'cpu'}); });
-btnCPU2.addEventListener('click', () => { ensureAudio(); send({t:'cpu'}); });
+btnQueue.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'queue'}); });
+btnAgain.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'queue'}); });
+btnCPU .addEventListener('click', () => { ensureAudio(); sendName(); send({t:'cpu'}); });
+btnCPU2.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'cpu'}); });
 btnCancel.addEventListener('click', () => send({t:'cancel'}));
 menuBtn.addEventListener('click', () => send({t:'leave'}));
 // salas privadas
 btnFriend.addEventListener('click', () => { showScreen('friend'); setTimeout(()=>codeInput.focus(),50); });
 btnBack.addEventListener('click', () => showScreen('menu'));
-btnCreate.addEventListener('click', () => { ensureAudio(); send({t:'create', code: codeInput.value}); });
-btnJoin.addEventListener('click', () => { ensureAudio(); send({t:'join', code: codeInput.value}); });
+btnCreate.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'create', code: codeInput.value}); });
+btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'join', code: codeInput.value}); });
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
 $('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; this.textContent=sfxOn?'🔊 SFX':'🔇 SFX'; ensureAudio(); });
+
+// opciones del menú: nombre + arrastre (persisten en localStorage)
+nameInput.value = myName;
+dragToggle.checked = dragEnabled;
+nameInput.addEventListener('change', sendName);
+dragToggle.addEventListener('change', () => {
+  dragEnabled = dragToggle.checked;
+  localStorage.setItem('rs-drag', dragEnabled ? '1' : '0');
+});
+
+// arrastrar piezas (listeners globales; el grid se reconstruye pero gridEl persiste)
+gridEl.addEventListener('pointerdown', onPointerDown);
+window.addEventListener('pointermove', onPointerMove);
+window.addEventListener('pointerup', onPointerUp);
+window.addEventListener('pointercancel', onPointerCancel);
 
 // init
 buildGrid(); lastYou = you;

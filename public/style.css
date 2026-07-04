@@ -56,8 +56,8 @@ body::before{
 .phead{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
 .pname{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:15px; display:flex; align-items:center; gap:8px; }
 .dot{ width:11px; height:11px; border-radius:3px; }
-.side-w .dot{ background:var(--white-acc); box-shadow:0 0 10px var(--white-acc); }
-.side-b .dot{ background:var(--black-acc); box-shadow:0 0 10px var(--black-acc); }
+#cardW .dot{ background:var(--white-acc); box-shadow:0 0 10px var(--white-acc); }
+#cardB .dot{ background:var(--black-acc); box-shadow:0 0 10px var(--black-acc); }
 .badge-check{ font-family:'Chakra Petch'; font-weight:700; font-size:11px; letter-spacing:.14em; color:#fff; background:var(--danger); padding:3px 8px; border-radius:6px; opacity:0; transition:opacity .2s; box-shadow:0 0 14px rgba(255,45,74,.6); }
 .pcard.check .badge-check{ opacity:1; }
 .energy-top{ display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:6px; }
@@ -66,8 +66,12 @@ body::before{
 .energy-num small{ font-size:13px; color:var(--ink-dim); font-weight:500; }
 .ebar{ height:16px; border-radius:8px; background:#05060c; border:1px solid var(--line); overflow:hidden; position:relative; }
 .efill{ height:100%; width:0%; border-radius:7px; transition:width .12s linear; }
-.side-w .efill{ background:linear-gradient(90deg,#0f6,var(--energy-b)); box-shadow:0 0 14px rgba(51,230,255,.5); }
-.side-b .efill{ background:linear-gradient(90deg,#ff8a5c,var(--black-acc)); box-shadow:0 0 14px rgba(255,59,115,.5); }
+#cardW .efill{ background:linear-gradient(90deg,#0f6,var(--energy-b)); box-shadow:0 0 14px rgba(51,230,255,.5); }
+#cardB .efill{ background:linear-gradient(90deg,#ff8a5c,var(--black-acc)); box-shadow:0 0 14px rgba(255,59,115,.5); }
+
+/* Tu tarjeta (siempre abajo): se estira a lo ancho para que la barra quede más alargada */
+#sideBottom{ align-self:stretch; }
+#sideBottom .pcard{ width:100%; }
 .ebar .ticks{ position:absolute; inset:0; display:flex; }
 .ebar .ticks i{ flex:1; border-right:1px solid rgba(255,255,255,.06); }
 .ebar .ticks i:last-child{ border:0; }
@@ -98,6 +102,12 @@ body::before{
 .piece.b{ color:#ffe3ee; text-shadow:0 0 10px rgba(255,59,115,.85),0 2px 4px rgba(0,0,0,.6); }
 .piece.dead{ opacity:0; transform:scale(.4) rotate(20deg); }
 .piece.pop{ animation:pop .22s ease; }
+/* el glifo va en un span interior: así la escala (agarrar/soltar) no pisa el translate de posición */
+.piece span{ display:block; transition:transform .18s cubic-bezier(.3,1.5,.5,1); }
+.piece.dragging{ transition:none; z-index:6; filter:drop-shadow(0 10px 16px rgba(0,0,0,.6)); }
+.piece.dragging span{ transform:scale(1.28); }
+@keyframes settle{ 0%{ transform:scale(1.28); } 55%{ transform:scale(.9); } 100%{ transform:scale(1); } }
+.grid{ touch-action:none; }
 @keyframes pop{ 0%{ transform:scale(.6);} 60%{ transform:scale(1.18);} 100%{ transform:scale(1);} }
 
 .legend{ width:min(90vw,560px); background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
@@ -154,6 +164,11 @@ body::before{
   transition:border-color .15s, box-shadow .15s;
 }
 .code-input::placeholder{ color:var(--ink-dim); letter-spacing:.14em; font-size:15px; font-weight:600; }
+.name-input{ font-size:18px; letter-spacing:.18em; padding:11px 12px; margin-bottom:10px; }
+.opt-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:12px; cursor:pointer;
+  font-size:13px; font-weight:600; letter-spacing:.08em; color:var(--ink-dim); user-select:none; }
+.opt-row input{ width:16px; height:16px; accent-color:var(--white-acc); cursor:pointer; }
+.opt-row:hover span{ color:var(--ink); }
 .code-input:focus{ border-color:var(--white-acc); box-shadow:0 0 18px rgba(51,230,255,.3); }
 .code-err{ min-height:18px; color:var(--danger); font-size:13px; font-weight:600; margin-bottom:6px; }
 .code-box{ display:inline-flex; flex-direction:column; align-items:center; gap:4px; margin-top:6px;

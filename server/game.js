@@ -34,6 +34,10 @@ class Game {
     this.startTime = 0;          // inicio real del reloj de 5 min
     this.lastRegen = 0;
     this.lastAI = 0;
+    // Historial por bando para reglas de coste especiales:
+    this.lastMoveId = { w: null, b: null };  // id de la última pieza movida
+    this.moveStreak = { w: 0, b: 0 };        // veces seguidas que se movió esa pieza
+    this.knightDiscount = new Set();         // ids de caballos con -1 pendiente (comieron)
   }
 
   get running() { return this.phase === 'live'; }
@@ -64,13 +68,6 @@ class Game {
   timeLeft(now) { return this.phase === 'live' ? Math.max(0, MATCH_MS - (now - this.startTime)) : MATCH_MS; }
   countdownLeft(now) { return this.phase === 'countdown' ? Math.max(0, this.startsAt - now) : 0; }
 
-  moveCost(r, c) {
-    const p = this.board[r][c];
-    if (!p) return Infinity;
-    const surcharge = E.inCheck(this.board, p.color) ? CHECK_SURCHARGE : 0;
-    return E.MOVE_COST[p.type] + surcharge;
-  }
-
   applyMove(color, fr, fc, tr, tc, now) {
     if (this.phase !== 'live') return { ok: false, reason: 'no-corriendo' };
     for (const v of [fr, fc, tr, tc]) {
@@ -83,23 +80,82 @@ class Game {
     const legal = E.genMoves(this.board, fr, fc).some(m => m.r === tr && m.c === tc);
     if (!legal) return { ok: false, reason: 'ilegal' };
 
+    // ¿es un enroque? (el rey se desplaza 2 columnas)
+    const isCastle = p.type === 'k' && Math.abs(tc - fc) === 2;
+    if (isCastle && !this._castleAllowed(color, fr, fc, tc)) return { ok: false, reason: 'ilegal' };
+
     this._regen(now);
-    const cost = this.moveCost(fr, fc);
-    if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
 
     const target = this.board[tr][tc];
+
+    // ---------- COSTE del movimiento ----------
+    const surcharge = E.inCheck(this.board, color) ? CHECK_SURCHARGE : 0;
+    let cost = E.MOVE_COST[p.type] + surcharge;
+    // Peón movido de forma SEGUIDA: +1 acumulativo por cada repetición del mismo peón.
+    if (p.type === 'p' && this.lastMoveId[color] === p.id) cost += this.moveStreak[color];
+    // Caballo: si venía de comer y este movimiento NO come, cuesta 1 menos.
+    if (p.type === 'n' && !target && this.knightDiscount.has(p.id)) cost -= 1;
+    if (cost < 0) cost = 0;
+
+    if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
+
     const capturedKing = target && target.type === 'k';
 
     this.energy[color] -= cost;
-    if (target) this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + E.VALUE[target.type] * REFUND);
+    // Reembolso al comer: NO si el que come es un peón, NI si lo comido es un peón.
+    if (target && p.type !== 'p' && target.type !== 'p') {
+      this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + E.VALUE[target.type] * REFUND);
+    }
 
+    // ---------- mover la pieza ----------
     this.board[tr][tc] = p;
     this.board[fr][fc] = null;
+    p.moved = true;
     if (p.type === 'p' && (tr === 0 || tr === 7)) p.type = 'q';
+
+    // Enroque: mover también la torre al otro lado del rey.
+    if (isCastle) {
+      const rookFromC = tc > fc ? 7 : 0;
+      const rookToC   = tc > fc ? 5 : 3;
+      const rook = this.board[fr][rookFromC];
+      this.board[fr][rookToC] = rook;
+      this.board[fr][rookFromC] = null;
+      if (rook) rook.moved = true;
+    }
+
+    // ---------- rachas y descuentos ----------
+    // Racha del mismo peón (para la penalización acumulativa).
+    if (this.lastMoveId[color] === p.id) this.moveStreak[color] += 1;
+    else this.moveStreak[color] = 1;
+    this.lastMoveId[color] = p.id;
+    // Descuento del caballo: se arma al comer, se limpia/gasta al no comer.
+    if (p.type === 'n') {
+      if (target) this.knightDiscount.add(p.id);
+      else this.knightDiscount.delete(p.id);
+    }
 
     this.lastMove = { fr, fc, tr, tc };
     if (capturedKing) this._end(color, 'king');
     return { ok: true, captured: !!target, capturedKing };
+  }
+
+  // ¿puede el rey enrocar? No en jaque y sin pasar por (ni caer en) casilla atacada.
+  // Las casillas vacías y la torre sin mover ya las validó genMoves.
+  _castleAllowed(color, r, fc, tc) {
+    if (E.inCheck(this.board, color)) return false;
+    const step = tc > fc ? 1 : -1;
+    const king = this.board[r][fc];
+    for (let cc = fc + step; ; cc += step) {
+      const saved = this.board[r][cc];       // casilla intermedia (vacía)
+      this.board[r][cc] = king;              // simula el rey ahí
+      this.board[r][fc] = null;
+      const attacked = E.inCheck(this.board, color);
+      this.board[r][fc] = king;              // restaura
+      this.board[r][cc] = saved;
+      if (attacked) return false;
+      if (cc === tc) break;
+    }
+    return true;
   }
 
   _aiStep(now) {

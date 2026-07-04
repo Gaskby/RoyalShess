@@ -148,8 +148,21 @@ class Lobby {
   leave(client) { this._handleExit(client, false); }        // volver al menú
   disconnect(client) { this._handleExit(client, true); }    // se cayó el socket
 
+  _names(room) {
+    const names = { w: null, b: null };
+    for (const c of room.clients) if (c.color) names[c.color] = c.name || null;
+    if (room.game.vsCPU && !names.b) names.b = 'CPU';
+    return names;
+  }
+
   _broadcast(room, now) {
-    room.clients.forEach(c => { if (c.color) this._send(c, room.game.serialize(c.color, now)); });
+    const names = this._names(room);
+    room.clients.forEach(c => {
+      if (!c.color) return;
+      const st = room.game.serialize(c.color, now);
+      st.names = names;
+      this._send(c, st);
+    });
   }
 
   tick(now) {
