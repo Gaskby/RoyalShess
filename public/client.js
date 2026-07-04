@@ -112,15 +112,32 @@ function render(){
   }
   updateHUD();
 }
-
 function updateHUD(){
-  const max = state.maxEnergy || 10;
+  if (!state || !state.energy) return;
+
+  // Obtener energía máxima con protección antidivisión por cero
+  const max = state.maxEnergy || (window.RSConfig && window.RSConfig.energy ? window.RSConfig.energy.max : 10);
+
   for (const side of ['w','b']){
-    const pct = (state.energy[side]/max)*100;
-    $('ef'+side.toUpperCase()).style.width = pct + '%';
-    const v = Math.floor(state.energy[side]*10)/10;
-    $('en'+side.toUpperCase()).textContent = (v % 1 === 0) ? v : v.toFixed(1);
+    const val = state.energy[side];
+    if (typeof val !== 'undefined') {
+      // Calcular porcentaje exacto entre 0% y 100%
+      const pct = Math.min(100, Math.max(0, (val / max) * 100));
+      
+      // Actualizar el ancho de la barra visual
+      const fillEl = $('ef' + side.toUpperCase());
+      if (fillEl) fillEl.style.width = pct + '%';
+      
+      // Actualizar el número de texto
+      const numEl = $('en' + side.toUpperCase());
+      if (numEl) {
+        const v = Math.floor(val * 10) / 10;
+        numEl.textContent = (v % 1 === 0) ? v : v.toFixed(1);
+      }
+    }
   }
+
+  // Actualizar material y jaques
   $('matW').textContent = state.material.w;
   $('matB').textContent = state.material.b;
   $('cardW').classList.toggle('check', state.check.w);
@@ -128,7 +145,7 @@ function updateHUD(){
   boardWrap.classList.toggle('edge-w', state.check.w);
   boardWrap.classList.toggle('edge-b', state.check.b);
 
-  // Optimización: Solo mover las barras al contenedor si cambiaron de posición
+  // Acomodar tarjetas: Tu color ABAJO, rival ARRIBA
   const myCard  = $(you === 'w' ? 'cardW' : 'cardB');
   const oppCard = $(you === 'w' ? 'cardB' : 'cardW');
   const sideBottom = $('sideBottom');
@@ -140,13 +157,13 @@ function updateHUD(){
     sideTop.appendChild(oppCard);
   }
 
+  // Etiquetas de usuario y reloj
   const oppTag = state.vsCPU ? '· CPU' : '· Rival';
   $('tagW').textContent = you==='w' ? '· TÚ' : oppTag;
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
   $('tagB').textContent = you==='b' ? '· TÚ' : oppTag;
   $('tagB').style.color = you==='b' ? 'var(--black-acc)' : 'var(--ink-dim)';
   
-  // reloj
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   clockEl.classList.toggle('low', s<=30 && state.phase==='live');
