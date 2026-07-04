@@ -143,10 +143,33 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .panelbig{ text-align:center; max-width:440px; padding:34px 30px; }
 .panelbig .title{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:clamp(30px,7vw,52px); background:linear-gradient(90deg,var(--white-acc),#c9a6ff 55%,var(--black-acc)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 20px rgba(90,140,255,.3)); }
 .panelbig .sub{ color:var(--ink-dim); letter-spacing:.2em; text-transform:uppercase; font-size:12px; margin-top:6px; }
-.result{ font-family:'Chakra Petch'; font-weight:700; font-size:clamp(26px,6vw,40px); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px; }
+.result{ font-family:'Chakra Petch'; font-weight:700; font-size:clamp(26px,6vw,40px); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;
+  animation:resultpop .5s cubic-bezier(.2,.9,.3,1.2); }   /* se reinicia sola: el panel pasa por display:none */
 .result.win{ color:var(--energy-a); text-shadow:0 0 24px rgba(107,255,176,.5); }
 .result.lose{ color:var(--danger); text-shadow:0 0 24px rgba(255,45,74,.5); }
 .result.draw{ color:var(--gold); }
+@keyframes resultpop{
+  0%{ transform:scale(2.4); opacity:0; filter:blur(6px); }
+  60%{ transform:scale(.94); opacity:1; filter:blur(0); }
+  100%{ transform:scale(1); }
+}
+#screenResult .menu-btns{ animation:fadeup .35s .25s both; }
+@keyframes fadeup{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+
+/* canvas de estallidos (bgfx.js): por encima de TODO, no bloquea clics */
+#fxfx{ position:fixed; inset:0; z-index:70; pointer-events:none; }
+
+/* flash de pantalla al terminar (el color lo pone el cliente) */
+.flash{ position:fixed; inset:0; z-index:65; pointer-events:none; opacity:0; }
+.flash.go{ animation:flashout .5s ease-out; }
+@keyframes flashout{ 0%{ opacity:.5; } 100%{ opacity:0; } }
+
+/* sacudida del tablero al perder */
+.board-wrap.shake{ animation:boardshake .45s cubic-bezier(.36,.07,.19,.97); }
+@keyframes boardshake{
+  10%,90%{ transform:translateX(-2px); } 20%,80%{ transform:translateX(4px); }
+  30%,50%,70%{ transform:translateX(-8px); } 40%,60%{ transform:translateX(8px); }
+}
 .playbtn{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.16em; text-transform:uppercase; font-size:18px; color:#04121a; background:linear-gradient(90deg,var(--energy-a),var(--white-acc)); border:0; border-radius:12px; padding:14px 40px; margin-top:20px; cursor:pointer; box-shadow:0 0 30px rgba(51,230,255,.4); transition:transform .1s,box-shadow .15s; }
 .playbtn:hover{ box-shadow:0 0 44px rgba(51,230,255,.6); }
 .playbtn:active{ transform:scale(.97); }

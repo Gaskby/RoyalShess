@@ -339,7 +339,7 @@ function onState(msg){
     countdownEl.style.display = 'none';
   } else if (state.phase === 'over'){
     countdownEl.style.display = 'none';
-    if (prevPhase !== 'over'){ showResult(); sfx('end'); }
+    if (prevPhase !== 'over'){ showResult(); sfx(state.winner === you ? 'win' : 'end'); }
   }
   prevPhase = state.phase;
   updateAmbience();
@@ -384,15 +384,35 @@ function handleReject(reason){
 //  Resultado
 // ============================================================
 function showResult(){
+  const won = state.winner === you, draw = state.winner === 'draw';
+  endFx(draw ? 'draw' : won ? 'win' : 'lose');              // estallido + flash + sacudida
   const rt = $('resultTxt'); rt.className='result';
-  if (state.winner === 'draw'){ rt.classList.add('draw'); rt.textContent='Empate'; }
-  else if (state.winner === you){ rt.classList.add('win'); rt.textContent='Ganaste'; }
+  if (draw){ rt.classList.add('draw'); rt.textContent='Empate'; }
+  else if (won){ rt.classList.add('win'); rt.textContent='Ganaste'; }
   else { rt.classList.add('lose'); rt.textContent='Perdiste'; }
   const reasonTxt = state.reason==='time'
     ? `tiempo agotado · material ${state.material.w} — ${state.material.b}`
     : state.reason==='abandon' ? 'tu rival abandonó' : 'rey capturado';
-  showScreen('result');
-  $('overlaySub').textContent = reasonTxt;
+  // el panel entra tras un instante: deja ver el estallido sobre el tablero
+  setTimeout(() => {
+    if (!state || state.phase !== 'over') return;           // por si volvió al menú
+    showScreen('result');
+    $('overlaySub').textContent = reasonTxt;
+  }, 550);
+}
+
+// efectos de final de partida: cian al ganar, rojo al perder, dorado en empate
+function endFx(kind){
+  const hue = kind === 'win' ? 172 : kind === 'lose' ? 348 : 45;
+  const f = $('flash');
+  f.style.background = `hsl(${hue} 90% 60%)`;
+  f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  if (kind === 'lose'){
+    boardWrap.classList.add('shake');
+    setTimeout(() => boardWrap.classList.remove('shake'), 500);
+  }
+  const r = boardWrap.getBoundingClientRect();
+  window.RSBG.burst(r.left + r.width/2, r.top + r.height/2, hue);
 }
 
 // ============================================================
@@ -408,9 +428,11 @@ function sfx(kind){
   if(kind==='check'){ f=760; d=0.16; type='square'; vol=0.08; }
   if(kind==='go'){ f=660; d=0.18; type='triangle'; vol=0.09; }
   if(kind==='end'){ f=320; d=0.4; type='sawtooth'; vol=0.1; }
+  if(kind==='win'){ f=440; d=0.45; type='triangle'; vol=0.1; }
   o.type=type; o.frequency.setValueAtTime(f,t);
   if(kind==='cap'||kind==='end') o.frequency.exponentialRampToValueAtTime(f*0.5,t+d);
   if(kind==='go') o.frequency.exponentialRampToValueAtTime(f*1.5,t+d);
+  if(kind==='win') o.frequency.exponentialRampToValueAtTime(f*2,t+d);
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
   o.start(t); o.stop(t+d+0.02);
 }

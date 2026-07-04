@@ -12,12 +12,20 @@
   document.body.prepend(cv);
   const g = cv.getContext('2d');
 
+  // segundo canvas POR ENCIMA de la UI: estallidos de final de partida
+  const fxcv = document.createElement('canvas');
+  fxcv.id = 'fxfx';
+  document.body.appendChild(fxcv);
+  const fg = fxcv.getContext('2d');
+
   let W = 0, H = 0;
   function resize() {
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // tope de DPR: rendimiento
     W = window.innerWidth; H = window.innerHeight;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    for (const [c, cx] of [[cv, g], [fxcv, fg]]) {
+      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+      cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
   }
   window.addEventListener('resize', resize);
   resize();
@@ -69,14 +77,50 @@
 
   let intensity = 0, target = 0, tPrev = performance.now(), tAcc = rnd(0, 900);
 
-  function poly(k, s) {
-    g.beginPath();
+  function poly(ctx2, k, s) {
+    ctx2.beginPath();
     for (let i = 0; i < k; i++) {
       const an = (i / k) * Math.PI * 2;
-      i ? g.lineTo(Math.cos(an) * s, Math.sin(an) * s)
-        : g.moveTo(Math.cos(an) * s, Math.sin(an) * s);
+      i ? ctx2.lineTo(Math.cos(an) * s, Math.sin(an) * s)
+        : ctx2.moveTo(Math.cos(an) * s, Math.sin(an) * s);
     }
-    g.closePath();
+    ctx2.closePath();
+  }
+
+  // ---------- estallido de final de partida (corto: ~1 s) ----------
+  const sparks = [];
+  function burst(px, py, hue) {
+    for (let i = 0; i < 70; i++) {
+      const an = rnd(0, Math.PI * 2), sp = rnd(140, 640);
+      sparks.push({
+        x: px, y: py,
+        vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - rnd(0, 140),
+        s: rnd(3, 10), r: rnd(0, Math.PI * 2), vr: rnd(-7, 7),
+        h: hue + rnd(-16, 16),
+        life: 1, decay: rnd(0.9, 1.7),          // vive entre ~0.6 y ~1.1 s
+        k: Math.random() < 0.5 ? 3 : 4,
+      });
+    }
+  }
+
+  function drawSparks(dt) {
+    fg.clearRect(0, 0, W, H);
+    for (let i = sparks.length - 1; i >= 0; i--) {
+      const p = sparks[i];
+      p.life -= dt * p.decay;
+      if (p.life <= 0) { sparks.splice(i, 1); continue; }
+      p.vy += 560 * dt;                          // gravedad
+      p.vx *= 1 - 1.2 * dt;                      // fricción
+      p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+      fg.save();
+      fg.translate(p.x, p.y); fg.rotate(p.r);
+      fg.globalAlpha = Math.max(0, Math.min(1, p.life));
+      fg.fillStyle = `hsl(${p.h} 90% 62%)`;
+      fg.shadowColor = `hsl(${p.h} 90% 60%)`; fg.shadowBlur = 9;
+      poly(fg, p.k, p.s);
+      fg.fill();
+      fg.restore();
+    }
   }
 
   function frame(now) {
@@ -132,7 +176,7 @@
         g.beginPath(); g.arc(0, 0, Math.max(2, s.s * 0.16), 0, Math.PI * 2);
         g.fillStyle = col(64, alpha * 1.4); g.fill();
       } else {
-        poly(s.k === 'tri' ? 3 : s.k === 'diamond' ? 4 : 6, s.s);
+        poly(g, s.k === 'tri' ? 3 : s.k === 'diamond' ? 4 : 6, s.s);
         g.strokeStyle = col(66, alpha); g.lineWidth = 1.5;
         if (!s.wire) { g.fillStyle = col(60, s.a * 0.5); g.fill(); }
         g.stroke();
@@ -145,11 +189,14 @@
     vg.addColorStop(0, 'transparent');
     vg.addColorStop(1, `rgba(2,3,8,${scene.vig})`);
     g.fillStyle = vg; g.fillRect(0, 0, W, H);
+
+    drawSparks(dt);   // estallidos de final de partida (canvas superior)
   }
   requestAnimationFrame(frame);
 
   window.RSBG = {
     setIntensity(x) { target = Math.max(0, Math.min(1, x)); },
     newScene,
+    burst,
   };
 })();
