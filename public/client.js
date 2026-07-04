@@ -152,6 +152,8 @@ function updateHUD(){
   $('cardB').classList.toggle('check', state.check.b);
   boardWrap.classList.toggle('edge-w', state.check.w);
   boardWrap.classList.toggle('edge-b', state.check.b);
+  // alarma fuerte cuando TU rey está en jaque: tablero en rojo pulsante
+  boardWrap.classList.toggle('danger', state.phase === 'live' && !!state.check[you]);
 
   // Acomodar tarjetas: Tu color ABAJO, rival ARRIBA
   const myCard  = $(you === 'w' ? 'cardW' : 'cardB');
@@ -344,17 +346,19 @@ function onState(msg){
   render();
 }
 
-// música y fondo reaccionan a la fase y al reloj (0 al empezar -> 1 al agotarse)
+// música y fondo reaccionan a la fase, al reloj (0 -> 1 al agotarse) y al jaque
 function updateAmbience(){
-  if (!state){ window.RSMusic.stop(); window.RSBG.setIntensity(0); return; }
+  if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); return; }
   if (state.phase === 'countdown' || state.phase === 'live'){
     if (musicOn) window.RSMusic.start(audioCtx); else window.RSMusic.stop();
     const p = state.matchMs ? Math.max(0, Math.min(1, 1 - state.timeLeft / state.matchMs)) : 0;
     const inten = state.phase === 'live' ? Math.pow(p, 1.35) : 0;
     window.RSMusic.setIntensity(inten);
+    window.RSMusic.setDanger(state.phase === 'live' && !!state.check[you]);
     window.RSBG.setIntensity(inten);
   } else {
     window.RSMusic.stop();
+    window.RSMusic.setDanger(false);
     window.RSBG.setIntensity(0);
   }
 }
@@ -372,7 +376,7 @@ function handleReject(reason){
     else { showToast(codeMsgs[reason]); }
     return;
   }
-  const map = { 'sin-energia':'Sin energía', 'ilegal':'Movimiento ilegal', 'no-es-tuya':'No es tu pieza', 'no-corriendo':'Aún no empieza' };
+  const map = { 'sin-energia':'Sin energía', 'ilegal':'Movimiento ilegal', 'no-es-tuya':'No es tu pieza', 'no-corriendo':'Aún no empieza', 'rey-protegido':'Espera 1 s tras el jaque' };
   showToast(map[reason] || 'Rechazado');
 }
 

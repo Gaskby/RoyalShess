@@ -15,6 +15,7 @@ window.RSMusic = (function () {
   let running = false, timer = null;
   let step = 0, bar = 0, nextT = 0;
   let intensity = 0, target = 0;
+  let danger = false;                                      // en jaque: la música se tensa
 
   // parámetros de la "pista" actual (se rebarajan por partida)
   let key = 57, baseBpm = 76, swing = 0.12;
@@ -135,7 +136,9 @@ window.RSMusic = (function () {
   }
 
   function scheduleStep(s, t) {
-    const i = intensity;
+    // en jaque la pista sube un escalón de intensidad y entra un pulso tenso
+    const i = Math.min(1, intensity + (danger ? 0.35 : 0));
+    if (danger && s % 4 === 2) tone(padBus, 'sawtooth', hz(deg(0) - 12), t, 0.005, 0.13, 0.10);
     // bombo: base en 0 y 8; se densifica con la intensidad
     if (s === 0 || s === 8) kick(t, 1);
     if (s === 10 && i > 0.35 && Math.random() < 0.7) kick(t, 0.8);
@@ -158,9 +161,10 @@ window.RSMusic = (function () {
 
   function tick() {
     intensity += (target - intensity) * 0.06;
-    const bpm = baseBpm + intensity * 26;
+    const eff = Math.min(1, intensity + (danger ? 0.35 : 0));
+    const bpm = baseBpm + eff * 26;
     const spb = 60 / bpm / 4;                              // duración de semicorchea
-    lpf.frequency.setTargetAtTime(750 + intensity * 2900, ctx.currentTime, 0.4);
+    lpf.frequency.setTargetAtTime(750 + eff * 2900, ctx.currentTime, 0.4);
     while (nextT < ctx.currentTime + 0.15) {
       scheduleStep(step, nextT + (step % 2 ? spb * swing : 0));
       step = (step + 1) % 16;
@@ -196,6 +200,7 @@ window.RSMusic = (function () {
   return {
     start, stop,
     setIntensity(x) { target = Math.max(0, Math.min(1, x)); },
+    setDanger(d) { danger = !!d; },
     isRunning() { return running; },
   };
 })();

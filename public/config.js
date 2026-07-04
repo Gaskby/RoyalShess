@@ -20,6 +20,15 @@
       checkSurcharge: 1,         // energía EXTRA que cuesta mover si estás en jaque
       captureRefund: 0.5,        // al comer recuperas esta fracción del valor comido
                                  //   0.5 = la mitad · 1 = el valor completo · 0 = nada
+      lateBoost: 2,              // multiplicador de regeneración en el tramo final
+      lateSeconds: 60,           // ... cuando queden estos segundos de partida
+    },
+
+    // ---------------- REGLAS ESPECIALES ----------------
+    rules: {
+      kingGraceMs: 2000,         // tras caer en jaque, el rey no se puede capturar
+                                 //   hasta pasado este tiempo (margen para reaccionar)
+      queenMinCost: 3,           // la dama se abarata 1 por captura, sin bajar de esto
     },
 
     // ---------------- PARTIDA ----------------

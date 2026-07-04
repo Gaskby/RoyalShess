@@ -11,6 +11,10 @@ const MAX_ENERGY      = CONFIG.energy.max;
 const REGEN_PER_SEC   = 1 / CONFIG.energy.regenSecondsPerPoint;
 const CHECK_SURCHARGE = CONFIG.energy.checkSurcharge;
 const REFUND          = CONFIG.energy.captureRefund;
+const LATE_BOOST      = CONFIG.energy.lateBoost;
+const LATE_MS         = CONFIG.energy.lateSeconds * 1000;
+const GRACE_MS        = CONFIG.rules.kingGraceMs;
+const QUEEN_MIN       = CONFIG.rules.queenMinCost;
 const MATCH_MS        = CONFIG.match.minutes * 60 * 1000;
 const COUNTDOWN_MS    = CONFIG.match.countdownSeconds * 1000;
 const AI_TICK_MS      = CONFIG.ai.tickMs;
@@ -38,6 +42,8 @@ class Game {
     this.lastMoveId = { w: null, b: null };  // id de la última pieza movida
     this.moveStreak = { w: 0, b: 0 };        // veces seguidas que se movió esa pieza
     this.knightDiscount = new Set();         // ids de caballos con -1 pendiente (comieron)
+    this.queenStreak = new Map();            // id de dama -> capturas acumuladas (abarata su coste)
+    this.checkSince = { w: null, b: null };  // desde cuándo está en jaque cada rey (gracia de captura)
   }
 
   get running() { return this.phase === 'live'; }
@@ -60,9 +66,22 @@ class Game {
     const dt = now - this.lastRegen;
     if (dt <= 0) return;
     this.lastRegen = now;
-    const gain = (dt / 1000) * REGEN_PER_SEC;
+    // en el tramo final la energía sube más rápido
+    const boost = (this.phase === 'live' && this.timeLeft(now) <= LATE_MS) ? LATE_BOOST : 1;
+    const gain = (dt / 1000) * REGEN_PER_SEC * boost;
     this.energy.w = Math.min(MAX_ENERGY, this.energy.w + gain);
     this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
+  }
+
+  // registra desde cuándo está cada rey en jaque (para la gracia de captura)
+  _updateChecks(now) {
+    for (const color of ['w', 'b']) {
+      if (E.inCheck(this.board, color)) {
+        if (this.checkSince[color] == null) this.checkSince[color] = now;
+      } else {
+        this.checkSince[color] = null;
+      }
+    }
   }
 
   timeLeft(now) { return this.phase === 'live' ? Math.max(0, MATCH_MS - (now - this.startTime)) : MATCH_MS; }
@@ -87,10 +106,20 @@ class Game {
     this._regen(now);
 
     const target = this.board[tr][tc];
+    const capturedKing = target && target.type === 'k';
+
+    // Gracia del jaque: el rey solo cae si su jaque lleva al menos GRACE_MS.
+    if (capturedKing) {
+      const cs = this.checkSince[target.color];
+      if (cs == null || now - cs < GRACE_MS) return { ok: false, reason: 'rey-protegido' };
+    }
 
     // ---------- COSTE del movimiento ----------
     const surcharge = E.inCheck(this.board, color) ? CHECK_SURCHARGE : 0;
-    let cost = E.MOVE_COST[p.type] + surcharge;
+    let base = E.MOVE_COST[p.type];
+    // Dama: 1 menos por cada captura acumulada, sin bajar del suelo configurado.
+    if (p.type === 'q') base = Math.max(QUEEN_MIN, base - (this.queenStreak.get(p.id) || 0));
+    let cost = base + surcharge;
     // Peón movido de forma SEGUIDA: +1 acumulativo por cada repetición del mismo peón.
     if (p.type === 'p' && this.lastMoveId[color] === p.id) cost += this.moveStreak[color];
     // Caballo: si venía de comer y este movimiento NO come, cuesta 1 menos.
@@ -99,11 +128,9 @@ class Game {
 
     if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
 
-    const capturedKing = target && target.type === 'k';
-
     this.energy[color] -= cost;
-    // Reembolso al comer: NO si el que come es un peón, NI si lo comido es un peón.
-    if (target && p.type !== 'p' && target.type !== 'p') {
+    // Reembolso al comer: peones y dama no lo reciben; comer peones tampoco lo da.
+    if (target && p.type !== 'p' && p.type !== 'q' && target.type !== 'p') {
       this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + E.VALUE[target.type] * REFUND);
     }
 
@@ -133,8 +160,11 @@ class Game {
       if (target) this.knightDiscount.add(p.id);
       else this.knightDiscount.delete(p.id);
     }
+    // Dama: cada captura acumula 1 de descuento para sus siguientes movimientos.
+    if (p.type === 'q' && target) this.queenStreak.set(p.id, (this.queenStreak.get(p.id) || 0) + 1);
 
     this.lastMove = { fr, fc, tr, tc };
+    this._updateChecks(now);   // el reloj de gracia arranca en el instante del jaque
     if (capturedKing) this._end(color, 'king');
     return { ok: true, captured: !!target, capturedKing };
   }
