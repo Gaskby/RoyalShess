@@ -61,6 +61,7 @@ class Game {
     // cupón de recaptura gratis por bando: {r,c,id} = "puedes comer a ESA pieza
     // en ESA casilla sin gastar energía". Se gasta/pierde con tu siguiente movimiento.
     this.freeRecapture = { w: null, b: null };
+    this.checkers = { w: new Set(), b: new Set() };   // ids de las piezas que dan cada jaque
   }
 
   get running() { return this.phase === 'live'; }
@@ -127,13 +128,36 @@ class Game {
     return toll;
   }
 
-  // registra desde cuándo está cada rey en jaque (para la gracia de captura)
+  // ids de las piezas rivales que están atacando al rey de `color`
+  _checkerIds(color) {
+    const k = E.findKing(this.board, color);
+    if (!k) return [];
+    const ids = [];
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = this.board[r][c];
+      if (p && p.color !== color) {
+        for (const m of E.genMoves(this.board, r, c)) {
+          if (m.r === k.r && m.c === k.c) { ids.push(p.id); break; }
+        }
+      }
+    }
+    return ids;
+  }
+
+  // registra desde cuándo está cada rey en jaque (para la gracia de captura).
+  // Si se suma un atacante NUEVO al jaque, la ventana de gracia se REINICIA:
+  // el defensor merece tiempo de reacción también contra la pieza nueva.
   _updateChecks(now) {
     for (const color of ['w', 'b']) {
-      if (E.inCheck(this.board, color)) {
-        if (this.checkSince[color] == null) this.checkSince[color] = now;
+      const ids = this._checkerIds(color);
+      if (ids.length) {
+        const prev = this.checkers[color];
+        const hasNew = ids.some(id => !prev.has(id));
+        if (this.checkSince[color] == null || hasNew) this.checkSince[color] = now;
+        this.checkers[color] = new Set(ids);
       } else {
         this.checkSince[color] = null;
+        this.checkers[color] = new Set();
       }
     }
   }
