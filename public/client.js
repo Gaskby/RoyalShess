@@ -6,7 +6,11 @@
    ============================================================================ */
 const E = window.RSEngine;
 const GLYPH = { p:'\u265F', n:'\u265E', b:'\u265D', r:'\u265C', q:'\u265B', k:'\u265A' };
-const NAME  = { p:'Peón', n:'Caballo', b:'Alfil', r:'Torre', q:'Dama', k:'Rey' };
+// idioma: todos los textos viven en i18n.js; tr('clave') devuelve el texto actual
+const I18N = window.RSI18N;
+I18N.setLang(localStorage.getItem('rs-lang') || 'es');
+const tr = (k) => I18N.t(k);
+const pieceName = (k) => tr('piece.' + k);
 
 let state = null;         // último snapshot
 let you = 'w';            // tu color
@@ -16,6 +20,15 @@ let drag = null;          // arrastre en curso {r,c,id,el,lifted,sx,sy}
 let justDragged = false;  // evita que el 'click' posterior a un arrastre reseleccione
 let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
 let myName = localStorage.getItem('rs-name') || '';
+// identidad ligera: token aleatorio generado una vez y guardado en localStorage.
+// Las estadísticas del servidor viven atadas a este token, no al nombre.
+let myToken = localStorage.getItem('rs-token');
+if (!myToken){
+  myToken = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'tk-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('rs-token', myToken);
+}
 let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de fondo
 let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chesscom'
 let sfxOn = true, audioCtx = null;
@@ -32,8 +45,11 @@ const btnQueue = $('btnQueue'), btnCPU = $('btnCPU'), btnCancel = $('btnCancel')
       btnFriend = $('btnFriend'), btnCreate = $('btnCreate'), btnJoin = $('btnJoin'),
       btnBack = $('btnBack'), btnCancelWait = $('btnCancelWait'),
       codeInput = $('codeInput'), codeErr = $('codeErr'), codeValue = $('codeValue'),
-      nameInput = $('nameInput'), dragToggle = $('dragToggle');
+      nameInput = $('nameInput'), dragToggle = $('dragToggle'),
+      btnRematch = $('btnRematch'), btnHelp = $('btnHelp'), btnHelpBack = $('btnHelpBack');
 let curScreen = null;
+let lastStatusKey = 'status.connecting';   // para re-traducir el estado al cambiar idioma
+let menuEnabled = false;
 
 // ============================================================
 //  Orientación (tu bando abajo)
@@ -203,7 +219,12 @@ function updateHUD(){
 
   // Etiquetas de usuario y reloj (nombre si lo hay; si no, TÚ / Rival / CPU)
   const names = state.names || {};
-  const label = (side) => names[side] || (side === you ? 'TÚ' : (state.vsCPU ? 'CPU' : 'Rival'));
+  const ranks = state.ranks || {};
+  const label = (side) => {
+    let s = names[side] || (side === you ? tr('tag.you') : (state.vsCPU ? tr('tag.cpu') : tr('tag.rival')));
+    if (ranks[side]) s += ' · #' + ranks[side];   // tu posición global tras el nombre
+    return s;
+  };
   $('tagW').textContent = '· ' + label('w');
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
   $('tagB').textContent = '· ' + label('b');
@@ -239,7 +260,7 @@ function send(obj){ if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.str
 function sendName(){
   myName = (nameInput.value || '').trim().slice(0, 14);
   localStorage.setItem('rs-name', myName);
-  send({ t:'name', name: myName });
+  send({ t:'name', name: myName, token: myToken });
 }
 
 // ============================================================
@@ -315,20 +336,23 @@ function onPointerCancel(){
 // ============================================================
 //  Pantallas del overlay
 // ============================================================
-function showScreen(name){ // 'menu' | 'friend' | 'waiting' | 'search' | 'result' | null(en juego)
+function showScreen(name){ // 'menu' | 'friend' | 'waiting' | 'search' | 'help' | 'board' | 'result' | null(en juego)
+  if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
   $('screenMenu').style.display    = name==='menu'    ? '' : 'none';
   $('screenFriend').style.display  = name==='friend'  ? '' : 'none';
   $('screenWaiting').style.display = name==='waiting' ? '' : 'none';
   $('screenSearch').style.display  = name==='search'  ? '' : 'none';
+  $('screenHelp').style.display    = name==='help'    ? '' : 'none';
+  $('screenBoard').style.display   = name==='board'   ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'emparejando…', friend:'sala privada', waiting:'sala privada' };
-  $('overlaySub').textContent = subs[name] || 'ajedrez en tiempo real';
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board' };
+  $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
 }
-function enableMenu(on){ btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; btnQueue.textContent = on?'Buscar partida':'Conectando…'; }
-function setStatus(ok, txt){ statusEl.classList.toggle('ok', ok); statusTxt.textContent = txt; }
+function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
+function setStatus(ok, key){ lastStatusKey = key; statusEl.classList.toggle('ok', ok); statusTxt.textContent = tr(key); }
 
 // ============================================================
 //  WebSocket
@@ -336,17 +360,20 @@ function setStatus(ok, txt){ statusEl.classList.toggle('ok', ok); statusTxt.text
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
-  ws.onopen  = () => { setStatus(true, 'Conectado'); enableMenu(true); sendName(); };
-  ws.onclose = () => { setStatus(false, 'Sin conexión'); enableMenu(false); showScreen('menu'); setTimeout(connect, 1500); };
-  ws.onerror = () => setStatus(false, 'Error de red');
+  ws.onopen  = () => { setStatus(true, 'status.connected'); enableMenu(true); sendName(); };
+  ws.onclose = () => { setStatus(false, 'status.offline'); enableMenu(false); showScreen('menu'); setTimeout(connect, 1500); };
+  ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
     if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
-    if (msg.t === 'toll'){ showToast('Carril de torre: +' + msg.toll); return; }
-    if (msg.t === 'freecap'){ showToast('¡Recaptura gratis!', true); return; }
+    if (msg.t === 'toll'){ showToast(tr('toast.toll').replace('{n}', msg.toll)); return; }
+    if (msg.t === 'freecap'){ showToast(tr('toast.freecap'), true); return; }
+    if (msg.t === 'rematch-wait'){ btnRematch.disabled = true; btnRematch.textContent = tr('result.rematchWait'); return; }
+    if (msg.t === 'rematch-offer'){ showToast(tr('toast.rematchOffer'), true); return; }
+    if (msg.t === 'top'){ renderBoard(msg); return; }
     if (msg.t === 'state'){ onState(msg); return; }
   };
 }
@@ -368,7 +395,7 @@ function onState(msg){
     if (prevPhase !== 'countdown') window.RSBG.newScene();   // fondo nuevo por partida
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
-    cdNum.textContent = secs > 0 ? secs : '¡YA!';
+    cdNum.textContent = secs > 0 ? secs : tr('game.go');
   } else if (state.phase === 'live'){
     showScreen(null);
     if (prevPhase !== 'live') sfx('go');
@@ -400,21 +427,20 @@ function updateAmbience(){
 }
 
 function handleReject(reason){
-  const codeMsgs = {
-    'codigo-en-uso':'Ese código ya está en uso, elige otro.',
-    'sala-no-existe':'No existe una sala con ese código.',
-    'codigo-vacio':'Escribe un código para unirte.',
-    'sala-llena':'Esa sala ya está completa.',
-    'ya-en-sala':'Ya estás en una sala.',
+  const codeKeys = {
+    'codigo-en-uso':'err.codeInUse',
+    'sala-no-existe':'err.roomMissing',
+    'codigo-vacio':'err.codeEmpty',
+    'sala-llena':'err.roomFull',
+    'ya-en-sala':'err.inRoom',
   };
-  if (codeMsgs[reason]){
-    if (curScreen==='friend'){ codeErr.textContent = codeMsgs[reason]; }
-    else { showToast(codeMsgs[reason]); }
+  if (codeKeys[reason]){
+    if (curScreen==='friend'){ codeErr.textContent = tr(codeKeys[reason]); }
+    else { showToast(tr(codeKeys[reason])); }
     return;
   }
-  const graceS = (window.RSConfig.rules.kingGraceMs || 1000) / 1000;
-  const map = { 'sin-energia':'Sin energía', 'ilegal':'Movimiento ilegal', 'no-es-tuya':'No es tu pieza', 'no-corriendo':'Aún no empieza', 'rey-protegido':`Espera ${graceS} s tras el jaque` };
-  showToast(map[reason] || 'Rechazado');
+  const map = { 'sin-energia':'toast.noEnergy', 'ilegal':'toast.illegal', 'no-es-tuya':'toast.notYours', 'no-corriendo':'toast.notRunning', 'rey-protegido':'toast.kingGrace', 'rival-se-fue':'err.rivalGone' };
+  showToast(map[reason] ? tr(map[reason]) : tr('toast.rejected'));
 }
 
 // ============================================================
@@ -424,12 +450,14 @@ function showResult(){
   const won = state.winner === you, draw = state.winner === 'draw';
   endFx(draw ? 'draw' : won ? 'win' : 'lose');              // estallido + flash + sacudida
   const rt = $('resultTxt'); rt.className='result';
-  if (draw){ rt.classList.add('draw'); rt.textContent='Empate'; }
-  else if (won){ rt.classList.add('win'); rt.textContent='Ganaste'; }
-  else { rt.classList.add('lose'); rt.textContent='Perdiste'; }
+  if (draw){ rt.classList.add('draw'); rt.textContent=tr('result.draw'); }
+  else if (won){ rt.classList.add('win'); rt.textContent=tr('result.win'); }
+  else { rt.classList.add('lose'); rt.textContent=tr('result.lose'); }
   const reasonTxt = state.reason==='time'
-    ? `tiempo agotado · material ${state.material.w} — ${state.material.b}`
-    : state.reason==='abandon' ? 'tu rival abandonó' : 'rey capturado';
+    ? tr('reason.time').replace('{w}', state.material.w).replace('{b}', state.material.b)
+    : state.reason==='abandon' ? tr('reason.abandon') : tr('reason.king');
+  btnRematch.disabled = false;
+  btnRematch.textContent = tr('result.rematch');
   // el panel entra tras un instante: deja ver el estallido sobre el tablero
   setTimeout(() => {
     if (!state || state.phase !== 'over') return;           // por si volvió al menú
@@ -488,12 +516,12 @@ function showToast(msg, good){
 // rejilla de ajustes por pieza (sala privada): coste de mover + energía al comerla
 function buildCfgPieces(){
   const grid = $('cfgPieces'); if (!grid) return;
-  grid.innerHTML = '<div class="cfg-h"></div><div class="cfg-h">Coste</div><div class="cfg-h">Al comerla</div>';
+  grid.innerHTML = `<div class="cfg-h"></div><div class="cfg-h">${tr('friend.h.cost')}</div><div class="cfg-h">${tr('friend.h.eat')}</div>`;
   const refund = window.RSConfig.energy.captureRefund;
   ['p','n','b','r','q','k'].forEach(t => {
     const name = document.createElement('div');
     name.className = 'cfg-name';
-    name.innerHTML = `<span class="g">${GLYPH[t]}</span>${NAME[t]}`;
+    name.innerHTML = `<span class="g">${GLYPH[t]}</span>${pieceName(t)}`;
     grid.appendChild(name);
     const cost = document.createElement('input');
     cost.type = 'number'; cost.min = '0'; cost.max = '20'; cost.step = '1';
@@ -518,7 +546,7 @@ function buildLegend(){
     const chip=document.createElement('div'); chip.className='chip';
     const recover = E.VALUE[t] ? '+'+(E.VALUE[t]*window.RSConfig.energy.captureRefund) : '—';
     chip.innerHTML=`<span class="g">${GLYPH[t]}</span> <b>${E.MOVE_COST[t]}</b> <i>${recover}</i>`;
-    chip.title=`${NAME[t]}: cuesta ${E.MOVE_COST[t]}, comerlo da ${recover}`;
+    chip.title = tr('legend.chip').replace('{name}', pieceName(t)).replace('{cost}', E.MOVE_COST[t]).replace('{rec}', recover);
     row.appendChild(chip);
   });
 }
@@ -549,14 +577,235 @@ btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
 $('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; this.textContent=sfxOn?'🔊 SFX':'🔇 SFX'; ensureAudio(); });
-$('musicBtn').textContent = musicOn ? '🎵 Música' : '🔇 Música';
+function musicBtnText(){ $('musicBtn').textContent = (musicOn ? '🎵 ' : '🔇 ') + tr('top.music'); }
 $('musicBtn').addEventListener('click', function(){
   musicOn = !musicOn;
   localStorage.setItem('rs-music', musicOn ? '1' : '0');
-  this.textContent = musicOn ? '🎵 Música' : '🔇 Música';
+  musicBtnText();
   ensureAudio();
   updateAmbience();
 });
+
+// ============================================================
+//  Idioma: aplica todas las traducciones (estáticas y construidas)
+// ============================================================
+function applyLang(){
+  document.documentElement.lang = I18N.getLang();
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = tr(el.dataset.i18nHtml); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = tr(el.dataset.i18nPh); });
+  document.querySelectorAll('#cfgRegen option').forEach(o => { o.textContent = tr('friend.regenOpt').replace('{n}', o.value); });
+  document.querySelectorAll('#langRow .tbtn').forEach(b => b.classList.toggle('on', b.dataset.lang === I18N.getLang()));
+  musicBtnText();
+  menuBtn.textContent = '☰ ' + tr('top.menu');
+  statusTxt.textContent = tr(lastStatusKey);
+  enableMenu(menuEnabled);
+  buildLegend();
+  buildCfgPieces();
+  buildHelp();
+  if (curScreen) showScreen(curScreen);   // re-traduce el subtítulo del overlay
+  if (state) updateHUD();
+  // la marca se aparta de la píldora de idiomas fija (su ancho depende de cuántos haya)
+  const lr = $('langRow'), brand = document.querySelector('.brand');
+  if (lr && brand) brand.style.marginLeft = (lr.offsetWidth + 14) + 'px';
+}
+
+// botones de idioma: uno por cada idioma de i18n.js (añadir idioma = solo editar ese archivo)
+const langRow = $('langRow');
+I18N.LANGS.forEach(l => {
+  const b = document.createElement('button');
+  b.className = 'btn tbtn';
+  b.dataset.lang = l;
+  b.textContent = l.toUpperCase();
+  b.addEventListener('click', () => { I18N.setLang(l); localStorage.setItem('rs-lang', l); applyLang(); });
+  langRow.appendChild(b);
+});
+
+// tutorial (cómo jugar): lista de reglas desde i18n.js; clic = demo animada
+function buildHelp(){
+  const list = $('helpList'); if (!list) return;
+  list.innerHTML = '';
+  for (let i = 1; i <= 11; i++){
+    const item = document.createElement('div');
+    item.className = 'help-item';
+    item.innerHTML = `<b>${i}</b>${tr('tut.' + i)}`;
+    item.addEventListener('click', () => {
+      [...list.children].forEach(x => x.classList.remove('active'));
+      item.classList.add('active');
+      playDemo(i);
+    });
+    list.appendChild(item);
+  }
+}
+btnHelp.addEventListener('click', () => showScreen('help'));
+btnHelpBack.addEventListener('click', () => showScreen('menu'));
+
+// ============================================================
+//  Demos del tutorial: mini-tablero que RECREA cada regla.
+//  Cada demo es solo piezas + coordenadas; el reproductor anima
+//  movimientos, capturas, costes flotantes y efectos en bucle.
+// ============================================================
+let demoPieces = [], demoGen = 0;
+const dSleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function demoInit(){
+  const sqs = $('demoSqs');
+  if (sqs.childElementCount) return;
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
+    const d = document.createElement('div');
+    d.className = 'dsq ' + ((r+c)%2 ? 'd' : 'l');
+    d.style.left = c*12.5 + '%'; d.style.top = r*12.5 + '%';
+    sqs.appendChild(d);
+  }
+}
+function demoReset(set){
+  $('demoPieces').innerHTML = '';
+  $('demoFx').innerHTML = '';
+  $('demoBoard').classList.remove('danger');
+  demoPieces = set.map(([col, t, r, c]) => {
+    const el = document.createElement('div');
+    el.className = 'dpiece ' + col;
+    el.textContent = GLYPH[t];
+    el.style.transform = `translate(${c*100}%, ${r*100}%)`;
+    $('demoPieces').appendChild(el);
+    return { el, r, c };
+  });
+}
+const dAt = (r, c) => demoPieces.find(p => p.r === r && p.c === c);
+function dFloat(r, c, txt, mood){
+  const f = document.createElement('div');
+  f.className = 'dfloat' + (mood ? ' ' + mood : '');
+  f.textContent = txt;
+  f.style.left = c*12.5 + '%'; f.style.top = (r*12.5 + 1) + '%';
+  $('demoBoard').appendChild(f);
+  setTimeout(() => f.remove(), 1150);
+}
+function dBeamH(r, c){
+  const b = document.createElement('div');
+  b.className = 'dbeam';
+  b.style.left = c*12.5 + '%'; b.style.top = (r*12.5 + 5.5) + '%';
+  b.style.width = '12.5%'; b.style.height = '1.6%';
+  $('demoFx').appendChild(b);
+}
+function dGold(r, c){
+  const g = document.createElement('div');
+  g.className = 'dgold';
+  g.style.left = (c*12.5 + 1) + '%'; g.style.top = (r*12.5 + 1) + '%';
+  g.style.width = '10.5%'; g.style.height = '10.5%';
+  $('demoFx').appendChild(g);
+}
+function dMove(fr, fc, r2, c2, cost, gain){
+  const p = dAt(fr, fc); if (!p) return;
+  const victim = dAt(r2, c2);
+  if (victim){
+    demoPieces = demoPieces.filter(x => x !== victim);
+    setTimeout(() => { victim.el.style.opacity = 0; setTimeout(() => victim.el.remove(), 260); }, 200);
+  }
+  p.r = r2; p.c = c2;
+  p.el.style.transform = `translate(${c2*100}%, ${r2*100}%)`;
+  if (cost != null) dFloat(r2, c2, cost, String(cost).startsWith('-') ? '' : 'good');
+  if (gain != null) setTimeout(() => dFloat(r2, c2, gain, 'good'), 420);
+}
+
+// guiones: los números salen de config/engine para no quedar desfasados
+function demoScript(n){
+  const C = E.MOVE_COST, V = E.VALUE;
+  const R = window.RSConfig.energy.captureRefund;
+  const S = window.RSConfig.energy.checkSurcharge;
+  const QM = window.RSConfig.rules.queenMinCost;
+  const laneRow4 = []; for (let c = 1; c < 8; c++) laneRow4.push([4, c]);
+  const D = {
+    1:{ set:[['w','p',6,4],['b','p',1,4],['w','n',7,6]],
+        steps:[ {mv:[6,4,4,4],cost:'-'+C.p}, {mv:[1,4,3,4],cost:'-'+C.p,d:550}, {mv:[7,6,5,5],cost:'-'+C.n} ] },
+    2:{ set:[['w','p',6,0],['w','n',7,1],['w','r',7,7]],
+        steps:[ {mv:[6,0,5,0],cost:'-'+C.p}, {mv:[7,1,5,2],cost:'-'+C.n}, {mv:[7,7,4,7],cost:'-'+C.r} ] },
+    3:{ set:[['w','b',4,2],['b','n',2,4],['w','p',4,5],['b','r',3,6]],
+        steps:[ {mv:[4,2,2,4],cost:'-'+C.b,gain:'+'+(V.n*R)}, {mv:[4,5,3,6],cost:'-'+C.p,d:1100} ] },
+    4:{ set:[['w','k',7,4],['b','r',3,0]],
+        steps:[ {mv:[3,0,3,4],cost:'-'+C.r}, {fx:'check',d:1100}, {mv:[7,4,6,3],cost:'-'+(C.k+S)}, {fx:'calm',d:400} ] },
+    5:{ set:[['w','q',4,7],['b','k',0,7]],
+        steps:[ {mv:[4,7,0,7],cost:'-'+C.q}, {float:tr('result.win'),at:[0,7],mood:'good',d:1000} ] },
+    6:{ set:[['w','p',6,3]],
+        steps:[ {mv:[6,3,5,3],cost:'-'+C.p}, {mv:[5,3,4,3],cost:'-'+(C.p+1)}, {mv:[4,3,3,3],cost:'-'+(C.p+2)} ] },
+    7:{ set:[['w','n',5,4],['b','b',3,5]],
+        steps:[ {mv:[5,4,3,5],cost:'-'+C.n,gain:'+'+(V.b*R)}, {mv:[3,5,1,4],cost:'-'+(C.n-1)} ] },
+    8:{ set:[['w','q',7,3],['b','n',5,3]],
+        steps:[ {mv:[7,3,5,3],cost:'-'+C.q}, {mv:[5,3,5,6],cost:'-'+Math.max(QM, C.q-1)} ] },
+    9:{ set:[['w','r',4,0],['b','b',2,6]],
+        steps:[ {fx:'lane',at:laneRow4,d:900}, {mv:[2,6,6,2],cost:'-'+C.b}, {float:'+1',at:[4,4],mood:'bad',d:900} ] },
+    10:{ set:[['w','p',4,4],['w','n',6,3],['b','b',2,6]],
+        steps:[ {mv:[2,6,4,4],cost:'-'+C.b}, {fx:'gold',at:[4,4],d:850}, {mv:[6,3,4,4],cost:'0'}, {float:tr('toast.freecap'),at:[3,4],mood:'good',d:1000} ] },
+    11:{ set:[['w','k',7,4],['w','r',7,7]],
+        steps:[ {mv:[7,4,7,6],cost:'-'+C.k}, {mv:[7,7,7,5],d:300} ] },
+  };
+  return D[n];
+}
+
+function stopDemo(){
+  demoGen++;
+  const w = $('demoWrap'); if (w) w.style.display = 'none';
+  const b = $('demoBoard'); if (b) b.classList.remove('danger');
+}
+async function playDemo(n){
+  const demo = demoScript(n);
+  if (!demo) return;
+  demoInit();
+  demoGen++;
+  const gen = demoGen;
+  $('demoWrap').style.display = '';
+  while (gen === demoGen){                          // en bucle hasta cambiar de demo/pantalla
+    demoReset(demo.set);
+    await dSleep(500);
+    for (const s of demo.steps){
+      if (gen !== demoGen) return;
+      if (s.mv) dMove(s.mv[0], s.mv[1], s.mv[2], s.mv[3], s.cost, s.gain);
+      if (s.fx === 'check') $('demoBoard').classList.add('danger');
+      if (s.fx === 'calm')  $('demoBoard').classList.remove('danger');
+      if (s.fx === 'lane')  s.at.forEach(([r, c]) => dBeamH(r, c));
+      if (s.fx === 'gold')  dGold(s.at[0], s.at[1]);
+      if (s.float) dFloat(s.at[0], s.at[1], s.float, s.mood);
+      await dSleep(s.d || 950);
+    }
+    await dSleep(1500);
+  }
+}
+
+// clasificación: pide el top al servidor y lo pinta al llegar
+// (los nombres son texto de otros jugadores: SIEMPRE escapados)
+const escHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function renderBoard(msg){
+  const list = $('boardList');
+  list.innerHTML = '';
+  if (!msg.rows || !msg.rows.length){
+    list.innerHTML = `<div class="help-item">${tr('board.empty')}</div>`;
+  } else {
+    const head = document.createElement('div');
+    head.className = 'board-row head';
+    head.innerHTML = `<span class="rk">#</span><span class="nm">${tr('board.h.player')}</span><span class="el">Elo</span><span class="wl">${tr('board.h.record')}</span>`;
+    list.appendChild(head);
+    for (const r of msg.rows){
+      const row = document.createElement('div');
+      row.className = 'board-row' + (msg.me && r.rank === msg.me.rank && r.disc === msg.me.disc ? ' me' : '');
+      const nm = escHtml(r.name || 'Anon');
+      row.innerHTML = `<span class="rk">${r.rank}</span>` +
+                      `<span class="nm">${nm}<small>#${r.disc}</small></span>` +
+                      `<span class="el">${r.elo}</span>` +
+                      `<span class="wl">${r.wins}/${r.losses}/${r.draws}</span>`;
+      list.appendChild(row);
+    }
+  }
+  $('boardMe').textContent = msg.me ? `${tr('board.you')}: #${msg.me.rank} · ${msg.me.elo} Elo` : '';
+}
+$('btnBoard').addEventListener('click', () => {
+  $('boardList').innerHTML = `<div class="help-item">${tr('board.loading')}</div>`;
+  $('boardMe').textContent = '';
+  send({ t:'top' });
+  showScreen('board');
+});
+$('btnBoardBack').addEventListener('click', () => showScreen('menu'));
+
+// revancha: misma sala, mismos ajustes; en PvP esperan a que acepten los dos
+btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'}); });
 
 // tema visual: clase en <body> + fondo animado a juego (persiste en localStorage)
 function applyTheme(){
@@ -587,6 +836,5 @@ window.addEventListener('pointercancel', onPointerCancel);
 
 // init
 buildGrid(); lastYou = you;
-buildLegend();
-buildCfgPieces();
+applyLang();   // traduce todo y construye leyenda, ajustes de piezas y tutorial
 connect();

@@ -10,6 +10,7 @@
    Un cliente es: { id, color, roomId, send(obj) }
    ============================================================================ */
 const { Game } = require('./game.js');
+const stats = require('./stats.js');
 
 function normalizeCode(x) { return String(x || '').trim().toUpperCase().slice(0, 12); }
 
@@ -76,11 +77,54 @@ class Lobby {
 
   // arranca la partida entre los 2 clientes de la sala (colores al azar + cuenta atrás)
   _beginMatch(room) {
+    room.rematch = new Set();
+    room.scored = false;
     const colors = Math.random() < 0.5 ? ['w', 'b'] : ['b', 'w'];
     room.clients[0].color = colors[0];
     room.clients[1].color = colors[1];
+    // foto de identidades y posiciones al empezar (para puntuar aunque alguien
+    // se desconecte, y para mostrar el rank junto al nombre)
+    room.players = {};
+    room.ranks = { w: null, b: null };
+    for (const c of room.clients) if (c.color) {
+      room.players[c.color] = { token: c.token || null, name: c.name || '' };
+      room.ranks[c.color] = c.token ? stats.rankOf(c.token) : null;
+    }
     room.game.beginCountdown(Date.now());
     this._broadcast(room, Date.now());
+  }
+
+  // Elo: puntúa UNA vez por partida terminada, solo en salas públicas de cola
+  _maybeScore(room) {
+    if (room.scored || room.game.phase !== 'over') return;
+    room.scored = true;
+    if (room.game.vsCPU || room.private || !room.players) return;
+    const pw = room.players.w, pb = room.players.b;
+    if (!pw || !pb || !pw.token || !pb.token) return;
+    const winner = room.game.winner;
+    stats.applyResult(pw.token, pb.token, winner === 'w' ? 1 : winner === 'b' ? 0 : 0.5);
+  }
+
+  // ---------------- revancha: misma sala, mismos ajustes ----------------
+  rematch(client) {
+    const room = client.roomId != null ? this.rooms.get(client.roomId) : null;
+    if (!room || room.game.phase !== 'over') return;
+    if (room.game.vsCPU) {                       // vs CPU: reinicio inmediato
+      room.game.beginCountdown(Date.now());
+      this._broadcast(room, Date.now());
+      return;
+    }
+    if (room.clients.length < 2) { this._send(client, { t: 'reject', reason: 'rival-se-fue' }); return; }
+    room.rematch = room.rematch || new Set();
+    // descarta votos de clientes que ya no están en la sala
+    room.rematch = new Set([...room.rematch].filter(id => room.clients.some(c => c.id === id)));
+    room.rematch.add(client.id);
+    if (room.rematch.size >= 2) {
+      this._beginMatch(room);                    // aceptaron los dos: colores al azar de nuevo
+    } else {
+      this._send(client, { t: 'rematch-wait' }); // tú esperas...
+      room.clients.forEach(c => { if (c !== client) this._send(c, { t: 'rematch-offer' }); });
+    }
   }
 
   // ---------------- pública ----------------
@@ -109,6 +153,7 @@ class Lobby {
     const room = this._makeRoom(true);
     room.clients.push(client);
     client.color = 'w'; client.roomId = room.id;
+    room.ranks = { w: client.token ? stats.rankOf(client.token) : null, b: null };
     room.game.beginCountdown(Date.now());
     this._broadcast(room, Date.now());
   }
@@ -182,11 +227,13 @@ class Lobby {
   }
 
   _broadcast(room, now) {
+    this._maybeScore(room);
     const names = this._names(room);
     room.clients.forEach(c => {
       if (!c.color) return;
       const st = room.game.serialize(c.color, now);
       st.names = names;
+      st.ranks = room.ranks || null;
       this._send(c, st);
     });
   }

@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<span class="lang-row" id="langRow"></span>
 <div class="app">
   <div class="topbar">
     <div class="brand"><h1>RoyalShess</h1><small>online</small></div>
@@ -25,12 +26,12 @@
     <div class="side-top" id="sideTop">
       <div class="pcard" id="cardB">
         <div class="phead">
-          <div class="pname"><span class="dot"></span> Negras <span class="tag" id="tagB"></span></div>
-          <span class="badge-check">JAQUE +1</span>
+          <div class="pname"><span class="dot"></span> <span data-i18n="card.black">Negras</span> <span class="tag" id="tagB"></span></div>
+          <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
         </div>
-        <div class="energy-top"><span class="energy-label">Energía</span><span class="energy-num"><span id="enB">10</span><small>/10</small></span></div>
+        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enB">10</span><small>/10</small></span></div>
         <div class="ebar"><div class="efill" id="efB"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-        <div class="pstats"><div class="stat"><div class="k">Puntos</div><div class="v" id="matB">39</div></div></div>
+        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matB">39</div></div></div>
       </div>
     </div>
 
@@ -41,23 +42,23 @@
         <div class="pieces" id="pieces"></div>
         <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
       </div>
-      
+
       <div class="side-bottom" id="sideBottom">
         <div class="pcard" id="cardW">
           <div class="phead">
-            <div class="pname"><span class="dot"></span> Blancas <span class="tag" id="tagW"></span></div>
-            <span class="badge-check">JAQUE +1</span>
+            <div class="pname"><span class="dot"></span> <span data-i18n="card.white">Blancas</span> <span class="tag" id="tagW"></span></div>
+            <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
           </div>
-          <div class="energy-top"><span class="energy-label">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
+          <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
           <div class="ebar"><div class="efill" id="efW"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-          <div class="pstats"><div class="stat"><div class="k">Puntos</div><div class="v" id="matW">39</div></div></div>
+          <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matW">39</div></div></div>
         </div>
       </div>
 
       <div class="legend">
-        <h3>Coste de mover · recuperas al comer (½)</h3>
+        <h3 data-i18n="legend.title">Coste de mover · recuperas al comer</h3>
         <div class="row" id="legendRow"></div>
-        <p>Empiezas con 10 de energía y regeneras <b style="color:var(--energy-a)">1 cada 3&nbsp;s</b> (continuo). Sin energía no puedes mover. Comer devuelve la mitad del valor de lo comido. En <b style="color:var(--danger)">jaque</b>, mover cualquier pieza cuesta +1. Ganas por capturar el rey; al agotarse el tiempo, gana quien tenga más Puntos. <b>El servidor valida todo.</b></p>
+        <p data-i18n-html="legend.body"></p>
       </div>
     </div>
   </div>
@@ -72,26 +73,28 @@
     <div class="sub" id="overlaySub">ajedrez en tiempo real</div>
 
     <div id="screenMenu">
-      <input id="nameInput" class="code-input name-input" type="text" maxlength="14" placeholder="TU NOMBRE (OPCIONAL)" autocomplete="off" spellcheck="false">
-      <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span>Arrastrar piezas para mover</span></label>
+      <input id="nameInput" class="code-input name-input" type="text" maxlength="14" data-i18n-ph="menu.name.ph" placeholder="TU NOMBRE (OPCIONAL)" autocomplete="off" spellcheck="false">
+      <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span data-i18n="menu.drag">Arrastrar piezas para mover</span></label>
       <div class="theme-row">
-        <span class="theme-label">Tema</span>
-        <button class="btn tbtn" id="themeNeon">Neón</button>
-        <button class="btn tbtn" id="themeClassic">Clásico</button>
+        <span class="theme-label" data-i18n="menu.theme">Tema</span>
+        <button class="btn tbtn" id="themeNeon" data-i18n="menu.theme.neon">Neón</button>
+        <button class="btn tbtn" id="themeClassic" data-i18n="menu.theme.classic">Clásico</button>
       </div>
       <div class="menu-btns">
-        <button class="playbtn" id="btnQueue" disabled>Buscar partida</button>
-        <button class="btn big" id="btnFriend" disabled>Jugar con un amigo</button>
-        <button class="btn big" id="btnCPU" disabled>Jugar vs CPU</button>
+        <button class="playbtn" id="btnQueue" disabled data-i18n="menu.search">Buscar partida</button>
+        <button class="btn big" id="btnFriend" disabled data-i18n="menu.friend">Jugar con un amigo</button>
+        <button class="btn big" id="btnCPU" disabled data-i18n="menu.cpu">Jugar vs CPU</button>
+        <button class="btn big" id="btnBoard" data-i18n="menu.board">Clasificación</button>
+        <button class="btn big" id="btnHelp" data-i18n="menu.help">Cómo jugar</button>
       </div>
-      <div class="small-note"><b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>vs CPU:</b> práctica. No hay turnos: cada quien mueve cuando tiene energía. La partida dura 5 minutos.</div>
+      <div class="small-note" data-i18n-html="menu.note"></div>
     </div>
 
     <div id="screenFriend" style="display:none">
-      <input id="codeInput" class="code-input" type="text" maxlength="12" placeholder="CÓDIGO / CONTRASEÑA" autocomplete="off" spellcheck="false">
+      <input id="codeInput" class="code-input" type="text" maxlength="12" data-i18n-ph="friend.code.ph" placeholder="CÓDIGO / CONTRASEÑA" autocomplete="off" spellcheck="false">
       <div class="code-err" id="codeErr"></div>
       <div class="cfg-rows">
-        <label class="cfg">Duración
+        <label class="cfg"><span data-i18n="friend.duration">Duración</span>
           <select id="cfgMin">
             <option value="1">1 min</option>
             <option value="3" selected>3 min</option>
@@ -99,14 +102,14 @@
             <option value="10">10 min</option>
           </select>
         </label>
-        <label class="cfg">Energía inicial
+        <label class="cfg"><span data-i18n="friend.start">Energía inicial</span>
           <select id="cfgStart">
             <option value="2" selected>2</option>
             <option value="5">5</option>
             <option value="10">10</option>
           </select>
         </label>
-        <label class="cfg">Regeneración
+        <label class="cfg"><span data-i18n="friend.regen">Regeneración</span>
           <select id="cfgRegen">
             <option value="2">1 cada 2 s</option>
             <option value="3" selected>1 cada 3 s</option>
@@ -115,45 +118,71 @@
         </label>
       </div>
       <details class="cfg-adv">
-        <summary>Piezas: coste de mover y energía al comerlas</summary>
+        <summary data-i18n="friend.pieces">Piezas: coste de mover y energía al comerlas</summary>
         <div class="cfg-grid" id="cfgPieces"></div>
       </details>
       <div class="menu-btns">
-        <button class="playbtn" id="btnCreate">Crear sala</button>
-        <button class="btn big" id="btnJoin">Unirse a sala</button>
-        <button class="btn" id="btnBack">Volver</button>
+        <button class="playbtn" id="btnCreate" data-i18n="friend.create">Crear sala</button>
+        <button class="btn big" id="btnJoin" data-i18n="friend.join">Unirse a sala</button>
+        <button class="btn" id="btnBack" data-i18n="friend.back">Volver</button>
       </div>
-      <div class="small-note">Para <b>crear</b>: elige un código y compártelo (si lo dejas vacío se genera uno). Para <b>unirte</b>: escribe el mismo código que tu amigo creó. Los ajustes de arriba solo aplican a la sala que <b>tú crees</b>.</div>
+      <div class="small-note" data-i18n-html="friend.note"></div>
     </div>
 
     <div id="screenWaiting" style="display:none">
-      <div class="searching-txt">Sala creada · esperando…</div>
-      <div class="code-box"><span class="code-label">Código</span><span class="code-value" id="codeValue">----</span></div>
-      <div class="small-note" style="margin-top:14px">Comparte este código con tu amigo. Cuando lo escriba en “Unirse a sala”, empieza la partida.</div>
+      <div class="searching-txt" data-i18n="wait.title">Sala creada · esperando…</div>
+      <div class="code-box"><span class="code-label" data-i18n="wait.code">Código</span><span class="code-value" id="codeValue">----</span></div>
+      <div class="small-note" style="margin-top:14px" data-i18n="wait.note"></div>
       <div class="menu-btns" style="margin-top:14px">
-        <button class="btn" id="btnCancelWait">Cancelar</button>
+        <button class="btn" id="btnCancelWait" data-i18n="common.cancel">Cancelar</button>
       </div>
     </div>
 
     <div id="screenSearch" style="display:none">
       <div class="spinner"></div>
-      <div class="searching-txt">Buscando rival…</div>
+      <div class="searching-txt" data-i18n="search.title">Buscando rival…</div>
       <div class="menu-btns">
-        <button class="btn" id="btnCancel">Cancelar</button>
+        <button class="btn" id="btnCancel" data-i18n="common.cancel">Cancelar</button>
+      </div>
+    </div>
+
+    <div id="screenHelp" style="display:none">
+      <div class="small-note demo-hint" data-i18n="tut.demoHint"></div>
+      <div class="demo-wrap" id="demoWrap" style="display:none">
+        <div class="demo-board" id="demoBoard">
+          <div id="demoSqs"></div>
+          <div id="demoFx"></div>
+          <div id="demoPieces"></div>
+        </div>
+      </div>
+      <div class="help-list" id="helpList"></div>
+      <div class="menu-btns">
+        <button class="btn" id="btnHelpBack" data-i18n="friend.back">Volver</button>
+      </div>
+    </div>
+
+    <div id="screenBoard" style="display:none">
+      <div class="board-list" id="boardList"></div>
+      <div class="board-me" id="boardMe"></div>
+      <div class="small-note" data-i18n="board.note"></div>
+      <div class="menu-btns">
+        <button class="btn" id="btnBoardBack" data-i18n="friend.back">Volver</button>
       </div>
     </div>
 
     <div id="screenResult" style="display:none">
       <div class="result" id="resultTxt"></div>
       <div class="menu-btns">
-        <button class="playbtn" id="btnAgain">Buscar otra</button>
-        <button class="btn big" id="btnCPU2">vs CPU</button>
+        <button class="playbtn" id="btnRematch" data-i18n="result.rematch">Revancha</button>
+        <button class="btn big" id="btnAgain" data-i18n="result.again">Buscar otra</button>
+        <button class="btn big" id="btnCPU2" data-i18n="result.cpu">vs CPU</button>
       </div>
     </div>
   </div>
 </div>
 
 <script src="/config.js"></script>
+<script src="/i18n.js"></script>
 <script src="/engine.js"></script>
 <script src="/bgfx.js"></script>
 <script src="/music.js"></script>

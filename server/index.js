@@ -9,6 +9,7 @@ const http = require('http');
 const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Lobby } = require('./lobby.js');
+const stats = require('./stats.js');
 const CONFIG = require('../public/config.js');
 
 const PORT = process.env.PORT || CONFIG.server.port;
@@ -27,6 +28,8 @@ let clientSeq = 1;
 
 // nombre de jugador: sin caracteres de control, máx 14
 function cleanName(x) { let out = ''; for (const ch of String(x || '')) if (ch.charCodeAt(0) >= 32) out += ch; return out.trim().slice(0, 14); }
+// token de identidad (UUID del localStorage del cliente): solo formato seguro
+function cleanToken(x) { x = String(x || ''); return /^[A-Za-z0-9-]{8,64}$/.test(x) ? x : null; }
 
 wss.on('connection', (ws) => {
   // adaptador: envuelve el socket como "cliente" genérico para el lobby
@@ -43,11 +46,19 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     let m; try { m = JSON.parse(raw); } catch (_e) { return; }
     switch (m.t) {
-      case 'name':   client.name = cleanName(m.name); break; // nombre del jugador
+      case 'name':                                         // identidad: nombre + token
+        client.name = cleanName(m.name);
+        client.token = cleanToken(m.token);
+        if (client.token) stats.touch(client.token, client.name);
+        break;
+      case 'top':                                          // clasificación (top + tu posición)
+        client.send({ t: 'top', rows: stats.top(20), me: stats.me(client.token) });
+        break;
       case 'queue':  lobby.enqueue(client); break;        // buscar rival online
       case 'cpu':    lobby.startCPU(client); break;        // jugar vs CPU
       case 'create': lobby.createPrivate(client, m.code, m.opts); break; // crear sala privada (con ajustes)
       case 'join':   lobby.joinPrivate(client, m.code); break;   // unirse con código
+      case 'rematch': lobby.rematch(client); break;        // revancha en la misma sala
       case 'cancel': lobby.cancel(client); break;          // cancelar búsqueda/espera
       case 'leave':  lobby.leave(client); break;           // volver al menú
       case 'move':
