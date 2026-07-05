@@ -74,6 +74,11 @@
     <div id="screenMenu">
       <input id="nameInput" class="code-input name-input" type="text" maxlength="14" placeholder="TU NOMBRE (OPCIONAL)" autocomplete="off" spellcheck="false">
       <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span>Arrastrar piezas para mover</span></label>
+      <div class="theme-row">
+        <span class="theme-label">Tema</span>
+        <button class="btn tbtn" id="themeNeon">Neón</button>
+        <button class="btn tbtn" id="themeClassic">Clásico</button>
+      </div>
       <div class="menu-btns">
         <button class="playbtn" id="btnQueue" disabled>Buscar partida</button>
         <button class="btn big" id="btnFriend" disabled>Jugar con un amigo</button>
@@ -85,12 +90,40 @@
     <div id="screenFriend" style="display:none">
       <input id="codeInput" class="code-input" type="text" maxlength="12" placeholder="CÓDIGO / CONTRASEÑA" autocomplete="off" spellcheck="false">
       <div class="code-err" id="codeErr"></div>
+      <div class="cfg-rows">
+        <label class="cfg">Duración
+          <select id="cfgMin">
+            <option value="1">1 min</option>
+            <option value="3" selected>3 min</option>
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+          </select>
+        </label>
+        <label class="cfg">Energía inicial
+          <select id="cfgStart">
+            <option value="2" selected>2</option>
+            <option value="5">5</option>
+            <option value="10">10</option>
+          </select>
+        </label>
+        <label class="cfg">Regeneración
+          <select id="cfgRegen">
+            <option value="2">1 cada 2 s</option>
+            <option value="3" selected>1 cada 3 s</option>
+            <option value="5">1 cada 5 s</option>
+          </select>
+        </label>
+      </div>
+      <details class="cfg-adv">
+        <summary>Piezas: coste de mover y energía al comerlas</summary>
+        <div class="cfg-grid" id="cfgPieces"></div>
+      </details>
       <div class="menu-btns">
         <button class="playbtn" id="btnCreate">Crear sala</button>
         <button class="btn big" id="btnJoin">Unirse a sala</button>
         <button class="btn" id="btnBack">Volver</button>
       </div>
-      <div class="small-note">Para <b>crear</b>: elige un código y compártelo (si lo dejas vacío se genera uno). Para <b>unirte</b>: escribe el mismo código que tu amigo creó.</div>
+      <div class="small-note">Para <b>crear</b>: elige un código y compártelo (si lo dejas vacío se genera uno). Para <b>unirte</b>: escribe el mismo código que tu amigo creó. Los ajustes de arriba solo aplican a la sala que <b>tú crees</b>.</div>
     </div>
 
     <div id="screenWaiting" style="display:none">

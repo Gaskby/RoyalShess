@@ -17,6 +17,7 @@ let justDragged = false;  // evita que el 'click' posterior a un arrastre resele
 let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
 let myName = localStorage.getItem('rs-name') || '';
 let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de fondo
+let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chesscom'
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -109,7 +110,9 @@ function render(){
     const p = bd[selected.r][selected.c];
     if (p && p.color === you){
       const surcharge = E.inCheck(bd, you) ? (window.RSConfig.energy.checkSurcharge) : 0;
-      const cost = E.MOVE_COST[p.type] + surcharge;
+      // en salas con ajustes propios el servidor manda sus costes
+      const baseCost = (state.costs && state.costs[p.type] != null) ? state.costs[p.type] : E.MOVE_COST[p.type];
+      const cost = baseCost + surcharge;
       const afford = state.energy[you] >= cost;
       for (const m of E.genMoves(bd, selected.r, selected.c)){
         const d = toDisplay(m.r, m.c);
@@ -336,6 +339,7 @@ function connect(){
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
+    if (msg.t === 'toll'){ showToast('Carril de torre: +' + msg.toll); return; }
     if (msg.t === 'state'){ onState(msg); return; }
   };
 }
@@ -467,6 +471,33 @@ function sfx(kind){
 // ============================================================
 let toastTimer=null;
 function showToast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),900); }
+// rejilla de ajustes por pieza (sala privada): coste de mover + energía al comerla
+function buildCfgPieces(){
+  const grid = $('cfgPieces'); if (!grid) return;
+  grid.innerHTML = '<div class="cfg-h"></div><div class="cfg-h">Coste</div><div class="cfg-h">Al comerla</div>';
+  const refund = window.RSConfig.energy.captureRefund;
+  ['p','n','b','r','q','k'].forEach(t => {
+    const name = document.createElement('div');
+    name.className = 'cfg-name';
+    name.innerHTML = `<span class="g">${GLYPH[t]}</span>${NAME[t]}`;
+    grid.appendChild(name);
+    const cost = document.createElement('input');
+    cost.type = 'number'; cost.min = '0'; cost.max = '20'; cost.step = '1';
+    cost.id = 'cfgCost_' + t; cost.value = E.MOVE_COST[t];
+    grid.appendChild(cost);
+    if (t === 'k'){
+      const dash = document.createElement('div');
+      dash.className = 'cfg-dash'; dash.textContent = '—';   // capturar al rey acaba la partida
+      grid.appendChild(dash);
+    } else {
+      const ref = document.createElement('input');
+      ref.type = 'number'; ref.min = '0'; ref.max = '10'; ref.step = '0.5';
+      ref.id = 'cfgRef_' + t; ref.value = E.VALUE[t] * refund;
+      grid.appendChild(ref);
+    }
+  });
+}
+
 function buildLegend(){
   const row=$('legendRow'); row.innerHTML='';
   ['p','n','b','r','q','k'].forEach(t=>{
@@ -490,7 +521,15 @@ menuBtn.addEventListener('click', () => send({t:'leave'}));
 // salas privadas
 btnFriend.addEventListener('click', () => { showScreen('friend'); setTimeout(()=>codeInput.focus(),50); });
 btnBack.addEventListener('click', () => showScreen('menu'));
-btnCreate.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'create', code: codeInput.value}); });
+btnCreate.addEventListener('click', () => {
+  ensureAudio(); sendName();
+  const opts = { minutes: +$('cfgMin').value, start: +$('cfgStart').value, regen: +$('cfgRegen').value, costs: {}, refunds: {} };
+  ['p','n','b','r','q','k'].forEach(t => {
+    const c = $('cfgCost_' + t); if (c && c.value !== '') opts.costs[t] = +c.value;
+    const rf = $('cfgRef_' + t); if (rf && rf.value !== '') opts.refunds[t] = +rf.value;
+  });
+  send({t:'create', code: codeInput.value, opts});
+});
 btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'join', code: codeInput.value}); });
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
@@ -504,6 +543,18 @@ $('musicBtn').addEventListener('click', function(){
   ensureAudio();
   updateAmbience();
 });
+
+// tema visual: clase en <body> + fondo animado a juego (persiste en localStorage)
+function applyTheme(){
+  document.body.classList.toggle('theme-chesscom', theme === 'chesscom');
+  $('themeNeon').classList.toggle('on', theme !== 'chesscom');
+  $('themeClassic').classList.toggle('on', theme === 'chesscom');
+  if (window.RSBG && window.RSBG.setTheme) window.RSBG.setTheme(theme);
+}
+function setTheme(t){ theme = t; localStorage.setItem('rs-theme', t); applyTheme(); }
+$('themeNeon').addEventListener('click', () => setTheme('neon'));
+$('themeClassic').addEventListener('click', () => setTheme('chesscom'));
+applyTheme();
 
 // opciones del menú: nombre + arrastre (persisten en localStorage)
 nameInput.value = myName;
@@ -523,4 +574,5 @@ window.addEventListener('pointercancel', onPointerCancel);
 // init
 buildGrid(); lastYou = you;
 buildLegend();
+buildCfgPieces();
 connect();

@@ -7,7 +7,29 @@
   --white-acc:#33e6ff; --black-acc:#ff3b73;
   --energy-a:#6bffb0; --energy-b:#33e6ff; --danger:#ff2d4a; --gold:#ffcf4a;
   --sq-light:#1a1d2e; --sq-dark:#12141f; --sel:#ffd54a; --radius:14px;
+  --piece-w:#eafffd; --piece-w-glow:rgba(51,230,255,.85);
+  --piece-b:#ffe3ee; --piece-b-glow:rgba(255,59,115,.85);
 }
+
+/* ---------- TEMA "Clásico" (inspirado en chess.com) ---------- */
+body.theme-chesscom{
+  --bg:#312e2b; --bg-2:#272522; --panel:#262522; --panel-2:#302e2b; --line:#413e3a;
+  --ink:#f5f3ef; --ink-dim:#9e9c98;
+  --white-acc:#ebecd0; --black-acc:#81b64c;
+  --energy-a:#81b64c; --energy-b:#a3d160; --danger:#fa412d; --gold:#f7c631;
+  --sq-light:#ebecd0; --sq-dark:#739552; --sel:#f5f682;
+  --piece-w:#ffffff; --piece-w-glow:rgba(0,0,0,.5);
+  --piece-b:#2b2926; --piece-b-glow:rgba(255,255,255,.28);
+}
+body.theme-chesscom .board-wrap{ background:linear-gradient(180deg,#2a2825,#21201d); }
+body.theme-chesscom .sq .coord{ color:rgba(0,0,0,.3); }
+body.theme-chesscom .hint{ background:rgba(0,0,0,.16); }
+body.theme-chesscom .hint.cap{ border-color:rgba(0,0,0,.25); }
+body.theme-chesscom #cardW .efill{ background:linear-gradient(90deg,#cdd7a9,#ebecd0); box-shadow:0 0 10px rgba(235,236,208,.35); }
+body.theme-chesscom #cardB .efill{ background:linear-gradient(90deg,#a3d160,#81b64c); box-shadow:0 0 10px rgba(129,182,76,.4); }
+body.theme-chesscom .rbeam.w{ background:rgba(255,255,255,.55); box-shadow:0 0 6px rgba(255,255,255,.4); }
+body.theme-chesscom .rbeam.b{ background:rgba(43,41,38,.5); box-shadow:0 0 6px rgba(0,0,0,.35); }
+body.theme-chesscom .playbtn{ background:linear-gradient(90deg,#81b64c,#a3d160); color:#14200a; box-shadow:0 0 24px rgba(129,182,76,.35); }
 *{ box-sizing:border-box; margin:0; padding:0; }
 html,body{ height:100%; }
 body{
@@ -122,8 +144,8 @@ body::before{
 .hint.poor{ background:transparent; border:2px dashed rgba(255,80,120,.5); width:44%; height:44%; }
 .pieces{ position:absolute; inset:10px; pointer-events:none; }
 .piece{ position:absolute; width:12.5%; height:12.5%; display:flex; align-items:center; justify-content:center; font-size:min(9vw,58px); line-height:1; user-select:none; transform:translate(0,0); transition:transform .16s cubic-bezier(.3,.9,.3,1.2),opacity .18s; will-change:transform; }
-.piece.w{ color:#eafffd; text-shadow:0 0 10px rgba(51,230,255,.85),0 2px 4px rgba(0,0,0,.6); }
-.piece.b{ color:#ffe3ee; text-shadow:0 0 10px rgba(255,59,115,.85),0 2px 4px rgba(0,0,0,.6); }
+.piece.w{ color:var(--piece-w); text-shadow:0 0 10px var(--piece-w-glow),0 2px 4px rgba(0,0,0,.6); }
+.piece.b{ color:var(--piece-b); text-shadow:0 0 10px var(--piece-b-glow),0 2px 4px rgba(0,0,0,.6); }
 .piece.dead{ opacity:0; transform:scale(.4) rotate(20deg); }
 .piece.pop{ animation:pop .22s ease; }
 /* el glifo va en un span interior: así la escala (agarrar/soltar) no pisa el translate de posición */
@@ -241,6 +263,43 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
   font-size:13px; font-weight:600; letter-spacing:.08em; color:var(--ink-dim); user-select:none; }
 .opt-row input{ width:16px; height:16px; accent-color:var(--white-acc); cursor:pointer; }
 .opt-row:hover span{ color:var(--ink); }
+
+/* selector de tema en el menú */
+.theme-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; }
+.theme-label{ font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-dim); }
+.tbtn.on{ border-color:var(--white-acc); color:var(--white-acc); box-shadow:0 0 12px rgba(120,220,255,.2); }
+
+/* ajustes de partida al crear sala privada */
+.cfg-rows{ display:flex; gap:10px; justify-content:center; margin:2px 0 12px; flex-wrap:wrap; }
+.cfg{ display:flex; flex-direction:column; gap:4px; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-dim); }
+.cfg select{
+  background:#05060c; color:var(--ink); border:1px solid var(--line); border-radius:8px;
+  padding:6px 8px; font-family:'Chakra Petch'; font-weight:600; font-size:13px; cursor:pointer; outline:none;
+}
+.cfg select:focus{ border-color:var(--white-acc); }
+body.theme-chesscom .cfg select{ background:var(--panel-2); }
+
+/* ajustes avanzados: coste y recuperación por pieza */
+.cfg-adv{ margin:0 auto 12px; max-width:340px; text-align:left; }
+.cfg-adv summary{
+  font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-dim);
+  cursor:pointer; text-align:center; padding:6px 0; user-select:none;
+}
+.cfg-adv summary:hover{ color:var(--ink); }
+.cfg-grid{
+  display:grid; grid-template-columns:1fr 74px 74px; gap:6px 8px; align-items:center;
+  background:#05060c; border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:6px;
+}
+body.theme-chesscom .cfg-grid{ background:var(--panel-2); }
+.cfg-grid .cfg-h{ font-size:9px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-dim); text-align:center; }
+.cfg-grid .cfg-name{ font-size:13px; color:var(--ink); display:flex; align-items:center; gap:6px; }
+.cfg-grid .cfg-name .g{ font-size:18px; }
+.cfg-grid input{
+  width:100%; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:8px;
+  padding:5px 6px; font-family:'Chakra Petch'; font-weight:600; font-size:13px; text-align:center; outline:none;
+}
+.cfg-grid input:focus{ border-color:var(--white-acc); }
+.cfg-grid .cfg-dash{ text-align:center; color:var(--ink-dim); }
 .code-input:focus{ border-color:var(--white-acc); box-shadow:0 0 18px rgba(51,230,255,.3); }
 .code-err{ min-height:18px; color:var(--danger); font-size:13px; font-weight:600; margin-bottom:6px; }
 .code-box{ display:inline-flex; flex-direction:column; align-items:center; gap:4px; margin-top:6px;

@@ -46,7 +46,7 @@ wss.on('connection', (ws) => {
       case 'name':   client.name = cleanName(m.name); break; // nombre del jugador
       case 'queue':  lobby.enqueue(client); break;        // buscar rival online
       case 'cpu':    lobby.startCPU(client); break;        // jugar vs CPU
-      case 'create': lobby.createPrivate(client, m.code); break; // crear sala privada
+      case 'create': lobby.createPrivate(client, m.code, m.opts); break; // crear sala privada (con ajustes)
       case 'join':   lobby.joinPrivate(client, m.code); break;   // unirse con código
       case 'cancel': lobby.cancel(client); break;          // cancelar búsqueda/espera
       case 'leave':  lobby.leave(client); break;           // volver al menú

@@ -12,6 +12,30 @@
 const { Game } = require('./game.js');
 
 function normalizeCode(x) { return String(x || '').trim().toUpperCase().slice(0, 12); }
+
+// ajustes de partida que puede elegir quien crea una sala privada (lista blanca + límites)
+const PIECE_TYPES = ['p', 'n', 'b', 'r', 'q', 'k'];
+function cleanSettings(o) {
+  if (!o || typeof o !== 'object') return null;
+  const num = (v, min, max) => { v = +v; return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : null; };
+  const s = {};
+  const m  = num(o.minutes, 1, 10); if (m  != null) s.minutes = Math.round(m);
+  const st = num(o.start,   0, 10); if (st != null) s.start = Math.round(st);
+  const rg = num(o.regen,   1, 10); if (rg != null) s.regenSecondsPerPoint = rg;
+  // coste de mover por pieza (enteros 0..20)
+  if (o.costs && typeof o.costs === 'object') {
+    const costs = {};
+    for (const t of PIECE_TYPES) { const v = num(o.costs[t], 0, 20); if (v != null) costs[t] = Math.round(v); }
+    if (Object.keys(costs).length) s.moveCost = costs;
+  }
+  // energía al comer cada pieza (0..10, media unidad; el rey no aplica)
+  if (o.refunds && typeof o.refunds === 'object') {
+    const refunds = {};
+    for (const t of PIECE_TYPES) { const v = num(o.refunds[t], 0, 10); if (v != null) refunds[t] = Math.round(v * 2) / 2; }
+    if (Object.keys(refunds).length) s.refunds = refunds;
+  }
+  return Object.keys(s).length ? s : null;
+}
 function genCode() {
   const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';   // sin caracteres ambiguos
   let s = ''; for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)];
@@ -31,7 +55,7 @@ class Lobby {
 
   _makeRoom(vsCPU, opts = {}) {
     const id = this.roomSeq++;
-    const room = { id, game: new Game({ vsCPU }), clients: [], code: opts.code || null, private: !!opts.private };
+    const room = { id, game: new Game({ vsCPU, settings: opts.settings }), clients: [], code: opts.code || null, private: !!opts.private };
     this.rooms.set(id, room);
     return room;
   }
@@ -90,14 +114,14 @@ class Lobby {
   }
 
   // ---------------- privada: crear ----------------
-  createPrivate(client, rawCode) {
+  createPrivate(client, rawCode, rawOpts) {
     this._detach(client);
     if (client.roomId != null) { this._send(client, { t: 'reject', reason: 'ya-en-sala' }); return; }
     let code = normalizeCode(rawCode);
     if (!code) code = genCode();                     // si no escriben nada, generamos uno
     if (this.privateWaiting.has(code)) { this._send(client, { t: 'reject', reason: 'codigo-en-uso' }); return; }
     this._removeFromQueue(client);
-    const room = this._makeRoom(false, { code, private: true });
+    const room = this._makeRoom(false, { code, private: true, settings: cleanSettings(rawOpts) });
     room.clients.push(client);
     client.roomId = room.id;                          // color se asigna al emparejar
     this.privateWaiting.set(code, room);
@@ -128,6 +152,7 @@ class Lobby {
     const now = Date.now();
     const res = room.game.applyMove(client.color, from[0], from[1], to[0], to[1], now);
     if (!res.ok) { this._send(client, { t: 'reject', reason: res.reason }); return; }
+    if (res.toll) this._send(client, { t: 'toll', toll: res.toll });   // aviso: pagó peaje de torre
     this._broadcast(room, now);
   }
 

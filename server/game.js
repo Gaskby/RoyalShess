@@ -24,6 +24,17 @@ const AI_TICK_MS      = CONFIG.ai.tickMs;
 class Game {
   constructor(opts = {}) {
     this.vsCPU = !!opts.vsCPU;
+    // ajustes por partida (salas privadas): si no vienen, valen los de config.js
+    const s = opts.settings || {};
+    this.startEnergy = s.start != null ? s.start : START_ENERGY;
+    this.matchMs = (s.minutes != null ? s.minutes : CONFIG.match.minutes) * 60 * 1000;
+    this.regenPerSec = 1 / (s.regenSecondsPerPoint != null ? s.regenSecondsPerPoint : CONFIG.energy.regenSecondsPerPoint);
+    // coste de mover y energía al comer, por pieza (personalizables en salas privadas)
+    this.moveCost = Object.assign({}, CONFIG.moveCost, s.moveCost || {});
+    this.refundOf = {};
+    for (const t of ['p', 'n', 'b', 'r', 'q', 'k']) {
+      this.refundOf[t] = (s.refunds && s.refunds[t] != null) ? s.refunds[t] : E.VALUE[t] * REFUND;
+    }
     this.reset();
   }
 
@@ -31,7 +42,7 @@ class Game {
     const init = E.newBoard();
     this.board = init.board;
     this.nextId = init.nextId;
-    this.energy = { w: START_ENERGY, b: START_ENERGY };
+    this.energy = { w: this.startEnergy, b: this.startEnergy };
     this.lastMove = null;
     this.phase = 'lobby';        // 'lobby' | 'countdown' | 'live' | 'over'
     this.winner = null;          // 'w' | 'b' | 'draw' | null
@@ -70,21 +81,24 @@ class Game {
     this.lastRegen = now;
     // en el tramo final la energía sube más rápido
     const boost = (this.phase === 'live' && this.timeLeft(now) <= LATE_MS) ? LATE_BOOST : 1;
-    const gain = (dt / 1000) * REGEN_PER_SEC * boost;
+    const gain = (dt / 1000) * this.regenPerSec * boost;
     this.energy.w = Math.min(MAX_ENERGY, this.energy.w + gain);
     this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
   }
 
-  // ¿(r,c) está en un carril ACTIVO de torre rival? El carril solo cuenta en la
-  // dirección donde la torre tiene más de LINE_LEN casillas libres (igual que el dibujo).
-  _rookAttacks(color, r, c) {
+  // ¿(r,c) está en un carril ACTIVO de alguna torre (propia o rival)? El carril
+  // solo cuenta en la dirección donde la torre supera LINE_LEN casillas libres
+  // (igual que el dibujo). Se ignora la torre en (exR,exC): es la pieza que se
+  // está moviendo y no debe cobrarse a sí misma.
+  _rookAttacks(r, c, exR, exC) {
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
       // camina desde (r,c) hasta la primera pieza en esta dirección
       let rr = r + dr, cc = c + dc, dist = 1;
       while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && !this.board[rr][cc]) { rr += dr; cc += dc; dist++; }
       if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue;
       const q = this.board[rr][cc];
-      if (!q || q.type !== 'r' || q.color === color) continue;
+      if (!q || q.type !== 'r') continue;
+      if (rr === exR && cc === exC) continue;   // la torre que se mueve no se cobra a sí misma
       // largo del carril: casillas libres desde la torre pasando por (r,c) y más allá
       let run = dist;                       // entre torre y (r,c), incluida (r,c)
       let r2 = r - dr, c2 = c - dc;
@@ -95,15 +109,15 @@ class Game {
   }
 
   // Peaje de torre: +TOLL por cada casilla intermedia del trayecto que esté
-  // en la línea de ataque de una torre rival (cruzar su "carril" cuesta).
-  _rookLineToll(color, fr, fc, tr, tc) {
+  // en un carril activo de CUALQUIER torre (cruzar el carril cuesta).
+  _rookLineToll(fr, fc, tr, tc) {
     // solo los trayectos rectos/diagonales tienen casillas intermedias (el caballo salta)
     if (!(fr === tr || fc === tc || Math.abs(tr - fr) === Math.abs(tc - fc))) return 0;
     const dr = Math.sign(tr - fr), dc = Math.sign(tc - fc);
     let toll = 0;
     let rr = fr + dr, cc = fc + dc;
     while (rr !== tr || cc !== tc) {
-      if (this._rookAttacks(color, rr, cc)) toll += ROOK_TOLL;
+      if (this._rookAttacks(rr, cc, fr, fc)) toll += ROOK_TOLL;
       rr += dr; cc += dc;
     }
     return toll;
@@ -120,7 +134,7 @@ class Game {
     }
   }
 
-  timeLeft(now) { return this.phase === 'live' ? Math.max(0, MATCH_MS - (now - this.startTime)) : MATCH_MS; }
+  timeLeft(now) { return this.phase === 'live' ? Math.max(0, this.matchMs - (now - this.startTime)) : this.matchMs; }
   countdownLeft(now) { return this.phase === 'countdown' ? Math.max(0, this.startsAt - now) : 0; }
 
   applyMove(color, fr, fc, tr, tc, now) {
@@ -152,16 +166,18 @@ class Game {
 
     // ---------- COSTE del movimiento ----------
     const surcharge = E.inCheck(this.board, color) ? CHECK_SURCHARGE : 0;
-    let base = E.MOVE_COST[p.type];
-    // Dama: 1 menos por cada captura acumulada, sin bajar del suelo configurado.
-    if (p.type === 'q') base = Math.max(QUEEN_MIN, base - (this.queenStreak.get(p.id) || 0));
+    let base = this.moveCost[p.type];
+    // Dama: 1 menos por cada captura acumulada, sin bajar del suelo (o de su
+    // coste base si la sala lo puso aún más barato).
+    if (p.type === 'q') base = Math.max(Math.min(QUEEN_MIN, this.moveCost.q), base - (this.queenStreak.get(p.id) || 0));
     let cost = base + surcharge;
     // Peón movido de forma SEGUIDA: +1 acumulativo por cada repetición del mismo peón.
     if (p.type === 'p' && this.lastMoveId[color] === p.id) cost += this.moveStreak[color];
     // Caballo: si venía de comer y este movimiento NO come, cuesta 1 menos.
     if (p.type === 'n' && !target && this.knightDiscount.has(p.id)) cost -= 1;
-    // Peaje de torre: cruzar la línea de ataque de una torre rival cuesta extra.
-    cost += this._rookLineToll(color, fr, fc, tr, tc);
+    // Peaje de torre: cruzar el carril activo de cualquier torre cuesta extra.
+    const lineToll = this._rookLineToll(fr, fc, tr, tc);
+    cost += lineToll;
     if (cost < 0) cost = 0;
 
     if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
@@ -169,7 +185,7 @@ class Game {
     this.energy[color] -= cost;
     // Reembolso al comer: peones y dama no lo reciben; comer peones tampoco lo da.
     if (target && p.type !== 'p' && p.type !== 'q' && target.type !== 'p') {
-      this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + E.VALUE[target.type] * REFUND);
+      this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + this.refundOf[target.type]);
     }
 
     // ---------- mover la pieza ----------
@@ -204,7 +220,7 @@ class Game {
     this.lastMove = { fr, fc, tr, tc };
     this._updateChecks(now);   // el reloj de gracia arranca en el instante del jaque
     if (capturedKing) this._end(color, 'king');
-    return { ok: true, captured: !!target, capturedKing };
+    return { ok: true, captured: !!target, capturedKing, cost, toll: lineToll };
   }
 
   // ¿puede el rey enrocar? No en jaque y sin pasar por (ni caer en) casilla atacada.
@@ -234,7 +250,7 @@ class Game {
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
       const p = this.board[r][c];
       if (p && p.color === color) {
-        const cost = E.MOVE_COST[p.type] + surcharge;
+        const cost = this.moveCost[p.type] + surcharge;
         if (this.energy[color] >= cost) {
           for (const m of E.genMoves(this.board, r, c)) {
             let score = 0;
@@ -291,7 +307,8 @@ class Game {
       energy: { w: +this.energy.w.toFixed(3), b: +this.energy.b.toFixed(3) },
       maxEnergy: MAX_ENERGY,
       timeLeft: this.timeLeft(now),
-      matchMs: MATCH_MS,
+      matchMs: this.matchMs,
+      costs: this.moveCost,
       check: { w: E.inCheck(this.board, 'w'), b: E.inCheck(this.board, 'b') },
       material: { w: E.material(this.board, 'w'), b: E.material(this.board, 'b') },
       lastMove: this.lastMove,

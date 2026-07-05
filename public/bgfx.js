@@ -38,6 +38,13 @@
   const KINDS = ['tri', 'diamond', 'hex', 'ring', 'dot'];
   const HUES  = [222, 252, 282, 200, 318, 168];   // azul, índigo, violeta, cian, magenta, verde-azul
   let scene = null, shapes = [];
+  let themePal = null;                            // paleta forzada por el tema del cliente
+
+  function setTheme(name) {
+    // 'chesscom': verdes/olivas apagados, acorde al tablero clásico
+    themePal = name === 'chesscom' ? { hues: [78, 95, 110], sat: [16, 30] } : null;
+    newScene();
+  }
 
   function newScene() {
     const kinds = [pick(KINDS)];
@@ -46,9 +53,9 @@
       if (!kinds.includes(k)) kinds.push(k);
     }
     scene = {
-      hue: pick(HUES) + rnd(-12, 12),   // matiz base de la paleta
+      hue: themePal ? pick(themePal.hues) + rnd(-8, 8) : pick(HUES) + rnd(-12, 12),
       spread: rnd(16, 46),              // variedad de matiz entre formas
-      sat: rnd(40, 62),
+      sat: themePal ? rnd(themePal.sat[0], themePal.sat[1]) : rnd(40, 62),
       flow: rnd(0, Math.PI * 2),        // dirección global de la deriva
       drift: rnd(0.03, 0.12),           // cuánto serpentea esa dirección
       speed: rnd(9, 24),                // px/s base
@@ -198,5 +205,6 @@
     setIntensity(x) { target = Math.max(0, Math.min(1, x)); },
     newScene,
     burst,
+    setTheme,
   };
 })();
