@@ -26,7 +26,7 @@
 
     // ---------------- REGLAS ESPECIALES ----------------
     rules: {
-      kingGraceMs: 2000,         // tras caer en jaque, el rey no se puede capturar
+      kingGraceMs: 3000,         // tras caer en jaque, el rey no se puede capturar
                                  //   hasta pasado este tiempo (margen para reaccionar)
       queenMinCost: 3,           // la dama se abarata 1 por captura, sin bajar de esto
       rookLineToll: 1,           // energía EXTRA por cruzar un carril ACTIVO de cualquier

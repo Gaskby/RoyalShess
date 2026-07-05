@@ -412,7 +412,8 @@ function handleReject(reason){
     else { showToast(codeMsgs[reason]); }
     return;
   }
-  const map = { 'sin-energia':'Sin energía', 'ilegal':'Movimiento ilegal', 'no-es-tuya':'No es tu pieza', 'no-corriendo':'Aún no empieza', 'rey-protegido':'Espera 1 s tras el jaque' };
+  const graceS = (window.RSConfig.rules.kingGraceMs || 1000) / 1000;
+  const map = { 'sin-energia':'Sin energía', 'ilegal':'Movimiento ilegal', 'no-es-tuya':'No es tu pieza', 'no-corriendo':'Aún no empieza', 'rey-protegido':`Espera ${graceS} s tras el jaque` };
   showToast(map[reason] || 'Rechazado');
 }
 
