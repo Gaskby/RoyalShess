@@ -17,6 +17,7 @@ const GRACE_MS        = CONFIG.rules.kingGraceMs;
 const QUEEN_MIN       = CONFIG.rules.queenMinCost;
 const ROOK_TOLL       = CONFIG.rules.rookLineToll;
 const LINE_LEN        = CONFIG.rules.rookLineLen;
+const FREE_RECAP      = CONFIG.rules.freeRecapture !== false;
 const MATCH_MS        = CONFIG.match.minutes * 60 * 1000;
 const COUNTDOWN_MS    = CONFIG.match.countdownSeconds * 1000;
 const AI_TICK_MS      = CONFIG.ai.tickMs;
@@ -57,6 +58,9 @@ class Game {
     this.knightDiscount = new Set();         // ids de caballos con -1 pendiente (comieron)
     this.queenStreak = new Map();            // id de dama -> capturas acumuladas (abarata su coste)
     this.checkSince = { w: null, b: null };  // desde cuándo está en jaque cada rey (gracia de captura)
+    // cupón de recaptura gratis por bando: {r,c,id} = "puedes comer a ESA pieza
+    // en ESA casilla sin gastar energía". Se gasta/pierde con tu siguiente movimiento.
+    this.freeRecapture = { w: null, b: null };
   }
 
   get running() { return this.phase === 'live'; }
@@ -176,9 +180,15 @@ class Game {
     // Caballo: si venía de comer y este movimiento NO come, cuesta 1 menos.
     if (p.type === 'n' && !target && this.knightDiscount.has(p.id)) cost -= 1;
     // Peaje de torre: cruzar el carril activo de cualquier torre cuesta extra.
-    const lineToll = this._rookLineToll(fr, fc, tr, tc);
+    let lineToll = this._rookLineToll(fr, fc, tr, tc);
     cost += lineToll;
     if (cost < 0) cost = 0;
+
+    // Recaptura gratis: te comieron una pieza protegida y respondes comiendo
+    // al agresor en esa misma casilla -> el movimiento entero cuesta 0.
+    const coupon = this.freeRecapture[color];
+    const freeRecap = !!(coupon && target && tr === coupon.r && tc === coupon.c && target.id === coupon.id);
+    if (freeRecap) { cost = 0; lineToll = 0; }
 
     if (this.energy[color] < cost) return { ok: false, reason: 'sin-energia' };
 
@@ -217,10 +227,17 @@ class Game {
     // Dama: cada captura acumula 1 de descuento para sus siguientes movimientos.
     if (p.type === 'q' && target) this.queenStreak.set(p.id, (this.queenStreak.get(p.id) || 0) + 1);
 
+    // Cupones de recaptura: al mover, el tuyo se gasta o se pierde; si comiste,
+    // el rival gana cupón para vengarse del agresor en esta casilla.
+    this.freeRecapture[color] = null;
+    if (FREE_RECAP && target && !capturedKing) {
+      this.freeRecapture[target.color] = { r: tr, c: tc, id: p.id };
+    }
+
     this.lastMove = { fr, fc, tr, tc };
     this._updateChecks(now);   // el reloj de gracia arranca en el instante del jaque
     if (capturedKing) this._end(color, 'king');
-    return { ok: true, captured: !!target, capturedKing, cost, toll: lineToll };
+    return { ok: true, captured: !!target, capturedKing, cost, toll: lineToll, free: freeRecap };
   }
 
   // ¿puede el rey enrocar? No en jaque y sin pasar por (ni caer en) casilla atacada.
@@ -309,6 +326,7 @@ class Game {
       timeLeft: this.timeLeft(now),
       matchMs: this.matchMs,
       costs: this.moveCost,
+      freeCap: this.freeRecapture[you] || null,   // tu cupón de recaptura gratis (si hay)
       check: { w: E.inCheck(this.board, 'w'), b: E.inCheck(this.board, 'b') },
       material: { w: E.material(this.board, 'w'), b: E.material(this.board, 'b') },
       lastMove: this.lastMove,

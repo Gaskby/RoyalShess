@@ -33,6 +33,8 @@
                                  //   torre (por cada casilla del trayecto que cruce)
       rookLineLen: 4,            // un carril se ACTIVA (se dibuja y cobra) solo en la
                                  //   dirección donde la torre supere estas casillas libres
+      freeRecapture: true,       // si te comen una pieza protegida, tu SIGUIENTE movimiento
+                                 //   puede ser comer al agresor en esa casilla GRATIS
     },
 
     // ---------------- PARTIDA ----------------

@@ -69,10 +69,16 @@ function render(){
   const bd = state.board;
 
   [...gridEl.children].forEach(sq => {
-    sq.classList.remove('sel','lastmove');
+    sq.classList.remove('sel','lastmove','freecap');
     [...sq.querySelectorAll('.hint,.rbeam')].forEach(h => h.remove());
   });
   drawRookLines(bd);
+
+  // cupón de recaptura gratis: marca en dorado a la pieza que puedes comer sin coste
+  if (state.freeCap){
+    const d = toDisplay(state.freeCap.r, state.freeCap.c);
+    displaySquareEl(d.dr, d.dc).classList.add('freecap');
+  }
 
   const present = new Set();
   for (let r=0; r<8; r++) for (let c=0; c<8; c++){
@@ -340,6 +346,7 @@ function connect(){
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
     if (msg.t === 'toll'){ showToast('Carril de torre: +' + msg.toll); return; }
+    if (msg.t === 'freecap'){ showToast('¡Recaptura gratis!', true); return; }
     if (msg.t === 'state'){ onState(msg); return; }
   };
 }
@@ -470,7 +477,13 @@ function sfx(kind){
 //  Toast + leyenda
 // ============================================================
 let toastTimer=null;
-function showToast(msg){ toastEl.textContent=msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>toastEl.classList.remove('show'),900); }
+function showToast(msg, good){
+  toastEl.textContent = msg;
+  toastEl.classList.toggle('good', !!good);   // verde para avisos positivos
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 900);
+}
 // rejilla de ajustes por pieza (sala privada): coste de mover + energía al comerla
 function buildCfgPieces(){
   const grid = $('cfgPieces'); if (!grid) return;

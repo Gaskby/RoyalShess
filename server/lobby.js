@@ -153,6 +153,7 @@ class Lobby {
     const res = room.game.applyMove(client.color, from[0], from[1], to[0], to[1], now);
     if (!res.ok) { this._send(client, { t: 'reject', reason: res.reason }); return; }
     if (res.toll) this._send(client, { t: 'toll', toll: res.toll });   // aviso: pagó peaje de torre
+    if (res.free) this._send(client, { t: 'freecap' });                // aviso: recaptura gratis
     this._broadcast(room, now);
   }
 
