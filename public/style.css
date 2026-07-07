@@ -151,6 +151,8 @@ body::before{
 .hint.poor{ background:transparent; border:2px dashed rgba(255,80,120,.5); width:44%; height:44%; }
 .pieces{ position:absolute; inset:10px; pointer-events:none; }
 .piece{ position:absolute; width:12.5%; height:12.5%; display:flex; align-items:center; justify-content:center; font-size:min(9vw,58px); line-height:1; user-select:none; transform:translate(0,0); transition:transform .16s cubic-bezier(.3,.9,.3,1.2),opacity .18s; will-change:transform; }
+/* iOS/Safari: nunca tratar los glifos de ajedrez como emoji (respetan el color) */
+.piece, .dpiece, .chip .g, .cfg-name .g{ font-variant-emoji:text; -webkit-font-feature-settings:normal; }
 .piece.w{ color:var(--piece-w); text-shadow:0 0 10px var(--piece-w-glow),0 2px 4px rgba(0,0,0,.6); }
 .piece.b{ color:var(--piece-b); text-shadow:0 0 10px var(--piece-b-glow),0 2px 4px rgba(0,0,0,.6); }
 .piece.dead{ opacity:0; transform:scale(.4) rotate(20deg); }

@@ -5,7 +5,10 @@
    intenciones {t:'move'}. Las reglas las decide el servidor.
    ============================================================================ */
 const E = window.RSEngine;
-const GLYPH = { p:'\u265F', n:'\u265E', b:'\u265D', r:'\u265C', q:'\u265B', k:'\u265A' };
+// \uFE0E = text presentation selector: forces iOS/Safari to draw the monochrome
+// glyph (which respects the CSS color) instead of the default black emoji.
+const VS = '\uFE0E';
+const GLYPH = { p:'\u265F'+VS, n:'\u265E'+VS, b:'\u265D'+VS, r:'\u265C'+VS, q:'\u265B'+VS, k:'\u265A'+VS };
 // idioma: todos los textos viven en i18n.js; tr('clave') devuelve el texto actual
 const I18N = window.RSI18N;
 I18N.setLang(localStorage.getItem('rs-lang') || 'es');
