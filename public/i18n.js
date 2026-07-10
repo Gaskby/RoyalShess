@@ -1,13 +1,4 @@
-/* ============================================================================
-   RoyalShess — ARCHIVO DE IDIOMAS
-   ----------------------------------------------------------------------------
-   >>> AQUÍ SE EDITAN TODOS LOS TEXTOS DEL JUEGO. <<<
-   Cada texto es una fila; cada idioma es una "columna" (es, en, ...).
-   Para AÑADIR UN IDIOMA: añade su código a LANGS y su columna a cada fila.
-   El botón del menú aparece solo. Si a una fila le falta un idioma, se usa
-   el primero de LANGS como respaldo.
-   Tokens: {min} {regen} {grace} {late} {surcharge} se rellenan desde config.js.
-   ============================================================================ */
+/* RoyalShess ARCHIVO DE IDIOMAS. AQUÍ SE EDITAN TODOS LOS TEXTOS DEL JUEGO. <<<. Cada texto es una fila; cada idioma es una columna es, en, ..... Para AÑADIR UN IDIOMA: añade su código a LANGS y su columna a cada fila.. El botón del menú aparece solo. Si a una fila le falta un idioma, se usa. el primero de LANGS como respaldo.. Tokens: min regen grace late surcharge se rellenan desde config.js. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(root);
   else root.RSI18N = factory(root);
@@ -16,7 +7,7 @@
   const LANGS = ['es', 'en'];
 
   const STRINGS = {
-    // ---------- barra superior ----------
+    // barra superior
     'status.connecting': { es: 'Conectando…',   en: 'Connecting…' },
     'status.connected':  { es: 'Conectado',     en: 'Connected' },
     'status.offline':    { es: 'Sin conexión',  en: 'Offline' },
@@ -24,7 +15,7 @@
     'top.music':         { es: 'Música',        en: 'Music' },
     'top.menu':          { es: 'Menú',          en: 'Menu' },
 
-    // ---------- tarjetas de jugador ----------
+    // tarjetas de jugador
     'card.white':   { es: 'Blancas',  en: 'White' },
     'card.black':   { es: 'Negras',   en: 'Black' },
     'card.energy':  { es: 'Energía',  en: 'Energy' },
@@ -34,7 +25,7 @@
     'tag.rival':    { es: 'Rival',    en: 'Opponent' },
     'tag.cpu':      { es: 'CPU',      en: 'CPU' },
 
-    // ---------- piezas ----------
+    // piezas
     'piece.p': { es: 'Peón',    en: 'Pawn' },
     'piece.n': { es: 'Caballo', en: 'Knight' },
     'piece.b': { es: 'Alfil',   en: 'Bishop' },
@@ -42,7 +33,7 @@
     'piece.q': { es: 'Dama',    en: 'Queen' },
     'piece.k': { es: 'Rey',     en: 'King' },
 
-    // ---------- leyenda bajo el tablero ----------
+    // leyenda bajo el tablero
     'legend.title': { es: 'Coste de mover · recuperas al comer',
                       en: 'Move cost · recover on capture' },
     'legend.chip':  { es: '{name}: cuesta {cost}, comerlo da {rec}',
@@ -52,14 +43,14 @@
       en: 'Each piece costs energy to move and you regenerate <b style="color:var(--energy-a)">1 every {regen}&nbsp;s</b> (continuous, x2 in the final minute). Without energy you cannot move. Capturing refunds part of the captured value. While in <b style="color:var(--danger)">check</b>, moving costs +{surcharge}. Capture the king to win; if time runs out, most Points wins. <b>The server validates everything.</b>',
     },
 
-    // ---------- overlay: subtítulos ----------
+    // overlay: subtítulos
     'sub.default': { es: 'ajedrez en tiempo real', en: 'real-time chess' },
     'sub.search':  { es: 'emparejando…',           en: 'matchmaking…' },
     'sub.friend':  { es: 'sala privada',           en: 'private room' },
     'sub.help':    { es: 'cómo jugar',             en: 'how to play' },
     'sub.board':   { es: 'clasificación',          en: 'leaderboard' },
 
-    // ---------- clasificación ----------
+    // clasificación
     'board.h.player': { es: 'Jugador',  en: 'Player' },
     'board.h.record': { es: 'G/P/E',    en: 'W/L/D' },
     'board.you':      { es: 'Tu posición', en: 'Your rank' },
@@ -67,7 +58,7 @@
     'board.note':     { es: 'Solo puntúan las partidas de «Buscar partida».', en: 'Only “Find match” games are rated.' },
     'board.loading':  { es: 'Cargando…', en: 'Loading…' },
 
-    // ---------- menú principal ----------
+    // menú principal
     'menu.name.ph': { es: 'TU NOMBRE (OPCIONAL)', en: 'YOUR NAME (OPTIONAL)' },
     'menu.drag':    { es: 'Arrastrar piezas para mover', en: 'Drag pieces to move' },
     'menu.theme':   { es: 'Tema',    en: 'Theme' },
@@ -79,12 +70,13 @@
     'menu.cpu':     { es: 'Jugar vs CPU',        en: 'Play vs CPU' },
     'menu.help':    { es: 'Cómo jugar',          en: 'How to play' },
     'menu.board':   { es: 'Clasificación',       en: 'Leaderboard' },
+    'menu.resume':  { es: '▶ Volver a la partida', en: '▶ Back to the match' },
     'menu.note': {
       es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>vs CPU:</b> práctica. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
       en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>vs CPU:</b> practice. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',
     },
 
-    // ---------- sala privada ----------
+    // sala privada
     'friend.code.ph':  { es: 'CÓDIGO / CONTRASEÑA', en: 'CODE / PASSWORD' },
     'friend.duration': { es: 'Duración',        en: 'Duration' },
     'friend.start':    { es: 'Energía inicial', en: 'Starting energy' },
@@ -102,7 +94,7 @@
       en: 'To <b>create</b>: pick a code and share it (leave it empty to generate one). To <b>join</b>: type the code your friend created. Settings only apply to the room <b>you create</b>.',
     },
 
-    // ---------- espera / búsqueda ----------
+    // espera / búsqueda
     'wait.title':  { es: 'Sala creada · esperando…', en: 'Room created · waiting…' },
     'wait.code':   { es: 'Código', en: 'Code' },
     'wait.note': {
@@ -112,7 +104,7 @@
     'common.cancel': { es: 'Cancelar', en: 'Cancel' },
     'search.title':  { es: 'Buscando rival…', en: 'Searching for opponent…' },
 
-    // ---------- resultado ----------
+    // resultado
     'result.win':         { es: 'Ganaste',   en: 'You win' },
     'result.lose':        { es: 'Perdiste',  en: 'You lose' },
     'result.draw':        { es: 'Empate',    en: 'Draw' },
@@ -124,7 +116,7 @@
     'result.again':       { es: 'Buscar otra',       en: 'Find another' },
     'result.cpu':         { es: 'vs CPU',            en: 'vs CPU' },
 
-    // ---------- avisos (toasts) ----------
+    // avisos toasts
     'toast.noEnergy':     { es: 'Sin energía',        en: 'No energy' },
     'toast.illegal':      { es: 'Movimiento ilegal',  en: 'Illegal move' },
     'toast.notYours':     { es: 'No es tu pieza',     en: 'Not your piece' },
@@ -134,6 +126,9 @@
     'toast.toll':         { es: 'Carril de torre: +{n}', en: 'Rook lane: +{n}' },
     'toast.freecap':      { es: '¡Recaptura gratis!',    en: 'Free recapture!' },
     'toast.rematchOffer': { es: '¡Tu rival quiere revancha!', en: 'Your opponent wants a rematch!' },
+    'banner.oppGone':     { es: 'Rival desconectado · esperando reconexión…', en: 'Opponent disconnected · waiting to reconnect…' },
+    'toast.oppBack':      { es: 'Rival reconectó', en: 'Opponent reconnected' },
+    'toast.resumed':      { es: 'Reconectado a la partida', en: 'Reconnected to the match' },
     'err.codeInUse':      { es: 'Ese código ya está en uso, elige otro.', en: 'That code is already in use, pick another.' },
     'err.roomMissing':    { es: 'No existe una sala con ese código.',     en: 'No room exists with that code.' },
     'err.codeEmpty':      { es: 'Escribe un código para unirte.',         en: 'Type a code to join.' },
@@ -141,10 +136,10 @@
     'err.inRoom':         { es: 'Ya estás en una sala.',                  en: 'You are already in a room.' },
     'err.rivalGone':      { es: 'Tu rival ya se fue.',                    en: 'Your opponent already left.' },
 
-    // ---------- juego ----------
+    // juego
     'game.go': { es: '¡YA!', en: 'GO!' },
 
-    // ---------- tutorial (cómo jugar) ----------
+    // tutorial cómo jugar
     'tut.demoHint': { es: 'Toca una regla para ver el ejemplo ▶', en: 'Tap a rule to see an example ▶' },
     'tut.1':  { es: 'Sin turnos: mueve cuando tengas energía. Se regenera 1 cada {regen} s (x2 en el último minuto).',
                 en: 'No turns: move whenever you have energy. It regenerates 1 every {regen}s (x2 in the final minute).' },
@@ -172,7 +167,7 @@
 
   let lang = LANGS[0];
 
-  // rellena tokens {x} con valores de config.js (si está cargada)
+  // rellena tokens x con valores de config.js si está cargada
   function fill(s) {
     if (s.indexOf('{') === -1) return s;
     const C = root && root.RSConfig;

@@ -1,14 +1,7 @@
-/* ============================================================================
-   RoyalShess — ESTADÍSTICAS Y CLASIFICACIÓN (opción ligera)
-   ----------------------------------------------------------------------------
-   Identidad: el cliente manda un token aleatorio (UUID en su localStorage).
-   Las estadísticas viven asociadas al TOKEN; el nombre es solo cómo te
-   muestras (dos "GAKS" se distinguen por su discriminador: GAKS#4821).
-   Persistencia: server/players.json (se carga al arrancar, se guarda al
-   cambiar). Rating: Elo clásico, K=32, inicio en 1000.
-   Solo puntúan las partidas públicas de "Buscar partida" (ni CPU ni salas
-   privadas: sus reglas personalizables distorsionarían el Elo).
-   ============================================================================ */
+/* RoyalShess - estadisticas y clasificacion
+   Identidad por token del cliente. El nombre es solo visual.
+   Persistencia en players.json. Rating Elo con K 32 e inicio en 1000.
+   Solo puntuan las partidas publicas de buscar partida. */
 const fs = require('fs');
 const path = require('path');
 
@@ -28,7 +21,7 @@ function save() {
   }, 300);
 }
 
-// discriminador estable de 4 dígitos derivado del token (GAKS#4821)
+// discriminador estable de 4 digitos derivado del token
 function disc(token) {
   let h = 0;
   for (let i = 0; i < token.length; i++) h = (h * 31 + token.charCodeAt(i)) >>> 0;
@@ -44,7 +37,7 @@ function touch(token, name) {
   return p;
 }
 
-// scoreA: 1 = gana A, 0 = pierde A, 0.5 = tablas
+// scoreA vale 1 si gana A, 0 si pierde y 0.5 en tablas
 function applyResult(tokenA, tokenB, scoreA) {
   if (!tokenA || !tokenB || tokenA === tokenB) return;
   const A = touch(tokenA), B = touch(tokenB);
@@ -58,7 +51,7 @@ function applyResult(tokenA, tokenB, scoreA) {
   save();
 }
 
-// posición global: cuántos (con partidas) tienen más Elo, +1
+// posicion global entre jugadores con partidas
 function rankOf(token) {
   const p = token && players[token];
   if (!p || !p.games) return null;

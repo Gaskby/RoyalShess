@@ -1,8 +1,4 @@
-/* ============================================================================
-   RoyalShess — MOTOR DE REGLAS (compartido servidor + cliente)
-   Lógica pura de ajedrez. Los valores (coste/valor de piezas) vienen de
-   config.js, así que aquí no hay números que tocar.
-   ============================================================================ */
+/* RoyalShess MOTOR DE REGLAS */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./config.js'));
   else root.RSEngine = factory(root.RSConfig);
@@ -68,15 +64,15 @@
       slide([[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]]);
     } else if (p.type === 'k') {
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) if (dr || dc) add(r + dr, c + dc);
-      // Enroque: rey sin mover en su casilla inicial (columna 4).
+      // Enroque: rey sin mover en su casilla inicial columna 4.
       // Aquí solo comprobamos casillas vacías y torre sin mover; el servidor
-      // valida además que no se enroque en/por jaque (ver _castleAllowed).
+      // valida además que no se enroque en/por jaque
       if (!p.moved && c === 4) {
-        const rk = bd[r][7];   // corto (flanco de rey)
+        const rk = bd[r][7];   // corto flanco de rey
         if (!bd[r][5] && !bd[r][6] && rk && rk.type === 'r' && rk.color === p.color && !rk.moved) {
           out.push({ r: r, c: 6, cap: false, castle: 'k' });
         }
-        const rq = bd[r][0];   // largo (flanco de dama)
+        const rq = bd[r][0];   // largo flanco de dama
         if (!bd[r][1] && !bd[r][2] && !bd[r][3] && rq && rq.type === 'r' && rq.color === p.color && !rq.moved) {
           out.push({ r: r, c: 2, cap: false, castle: 'q' });
         }

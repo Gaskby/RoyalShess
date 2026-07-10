@@ -1,8 +1,4 @@
-/* ============================================================================
-   RoyalShess — GAME (estado autoritativo de UNA partida)
-   Fases: 'lobby' -> 'countdown' -> 'live' -> 'over'
-   Todos los números salen de public/config.js (no edites aquí).
-   ============================================================================ */
+/* RoyalShess GAME estado autoritativo de UNA partida. Fases: lobby - countdown - live - over. Todos los números salen de public/config.js no edites aquí. */
 const CONFIG = require('../public/config.js');
 const E = require('../public/engine.js');
 
@@ -25,12 +21,12 @@ const AI_TICK_MS      = CONFIG.ai.tickMs;
 class Game {
   constructor(opts = {}) {
     this.vsCPU = !!opts.vsCPU;
-    // ajustes por partida (salas privadas): si no vienen, valen los de config.js
+    // ajustes por partida salas privadas: si no vienen, valen los de config.js
     const s = opts.settings || {};
     this.startEnergy = s.start != null ? s.start : START_ENERGY;
     this.matchMs = (s.minutes != null ? s.minutes : CONFIG.match.minutes) * 60 * 1000;
     this.regenPerSec = 1 / (s.regenSecondsPerPoint != null ? s.regenSecondsPerPoint : CONFIG.energy.regenSecondsPerPoint);
-    // coste de mover y energía al comer, por pieza (personalizables en salas privadas)
+    // coste de mover y energía al comer, por pieza personalizables en salas privadas
     this.moveCost = Object.assign({}, CONFIG.moveCost, s.moveCost || {});
     this.refundOf = {};
     for (const t of ['p', 'n', 'b', 'r', 'q', 'k']) {
@@ -46,27 +42,38 @@ class Game {
     this.energy = { w: this.startEnergy, b: this.startEnergy };
     this.lastMove = null;
     this.phase = 'lobby';        // 'lobby' | 'countdown' | 'live' | 'over'
-    this.winner = null;          // 'w' | 'b' | 'draw' | null
-    this.reason = null;          // 'king' | 'time' | 'abandon' | null
-    this.startsAt = 0;           // cuándo pasa a 'live'
-    this.startTime = 0;          // inicio real del reloj de 5 min
+    this.winner = null;   // w | b | draw | null
+    this.reason = null;   // king | time | abandon | null
+    this.startsAt = 0;   // cuándo pasa a live
+    this.startTime = 0;   // inicio real del reloj de 5 min
     this.lastRegen = 0;
     this.lastAI = 0;
     // Historial por bando para reglas de coste especiales:
-    this.lastMoveId = { w: null, b: null };  // id de la última pieza movida
-    this.moveStreak = { w: 0, b: 0 };        // veces seguidas que se movió esa pieza
-    this.knightDiscount = new Set();         // ids de caballos con -1 pendiente (comieron)
-    this.queenStreak = new Map();            // id de dama -> capturas acumuladas (abarata su coste)
-    this.checkSince = { w: null, b: null };  // desde cuándo está en jaque cada rey (gracia de captura)
-    // cupón de recaptura gratis por bando: {r,c,id} = "puedes comer a ESA pieza
-    // en ESA casilla sin gastar energía". Se gasta/pierde con tu siguiente movimiento.
+    this.lastMoveId = { w: null, b: null };   // id de la última pieza movida
+    this.moveStreak = { w: 0, b: 0 };   // veces seguidas que se movió esa pieza
+    this.knightDiscount = new Set();   // ids de caballos con -1 pendiente comieron
+    this.queenStreak = new Map();   // id de dama - capturas acumuladas abarata su coste
+    this.checkSince = { w: null, b: null };   // desde cuándo está en jaque cada rey gracia de captura
+    // cupón de recaptura gratis por bando: r,c,id = puedes comer a ESA pieza
+    // en ESA casilla sin gastar energía. Se gasta/pierde con tu siguiente movimiento.
     this.freeRecapture = { w: null, b: null };
     this.checkers = { w: new Set(), b: new Set() };   // ids de las piezas que dan cada jaque
   }
 
   get running() { return this.phase === 'live'; }
 
-  // Arranca la cuenta atrás (arranque justo para ambos jugadores)
+  // Desplaza todas las referencias temporales +dt tras una pausa por reconexión,
+  // para que la partida continúe como si el tiempo en pausa no hubiera pasado.
+  shiftTime(dt) {
+    if (!dt) return;
+    if (this.startsAt)  this.startsAt  += dt;
+    if (this.startTime) this.startTime += dt;
+    if (this.lastRegen) this.lastRegen += dt;
+    if (this.lastAI)    this.lastAI    += dt;
+    for (const c of ['w', 'b']) if (this.checkSince[c] != null) this.checkSince[c] += dt;
+  }
+
+  // Arranca la cuenta atrás arranque justo para ambos jugadores
   beginCountdown(now) {
     this.reset();
     this.phase = 'countdown';
@@ -91,21 +98,17 @@ class Game {
     this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
   }
 
-  // ¿(r,c) está en un carril ACTIVO de alguna torre (propia o rival)? El carril
-  // solo cuenta en la dirección donde la torre supera LINE_LEN casillas libres
-  // (igual que el dibujo). Se ignora la torre en (exR,exC): es la pieza que se
-  // está moviendo y no debe cobrarse a sí misma.
+ 
   _rookAttacks(r, c, exR, exC) {
     for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-      // camina desde (r,c) hasta la primera pieza en esta dirección
+      // camina desde r,c hasta la primera pieza en esta dirección
       let rr = r + dr, cc = c + dc, dist = 1;
       while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8 && !this.board[rr][cc]) { rr += dr; cc += dc; dist++; }
       if (rr < 0 || rr > 7 || cc < 0 || cc > 7) continue;
       const q = this.board[rr][cc];
       if (!q || q.type !== 'r') continue;
-      if (rr === exR && cc === exC) continue;   // la torre que se mueve no se cobra a sí misma
-      // largo del carril: casillas libres desde la torre pasando por (r,c) y más allá
-      let run = dist;                       // entre torre y (r,c), incluida (r,c)
+      if (rr === exR && cc === exC) continue;   
+      let run = dist;         
       let r2 = r - dr, c2 = c - dc;
       while (r2 >= 0 && r2 < 8 && c2 >= 0 && c2 < 8 && !this.board[r2][c2]) { run++; r2 -= dr; c2 -= dc; }
       if (run > LINE_LEN) return true;
@@ -113,10 +116,10 @@ class Game {
     return false;
   }
 
-  // Peaje de torre: +TOLL por cada casilla intermedia del trayecto que esté
-  // en un carril activo de CUALQUIER torre (cruzar el carril cuesta).
+  // Peaje de torre:
+  
   _rookLineToll(fr, fc, tr, tc) {
-    // solo los trayectos rectos/diagonales tienen casillas intermedias (el caballo salta)
+    // solo los trayectos rectos/diagonales tienen casillas intermedias el caballo salta
     if (!(fr === tr || fc === tc || Math.abs(tr - fr) === Math.abs(tc - fc))) return 0;
     const dr = Math.sign(tr - fr), dc = Math.sign(tc - fc);
     let toll = 0;
@@ -128,7 +131,7 @@ class Game {
     return toll;
   }
 
-  // ids de las piezas rivales que están atacando al rey de `color`
+  // ids de las piezas rivales que están atacando al rey de color
   _checkerIds(color) {
     const k = E.findKing(this.board, color);
     if (!k) return [];
@@ -144,7 +147,7 @@ class Game {
     return ids;
   }
 
-  // registra desde cuándo está cada rey en jaque (para la gracia de captura).
+  // registra desde cuándo está cada rey en jaque para la gracia de captura.
   // Si se suma un atacante NUEVO al jaque, la ventana de gracia se REINICIA:
   // el defensor merece tiempo de reacción también contra la pieza nueva.
   _updateChecks(now) {
@@ -177,7 +180,7 @@ class Game {
     const legal = E.genMoves(this.board, fr, fc).some(m => m.r === tr && m.c === tc);
     if (!legal) return { ok: false, reason: 'ilegal' };
 
-    // ¿es un enroque? (el rey se desplaza 2 columnas)
+    // ¿es un enroque? el rey se desplaza 2 columnas
     const isCastle = p.type === 'k' && Math.abs(tc - fc) === 2;
     if (isCastle && !this._castleAllowed(color, fr, fc, tc)) return { ok: false, reason: 'ilegal' };
 
@@ -192,11 +195,11 @@ class Game {
       if (cs == null || now - cs < GRACE_MS) return { ok: false, reason: 'rey-protegido' };
     }
 
-    // ---------- COSTE del movimiento ----------
+    // COSTE del movimiento
     const surcharge = E.inCheck(this.board, color) ? CHECK_SURCHARGE : 0;
     let base = this.moveCost[p.type];
-    // Dama: 1 menos por cada captura acumulada, sin bajar del suelo (o de su
-    // coste base si la sala lo puso aún más barato).
+    // Dama: 1 menos por cada captura acumulada, sin bajar del suelo o de su
+    // coste base si la sala lo puso aún más barato.
     if (p.type === 'q') base = Math.max(Math.min(QUEEN_MIN, this.moveCost.q), base - (this.queenStreak.get(p.id) || 0));
     let cost = base + surcharge;
     // Peón movido de forma SEGUIDA: +1 acumulativo por cada repetición del mismo peón.
@@ -209,7 +212,6 @@ class Game {
     if (cost < 0) cost = 0;
 
     // Recaptura gratis: te comieron una pieza protegida y respondes comiendo
-    // al agresor en esa misma casilla -> el movimiento entero cuesta 0.
     const coupon = this.freeRecapture[color];
     const freeRecap = !!(coupon && target && tr === coupon.r && tc === coupon.c && target.id === coupon.id);
     if (freeRecap) { cost = 0; lineToll = 0; }
@@ -222,7 +224,7 @@ class Game {
       this.energy[color] = Math.min(MAX_ENERGY, this.energy[color] + this.refundOf[target.type]);
     }
 
-    // ---------- mover la pieza ----------
+    // mover la pieza
     this.board[tr][tc] = p;
     this.board[fr][fc] = null;
     p.moved = true;
@@ -238,12 +240,12 @@ class Game {
       if (rook) rook.moved = true;
     }
 
-    // ---------- rachas y descuentos ----------
-    // Racha del mismo peón (para la penalización acumulativa).
+    // rachas y descuentos
+    // Racha del mismo peón.
     if (this.lastMoveId[color] === p.id) this.moveStreak[color] += 1;
     else this.moveStreak[color] = 1;
     this.lastMoveId[color] = p.id;
-    // Descuento del caballo: se arma al comer, se limpia/gasta al no comer.
+    // Descuento del caballo
     if (p.type === 'n') {
       if (target) this.knightDiscount.add(p.id);
       else this.knightDiscount.delete(p.id);
@@ -252,7 +254,6 @@ class Game {
     if (p.type === 'q' && target) this.queenStreak.set(p.id, (this.queenStreak.get(p.id) || 0) + 1);
 
     // Cupones de recaptura: al mover, el tuyo se gasta o se pierde; si comiste,
-    // el rival gana cupón para vengarse del agresor en esta casilla.
     this.freeRecapture[color] = null;
     if (FREE_RECAP && target && !capturedKing) {
       this.freeRecapture[target.color] = { r: tr, c: tc, id: p.id };
@@ -264,18 +265,17 @@ class Game {
     return { ok: true, captured: !!target, capturedKing, cost, toll: lineToll, free: freeRecap };
   }
 
-  // ¿puede el rey enrocar? No en jaque y sin pasar por (ni caer en) casilla atacada.
   // Las casillas vacías y la torre sin mover ya las validó genMoves.
   _castleAllowed(color, r, fc, tc) {
     if (E.inCheck(this.board, color)) return false;
     const step = tc > fc ? 1 : -1;
     const king = this.board[r][fc];
     for (let cc = fc + step; ; cc += step) {
-      const saved = this.board[r][cc];       // casilla intermedia (vacía)
-      this.board[r][cc] = king;              // simula el rey ahí
+      const saved = this.board[r][cc];      
+      this.board[r][cc] = king;              
       this.board[r][fc] = null;
       const attacked = E.inCheck(this.board, color);
-      this.board[r][fc] = king;              // restaura
+      this.board[r][fc] = king;            
       this.board[r][cc] = saved;
       if (attacked) return false;
       if (cc === tc) break;
@@ -317,7 +317,7 @@ class Game {
 
   _end(winner, reason) { this.phase = 'over'; this.winner = winner; this.reason = reason; }
 
-  // el rival de 'winner' abandonó -> gana 'winner'
+  // el rival de winner abandonó - gana winner
   abandon(winner) { if (this.phase === 'live' || this.phase === 'countdown') this._end(winner, 'abandon'); }
 
   tick(now) {
@@ -350,7 +350,8 @@ class Game {
       timeLeft: this.timeLeft(now),
       matchMs: this.matchMs,
       costs: this.moveCost,
-      freeCap: this.freeRecapture[you] || null,   // tu cupón de recaptura gratis (si hay)
+      freeCap: this.freeRecapture[you] || null,   
+      checkers: [...this.checkers[you]],         
       check: { w: E.inCheck(this.board, 'w'), b: E.inCheck(this.board, 'b') },
       material: { w: E.material(this.board, 'w'), b: E.material(this.board, 'b') },
       lastMove: this.lastMove,

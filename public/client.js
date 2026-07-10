@@ -1,26 +1,21 @@
-/* ============================================================================
-   RoyalShess — CLIENTE (Fase 3)
-   Menú -> Buscar partida (online) / vs CPU. Cliente "tonto": pinta el estado
-   autoritativo del servidor, orienta el tablero según tu color y envía
-   intenciones {t:'move'}. Las reglas las decide el servidor.
-   ============================================================================ */
+/* RoyalShess CLIENTE Fase 3. Menú - Buscar partida online / vs CPU. Cliente tonto: pinta el estado. autoritativo del servidor, orienta el tablero según tu color y envía. intenciones t:move. Las reglas las decide el servidor. */
 const E = window.RSEngine;
 // \uFE0E = text presentation selector: forces iOS/Safari to draw the monochrome
-// glyph (which respects the CSS color) instead of the default black emoji.
+// glyph which respects the CSS color instead of the default black emoji.
 const VS = '\uFE0E';
 const GLYPH = { p:'\u265F'+VS, n:'\u265E'+VS, b:'\u265D'+VS, r:'\u265C'+VS, q:'\u265B'+VS, k:'\u265A'+VS };
-// idioma: todos los textos viven en i18n.js; tr('clave') devuelve el texto actual
+// idioma: todos los textos viven en i18n.js; trclave devuelve el texto actual
 const I18N = window.RSI18N;
 I18N.setLang(localStorage.getItem('rs-lang') || 'es');
 const tr = (k) => I18N.t(k);
 const pieceName = (k) => tr('piece.' + k);
 
-let state = null;         // último snapshot
+let state = null;   // último snapshot
 let you = 'w';            // tu color
-let lastYou = null;       // para rehacer el tablero si cambia la orientación
-let selected = null;      // {r,c} en coords de tablero
-let drag = null;          // arrastre en curso {r,c,id,el,lifted,sx,sy}
-let justDragged = false;  // evita que el 'click' posterior a un arrastre reseleccione
+let lastYou = null;   // para rehacer el tablero si cambia la orientación
+let selected = null;   // r,c en coords de tablero
+let drag = null;   // arrastre en curso r,c,id,el,lifted,sx,sy
+let justDragged = false;   // evita que el click posterior a un arrastre reseleccione
 let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
 let myName = localStorage.getItem('rs-name') || '';
 // identidad ligera: token aleatorio generado una vez y guardado en localStorage.
@@ -38,7 +33,7 @@ let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
 
-// ---- DOM ----
+// DOM
 const $ = (id) => document.getElementById(id);
 const gridEl = $('grid'), piecesEl = $('pieces'), clockEl = $('clock'), boardWrap = $('boardWrap');
 const toastEl = $('toast'), overlay = $('overlay'), countdownEl = $('countdown'), cdNum = $('cdNum');
@@ -54,9 +49,7 @@ let curScreen = null;
 let lastStatusKey = 'status.connecting';   // para re-traducir el estado al cambiar idioma
 let menuEnabled = false;
 
-// ============================================================
-//  Orientación (tu bando abajo)
-// ============================================================
+// Orientación tu bando abajo
 function toDisplay(r, c){ return you === 'b' ? { dr:7-r, dc:7-c } : { dr:r, dc:c }; }
 function toBoard(dr, dc){ return you === 'b' ? { r:7-dr, c:7-dc } : { r:dr, c:dc }; }
 
@@ -78,17 +71,15 @@ function buildGrid(){
 }
 function displaySquareEl(dr, dc){ return gridEl.children[dr*8 + dc]; }
 
-// ============================================================
-//  Render
-// ============================================================
+// Render
 const pieceEls = new Map();
 function render(){
   if (!state) return;
-  if (you !== lastYou){ buildGrid(); lastYou = you; }  // rehacer si cambió tu color
+  if (you !== lastYou){ buildGrid(); lastYou = you; }   // rehacer si cambió tu color
   const bd = state.board;
 
   [...gridEl.children].forEach(sq => {
-    sq.classList.remove('sel','lastmove','freecap');
+    sq.classList.remove('sel','lastmove','freecap','threat');
     [...sq.querySelectorAll('.hint,.rbeam')].forEach(h => h.remove());
   });
   drawRookLines(bd);
@@ -107,14 +98,18 @@ function render(){
     if (!el){
       el = document.createElement('div');
       el.className = 'piece ' + p.color + ' pop';
-      el.appendChild(document.createElement('span'));   // el glifo vive en un span (animaciones de escala)
+      el.appendChild(document.createElement('span'));   // el glifo vive en un span para animar su escala
       piecesEl.appendChild(el);
       pieceEls.set(p.id, el);
       setTimeout(() => el.classList.remove('pop'), 240);
     }
     el.firstChild.textContent = GLYPH[p.type];
-    el.className = 'piece ' + p.color + ((drag && drag.lifted && drag.id === p.id) ? ' dragging' : '');
+    const isChecker = state.checkers && state.checkers.includes(p.id);   // pieza que da jaque a TU rey
+    el.className = 'piece ' + p.color +
+      ((drag && drag.lifted && drag.id === p.id) ? ' dragging' : '') +
+      (isChecker ? ' checker' : '');
     const { dr, dc } = toDisplay(r, c);
+    if (isChecker) displaySquareEl(dr, dc).classList.add('threat');      // y su casilla marcada
     // Si esta pieza se está arrastrando, no la recolocamos: la controla el puntero.
     if (!(drag && drag.lifted && drag.id === p.id)) el.style.transform = `translate(${dc*100}%, ${dr*100}%)`;
   }
@@ -150,7 +145,7 @@ function render(){
   updateHUD();
 }
 // carriles de las torres: SOLO la dirección donde la torre tenga más de N casillas
-// libres se activa — ese tramo se dibuja (y es el único donde cobra el peaje)
+// libres se activa ese tramo se dibuja y es el único donde cobra el peaje
 function drawRookLines(bd){
   const rules = window.RSConfig.rules;
   const showLen = (rules && rules.rookLineLen != null) ? rules.rookLineLen : 4;
@@ -220,7 +215,7 @@ function updateHUD(){
     sideTop.appendChild(oppCard);
   }
 
-  // Etiquetas de usuario y reloj (nombre si lo hay; si no, TÚ / Rival / CPU)
+  // Etiquetas de usuario y reloj nombre si lo hay; si no, TÚ / Rival / CPU
   const names = state.names || {};
   const ranks = state.ranks || {};
   const label = (side) => {
@@ -238,9 +233,7 @@ function updateHUD(){
   clockEl.classList.toggle('low', s<=30 && state.phase==='live');
 }
 
-// ============================================================
-//  Interacción -> intención al servidor
-// ============================================================
+// Interacción - intención al servidor
 function onSquareClick(e){
   if (justDragged){ justDragged = false; return; }   // ese clic venía de soltar un arrastre
   if (!state || state.phase!=='live') return;
@@ -266,9 +259,7 @@ function sendName(){
   send({ t:'name', name: myName, token: myToken });
 }
 
-// ============================================================
-//  Arrastrar piezas (drag & drop) — convive con el clic
-// ============================================================
+// Arrastrar piezas drag & drop convive con el clic
 function squareUnderPointer(x, y){
   const el = document.elementFromPoint(x, y);
   const sq = el && el.closest ? el.closest('.sq') : null;
@@ -276,23 +267,23 @@ function squareUnderPointer(x, y){
   return { dr:+sq.dataset.dr, dc:+sq.dataset.dc };
 }
 function onPointerDown(e){
-  if (!dragEnabled) return;                                 // opción del menú desactivada
-  if (e.button != null && e.button !== 0) return;          // solo botón principal
+  if (!dragEnabled) return;   // opción del menú desactivada
+  if (e.button != null && e.button !== 0) return;   // solo botón principal
   if (!state || state.phase!=='live') return;
   const sq = e.target.closest && e.target.closest('.sq');
   if (!sq) return;
   const { r, c } = toBoard(+sq.dataset.dr, +sq.dataset.dc);
   const p = state.board[r][c];
-  if (!p || p.color !== you) return;                        // solo tus piezas
+  if (!p || p.color !== you) return;   // solo tus piezas
   e.preventDefault();
   justDragged = false;
   selected = { r, c };
-  // la pieza se "agarra" AL INSTANTE: nada de umbrales ni esperar a mover
+  // la pieza se agarra AL INSTANTE: nada de umbrales ni esperar a mover
   drag = { r, c, id: p.id, el: pieceEls.get(p.id), lifted: true };
   if (drag.el) drag.el.classList.add('dragging');
   document.body.classList.add('grabbing');
-  render();                                                 // pistas (no recoloca la pieza en drag)
-  positionDragEl(e);                                        // la pieza salta al cursor ya
+  render();   // pistas no recoloca la pieza en drag
+  positionDragEl(e);   // la pieza salta al cursor ya
 }
 function positionDragEl(e){
   if (!drag || !drag.el) return;
@@ -307,24 +298,24 @@ function onPointerUp(e){
   document.body.classList.remove('grabbing');
   if (d.el) d.el.classList.remove('dragging');
   justDragged = true;
-  setTimeout(() => { justDragged = false; }, 0);            // solo anula el clic de ESTE gesto
-  settleAnim(d.id);                                         // animación de "asentarse" al soltar
+  setTimeout(() => { justDragged = false; }, 0);   // solo anula el clic de ESTE gesto
+  settleAnim(d.id);   // animación de asentarse al soltar
   const at = squareUnderPointer(e.clientX, e.clientY);
   if (at){
     const { r, c } = toBoard(at.dr, at.dc);
-    if (r === d.r && c === d.c){ render(); return; }        // soltó donde agarró: queda seleccionada
+    if (r === d.r && c === d.c){ render(); return; }   // soltó donde agarró: queda seleccionada
     if (E.genMoves(state.board, d.r, d.c).some(m => m.r===r && m.c===c)) sendMove({r:d.r,c:d.c}, {r,c});
   }
   selected = null;
   render();
 }
-// escala 1.28 -> rebote -> 1 sobre el span (estilo inline: sobrevive a los re-render)
+// escala 1.28 - rebote - 1 sobre el span estilo inline: sobrevive a los re-render
 function settleAnim(id){
   const el = pieceEls.get(id);
   if (!el || !el.firstChild) return;
   const s = el.firstChild;
   s.style.animation = 'none';
-  void s.offsetWidth;                                       // reinicia la animación
+  void s.offsetWidth;   // reinicia la animación
   s.style.animation = 'settle .28s cubic-bezier(.3,1.5,.5,1)';
   setTimeout(() => { s.style.animation = ''; }, 300);
 }
@@ -336,10 +327,8 @@ function onPointerCancel(){
   selected = null; render();
 }
 
-// ============================================================
-//  Pantallas del overlay
-// ============================================================
-function showScreen(name){ // 'menu' | 'friend' | 'waiting' | 'search' | 'help' | 'board' | 'result' | null(en juego)
+// Pantallas del overlay
+function showScreen(name){   // menu | friend | waiting | search | help | board | result | nullen juego
   if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
@@ -353,13 +342,13 @@ function showScreen(name){ // 'menu' | 'friend' | 'waiting' | 'search' | 'help' 
   const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
+  // el botón volver a la partida solo aparece si hay una partida en curso
+  if (name==='menu') $('btnResume').style.display = (state && (state.phase==='live' || state.phase==='countdown')) ? '' : 'none';
 }
 function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
 function setStatus(ok, key){ lastStatusKey = key; statusEl.classList.toggle('ok', ok); statusTxt.textContent = tr(key); }
 
-// ============================================================
-//  WebSocket
-// ============================================================
+// WebSocket
 function connect(){
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
@@ -368,7 +357,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; hideBanner(); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -376,6 +365,9 @@ function connect(){
     if (msg.t === 'freecap'){ showToast(tr('toast.freecap'), true); return; }
     if (msg.t === 'rematch-wait'){ btnRematch.disabled = true; btnRematch.textContent = tr('result.rematchWait'); return; }
     if (msg.t === 'rematch-offer'){ showToast(tr('toast.rematchOffer'), true); return; }
+    if (msg.t === 'opp-gone'){ showBanner(tr('banner.oppGone')); return; }
+    if (msg.t === 'opp-back'){ hideBanner(); showToast(tr('toast.oppBack'), true); return; }
+    if (msg.t === 'resumed'){ hideBanner(); showToast(tr('toast.resumed'), true); return; }
     if (msg.t === 'top'){ renderBoard(msg); return; }
     if (msg.t === 'state'){ onState(msg); return; }
   };
@@ -394,14 +386,13 @@ function onState(msg){
 
   // gestión de fase
   if (state.phase === 'countdown'){
-    showScreen(null);
-    if (prevPhase !== 'countdown') window.RSBG.newScene();   // fondo nuevo por partida
+    // solo cierra pantallas al ENTRAR en la fase: así el menú puede quedarse abierto
+    if (prevPhase !== 'countdown'){ showScreen(null); window.RSBG.newScene(); }
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
     cdNum.textContent = secs > 0 ? secs : tr('game.go');
   } else if (state.phase === 'live'){
-    showScreen(null);
-    if (prevPhase !== 'live') sfx('go');
+    if (prevPhase !== 'live'){ showScreen(null); sfx('go'); }
     countdownEl.style.display = 'none';
   } else if (state.phase === 'over'){
     countdownEl.style.display = 'none';
@@ -412,7 +403,7 @@ function onState(msg){
   render();
 }
 
-// música y fondo reaccionan a la fase, al reloj (0 -> 1 al agotarse) y al jaque
+// música y fondo reaccionan a la fase, al reloj 0 - 1 al agotarse y al jaque
 function updateAmbience(){
   if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); return; }
   if (state.phase === 'countdown' || state.phase === 'live'){
@@ -446,10 +437,9 @@ function handleReject(reason){
   showToast(map[reason] ? tr(map[reason]) : tr('toast.rejected'));
 }
 
-// ============================================================
-//  Resultado
-// ============================================================
+// Resultado
 function showResult(){
+  hideBanner();   // por si terminó estando en pausa
   const won = state.winner === you, draw = state.winner === 'draw';
   endFx(draw ? 'draw' : won ? 'win' : 'lose');              // estallido + flash + sacudida
   const rt = $('resultTxt'); rt.className='result';
@@ -483,9 +473,7 @@ function endFx(kind){
   window.RSBG.burst(r.left + r.width/2, r.top + r.height/2, hue);
 }
 
-// ============================================================
-//  Sonido
-// ============================================================
+// Sonido
 function ensureAudio(){ if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(_e){} } }
 function sfx(kind){
   if(!sfxOn||!audioCtx) return;
@@ -505,9 +493,11 @@ function sfx(kind){
   o.start(t); o.stop(t+d+0.02);
 }
 
-// ============================================================
-//  Toast + leyenda
-// ============================================================
+// Toast + leyenda
+// banner persistente rival desconectado: se muestra hasta reconexión o fin
+function showBanner(msg){ const b = $('banner'); b.textContent = msg; b.classList.add('show'); }
+function hideBanner(){ const b = $('banner'); if (b) b.classList.remove('show'); }
+
 let toastTimer=null;
 function showToast(msg, good){
   toastEl.textContent = msg;
@@ -516,7 +506,7 @@ function showToast(msg, good){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('show'), 900);
 }
-// rejilla de ajustes por pieza (sala privada): coste de mover + energía al comerla
+// rejilla de ajustes por pieza sala privada: coste de mover + energía al comerla
 function buildCfgPieces(){
   const grid = $('cfgPieces'); if (!grid) return;
   grid.innerHTML = `<div class="cfg-h"></div><div class="cfg-h">${tr('friend.h.cost')}</div><div class="cfg-h">${tr('friend.h.eat')}</div>`;
@@ -554,20 +544,23 @@ function buildLegend(){
   });
 }
 
-// ============================================================
-//  Botones
-// ============================================================
-btnQueue.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'queue'}); });
+// Botones
+btnQueue.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'queue'}); });
 btnAgain.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'queue'}); });
-btnCPU .addEventListener('click', () => { ensureAudio(); sendName(); send({t:'cpu'}); });
+btnCPU .addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'cpu'}); });
 btnCPU2.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'cpu'}); });
 btnCancel.addEventListener('click', () => send({t:'cancel'}));
-menuBtn.addEventListener('click', () => send({t:'leave'}));
+// en partida, el menú solo se ABRE no abandona; fuera de partida vuelve al lobby
+const inGame = () => !!(state && (state.phase === 'live' || state.phase === 'countdown'));
+menuBtn.addEventListener('click', () => { if (inGame()) showScreen('menu'); else send({t:'leave'}); });
+$('btnResume').addEventListener('click', () => showScreen(null));
+// elegir otro modo estando en partida = abandonarla primero
+function leaveIfInGame(){ if (inGame()) send({t:'leave'}); }
 // salas privadas
 btnFriend.addEventListener('click', () => { showScreen('friend'); setTimeout(()=>codeInput.focus(),50); });
 btnBack.addEventListener('click', () => showScreen('menu'));
 btnCreate.addEventListener('click', () => {
-  ensureAudio(); sendName();
+  ensureAudio(); sendName(); leaveIfInGame();
   const opts = { minutes: +$('cfgMin').value, start: +$('cfgStart').value, regen: +$('cfgRegen').value, costs: {}, refunds: {} };
   ['p','n','b','r','q','k'].forEach(t => {
     const c = $('cfgCost_' + t); if (c && c.value !== '') opts.costs[t] = +c.value;
@@ -575,7 +568,7 @@ btnCreate.addEventListener('click', () => {
   });
   send({t:'create', code: codeInput.value, opts});
 });
-btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'join', code: codeInput.value}); });
+btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'join', code: codeInput.value}); });
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
@@ -589,9 +582,7 @@ $('musicBtn').addEventListener('click', function(){
   updateAmbience();
 });
 
-// ============================================================
-//  Idioma: aplica todas las traducciones (estáticas y construidas)
-// ============================================================
+// Idioma: aplica todas las traducciones estáticas y construidas
 function applyLang(){
   document.documentElement.lang = I18N.getLang();
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
@@ -606,14 +597,14 @@ function applyLang(){
   buildLegend();
   buildCfgPieces();
   buildHelp();
-  if (curScreen) showScreen(curScreen);   // re-traduce el subtítulo del overlay
+  if (curScreen) showScreen(curScreen);
   if (state) updateHUD();
-  // la marca se aparta de la píldora de idiomas fija (su ancho depende de cuántos haya)
+  // la marca se aparta de la píldora de idiomas fija su ancho depende de cuántos haya
   const lr = $('langRow'), brand = document.querySelector('.brand');
   if (lr && brand) brand.style.marginLeft = (lr.offsetWidth + 14) + 'px';
 }
 
-// botones de idioma: uno por cada idioma de i18n.js (añadir idioma = solo editar ese archivo)
+// botones de idioma: uno por cada idioma de i18n.js añadir idioma = solo editar ese archivo
 const langRow = $('langRow');
 I18N.LANGS.forEach(l => {
   const b = document.createElement('button');
@@ -624,7 +615,7 @@ I18N.LANGS.forEach(l => {
   langRow.appendChild(b);
 });
 
-// tutorial (cómo jugar): lista de reglas desde i18n.js; clic = demo animada
+// tutorial cómo jugar: lista de reglas desde i18n.js; clic = demo animada
 function buildHelp(){
   const list = $('helpList'); if (!list) return;
   list.innerHTML = '';
@@ -643,11 +634,9 @@ function buildHelp(){
 btnHelp.addEventListener('click', () => showScreen('help'));
 btnHelpBack.addEventListener('click', () => showScreen('menu'));
 
-// ============================================================
-//  Demos del tutorial: mini-tablero que RECREA cada regla.
-//  Cada demo es solo piezas + coordenadas; el reproductor anima
-//  movimientos, capturas, costes flotantes y efectos en bucle.
-// ============================================================
+// Demos del tutorial: mini-tablero que RECREA cada regla.
+// Cada demo es solo piezas + coordenadas; el reproductor anima
+// movimientos, capturas, costes flotantes y efectos en bucle.
 let demoPieces = [], demoGen = 0;
 const dSleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -756,7 +745,7 @@ async function playDemo(n){
   demoGen++;
   const gen = demoGen;
   $('demoWrap').style.display = '';
-  while (gen === demoGen){                          // en bucle hasta cambiar de demo/pantalla
+  while (gen === demoGen){                         
     demoReset(demo.set);
     await dSleep(500);
     for (const s of demo.steps){
@@ -774,7 +763,6 @@ async function playDemo(n){
 }
 
 // clasificación: pide el top al servidor y lo pinta al llegar
-// (los nombres son texto de otros jugadores: SIEMPRE escapados)
 const escHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function renderBoard(msg){
   const list = $('boardList');
@@ -810,7 +798,7 @@ $('btnBoardBack').addEventListener('click', () => showScreen('menu'));
 // revancha: misma sala, mismos ajustes; en PvP esperan a que acepten los dos
 btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'}); });
 
-// tema visual: clase en <body> + fondo animado a juego (persiste en localStorage)
+// tema visual: clase en <body + fondo animado a juego persiste en localStorage
 function applyTheme(){
   document.body.classList.toggle('theme-chesscom', theme === 'chesscom');
   $('themeNeon').classList.toggle('on', theme !== 'chesscom');
@@ -822,7 +810,7 @@ $('themeNeon').addEventListener('click', () => setTheme('neon'));
 $('themeClassic').addEventListener('click', () => setTheme('chesscom'));
 applyTheme();
 
-// opciones del menú: nombre + arrastre (persisten en localStorage)
+// opciones del menú: nombre + arrastre persisten en localStorage
 nameInput.value = myName;
 dragToggle.checked = dragEnabled;
 nameInput.addEventListener('change', sendName);
@@ -831,7 +819,7 @@ dragToggle.addEventListener('change', () => {
   localStorage.setItem('rs-drag', dragEnabled ? '1' : '0');
 });
 
-// arrastrar piezas (listeners globales; el grid se reconstruye pero gridEl persiste)
+// arrastrar piezas listeners globales; el grid se reconstruye pero gridEl persiste
 gridEl.addEventListener('pointerdown', onPointerDown);
 window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('pointerup', onPointerUp);

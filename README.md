@@ -1,13 +1,13 @@
 # RoyalShess — 
 
-Ajedrez en **tiempo real** con energía. El servidor Node.js es la única fuente
-de verdad: guarda el tablero, la energía y el reloj, valida cada movimiento y
+Ajedrez en **tiempo real** con energía. 
+guarda el tablero, la energía y el reloj, valida cada movimiento y
 reparte el estado a los clientes. El navegador solo dibuja y pide mover.
 
-## ⚙️ Hoja de configuración (lo importante)
+## Hoja de configuracion
 
 **Todo lo ajustable está en un solo archivo: `public/config.js`.**
-Abre ese archivo, cambia los números, guarda y reinicia el servidor
+Abre ese archivo, cambia los numeros, guarda y reinicia el servidor
 (`Ctrl+C` y de nuevo `npm.cmd start`). Ahí controlas:
 
 - Energía inicial, tope y velocidad de regeneración.
@@ -64,7 +64,7 @@ royalshess/
 │  ├─ lobby.js      Emparejamiento: cola, salas, colores, abandono
 │  └─ game.js       Estado autoritativo: energía, reloj, fases, IA, victoria
 └─ public/
-   ├─ config.js     ⚙️ HOJA DE CONFIGURACIÓN (edita aquí)
+   ├─ config.js     HOJA DE CONFIGURACIÓN (edita aquí)
    ├─ engine.js     Motor de reglas puro (compartido servidor + cliente)
    ├─ index.html    Interfaz
    ├─ style.css     Estética tipo TETR.IO
@@ -81,7 +81,3 @@ Cliente → servidor: `queue` (rival al azar), `cpu` (vs máquina),
 `move {from:[r,c], to:[r,c]}`.
 Servidor → cliente: `welcome`/`lobby`, `queued`, `created {code}`,
 `state {...}`, `reject {reason}`.
-
-## Siguiente fase
-- **Fase 4:** despliegue en un VPS de Hostinger con dominio y HTTPS (wss),
-  proceso persistente (PM2) y proxy inverso (Nginx).

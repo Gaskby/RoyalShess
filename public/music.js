@@ -1,12 +1,4 @@
-/* ============================================================================
-   RoyalShess — MÚSICA LO-FI PROCEDURAL (Web Audio, sin archivos)
-   Un "beat" lo-fi generado en vivo: acordes con séptima filtrados, bajo,
-   melodía pentatónica con eco, batería con swing y crujido de vinilo.
-   - setIntensity(0..1): al agotarse el reloj sube el tempo, se abre el
-     filtro y la batería se vuelve más densa.
-   - Variaciones: cada partida elige tonalidad, progresión, tempo y swing
-     al azar, y la progresión puede mutar cada 8 compases.
-   ============================================================================ */
+/* RoyalShess MÚSICA LO-FI PROCEDURAL Web Audio, sin archivos. Un beat lo-fi generado en vivo: acordes con séptima filtrados, bajo,. melodía pentatónica con eco, batería con swing y crujido de vinilo.. - setIntensity0..1: al agotarse el reloj sube el tempo, se abre el. filtro y la batería se vuelve más densa.. - Variaciones: cada partida elige tonalidad, progresión, tempo y swing. al azar, y la progresión puede mutar cada 8 compases. */
 window.RSMusic = (function () {
   let ctx = null;
   let out = null, master = null, comp = null, lpf = null;
@@ -15,13 +7,13 @@ window.RSMusic = (function () {
   let running = false, timer = null;
   let step = 0, bar = 0, nextT = 0;
   let intensity = 0, target = 0;
-  let danger = false;                                      // en jaque: la música se tensa
+  let danger = false;   // en jaque: la música se tensa
 
-  // parámetros de la "pista" actual (se rebarajan por partida)
+  // parámetros de la pista actual se rebarajan por partida
   let key = 57, baseBpm = 76, swing = 0.12;
   let prog = [0, 5, 3, 4];
-  const SCALE = [0, 2, 3, 5, 7, 8, 10];                    // menor natural
-  const PENTA = [0, 3, 5, 7, 10, 12, 15];                  // pentatónica menor
+  const SCALE = [0, 2, 3, 5, 7, 8, 10];   // menor natural
+  const PENTA = [0, 3, 5, 7, 10, 12, 15];   // pentatónica menor
   const PROGS = [
     [0, 5, 3, 4], [0, 2, 5, 4], [0, 5, 1, 4],
     [0, 3, 5, 4], [0, 4, 5, 3], [0, 2, 3, 4],
@@ -33,7 +25,7 @@ window.RSMusic = (function () {
   const deg = (d, oct = 0) => key + SCALE[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct);
 
   function newTrack() {
-    key = pick([53, 55, 57, 58, 60]);     // F, G, A, Bb, C
+    key = pick([53, 55, 57, 58, 60]);   // F, G, A, Bb, C
     prog = pick(PROGS);
     baseBpm = rnd(70, 80);
     swing = rnd(0.09, 0.17);
@@ -41,15 +33,15 @@ window.RSMusic = (function () {
   }
 
   function build() {
-    master = ctx.createGain(); master.gain.value = 0.2;    // techo fijo
-    out = ctx.createGain(); out.gain.value = 0;            // fundido in/out
+    master = ctx.createGain(); master.gain.value = 0.2;   // techo fijo
+    out = ctx.createGain(); out.gain.value = 0;   // fundido in/out
     comp = ctx.createDynamicsCompressor();
     lpf = ctx.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 850; lpf.Q.value = 0.5;
 
     padBus = ctx.createGain(); padBus.gain.value = 0.85;
     drumBus = ctx.createGain(); drumBus.gain.value = 0.9;
 
-    // eco con retroalimentación filtrada (dub suave para la melodía)
+    // eco con retroalimentación filtrada dub suave para la melodía
     delayIn = ctx.createDelay(1); delayIn.delayTime.value = 0.29;
     const fb = ctx.createGain(); fb.gain.value = 0.34;
     const dlp = ctx.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 1500;
@@ -108,7 +100,7 @@ window.RSMusic = (function () {
     env(g, t, 0.002, 0.9 * v, 0.17);
     o.connect(g); g.connect(drumBus);
     o.start(t); o.stop(t + 0.3);
-    // "sidechain" barato: el pad respira con el bombo
+    // sidechain barato: el pad respira con el bombo
     padBus.gain.setTargetAtTime(0.5, t, 0.015);
     padBus.gain.setTargetAtTime(0.85, t + 0.09, 0.12);
   }
@@ -120,7 +112,7 @@ window.RSMusic = (function () {
 
   function chord(t) {
     const d = prog[bar % prog.length];
-    for (const iv of [0, 2, 4, 6]) {                       // acorde con séptima
+    for (const iv of [0, 2, 4, 6]) {   // acorde con séptima
       const f = hz(deg(d + iv));
       tone(padBus, 'triangle', f, t, 0.35, 3.4, 0.055, rnd(-7, 7));
       tone(padBus, 'triangle', f, t, 0.35, 3.4, 0.045, rnd(-7, 7));
@@ -129,7 +121,7 @@ window.RSMusic = (function () {
   }
   const bass = (t, v) => tone(padBus, 'sine', hz(deg(prog[bar % prog.length]) - 24), t, 0.012, 0.5, 0.5 * v);
 
-  let mIdx = 2;                                            // memoria melódica (paseo aleatorio)
+  let mIdx = 2;   // memoria melódica paseo aleatorio
   function melody(t) {
     mIdx = Math.max(0, Math.min(PENTA.length - 1, mIdx + pick([-2, -1, -1, 1, 1, 2])));
     tone(delayIn, 'triangle', hz(key + 12 + PENTA[mIdx]), t, 0.012, 0.55, 0.14);
@@ -155,7 +147,7 @@ window.RSMusic = (function () {
     if (s === 0) chord(t);
     if (s === 0 || s === 10) bass(t, 1);
     if (s === 7 && i > 0.6 && Math.random() < 0.5) bass(t, 0.6);
-    // melodía dispersa (más presente al final)
+    // melodía dispersa más presente al final
     if (s % 2 === 0 && Math.random() < 0.08 + i * 0.22) melody(t);
   }
 
@@ -163,7 +155,7 @@ window.RSMusic = (function () {
     intensity += (target - intensity) * 0.06;
     const eff = Math.min(1, intensity + (danger ? 0.35 : 0));
     const bpm = baseBpm + eff * 26;
-    const spb = 60 / bpm / 4;                              // duración de semicorchea
+    const spb = 60 / bpm / 4;   // duración de semicorchea
     lpf.frequency.setTargetAtTime(750 + eff * 2900, ctx.currentTime, 0.4);
     while (nextT < ctx.currentTime + 0.15) {
       scheduleStep(step, nextT + (step % 2 ? spb * swing : 0));
@@ -185,7 +177,7 @@ window.RSMusic = (function () {
     running = true;
     nextT = ctx.currentTime + 0.1;
     out.gain.cancelScheduledValues(ctx.currentTime);
-    out.gain.setTargetAtTime(1, ctx.currentTime, 1.2);     // fundido de entrada
+    out.gain.setTargetAtTime(1, ctx.currentTime, 1.2);   // fundido de entrada
     timer = setInterval(tick, 60);
   }
   function stop() {

@@ -1,11 +1,4 @@
-/* ============================================================================
-   RoyalShess — FONDO ANIMADO PROCEDURAL (estética TETR.IO: nada plano)
-   Canvas a pantalla completa detrás de la UI. Cada "escena" se genera al
-   azar (newScene): paleta, tipos de forma, dirección del flujo, densidad,
-   parallax... El cliente pide una escena nueva en cada partida.
-   La intensidad (0..1) la fija el cliente según el reloj: acelera todo y
-   corre el matiz hacia el rojo.
-   ============================================================================ */
+/* RoyalShess */
 (function () {
   const cv = document.createElement('canvas');
   cv.id = 'bgfx';
@@ -33,15 +26,15 @@
   const rnd = (a, b) => a + Math.random() * (b - a);
   const pick = (a) => a[Math.floor(Math.random() * a.length)];
 
-  // ---------- escena procedural ----------
+  // escena procedural
   // tipos de forma disponibles; cada escena sortea 1-3 de ellos
   const KINDS = ['tri', 'diamond', 'hex', 'ring', 'dot'];
   const HUES  = [222, 252, 282, 200, 318, 168];   // azul, índigo, violeta, cian, magenta, verde-azul
   let scene = null, shapes = [];
-  let themePal = null;                            // paleta forzada por el tema del cliente
+  let themePal = null;   // paleta forzada por el tema del cliente
 
   function setTheme(name) {
-    // 'chesscom': verdes/olivas apagados, acorde al tablero clásico
+    // tema clasico usa verdes apagados acordes al tablero
     themePal = name === 'chesscom' ? { hues: [78, 95, 110], sat: [16, 30] } : null;
     newScene();
   }
@@ -54,19 +47,19 @@
     }
     scene = {
       hue: themePal ? pick(themePal.hues) + rnd(-8, 8) : pick(HUES) + rnd(-12, 12),
-      spread: rnd(16, 46),              // variedad de matiz entre formas
+      spread: rnd(16, 46),            
       sat: themePal ? rnd(themePal.sat[0], themePal.sat[1]) : rnd(40, 62),
-      flow: rnd(0, Math.PI * 2),        // dirección global de la deriva
-      drift: rnd(0.03, 0.12),           // cuánto serpentea esa dirección
-      speed: rnd(9, 24),                // px/s base
+      flow: rnd(0, Math.PI * 2),        
+      drift: rnd(0.03, 0.12),           
+      speed: rnd(9, 24),               
       glows: Math.random() < 0.5 ? 2 : 3,
-      wire: rnd(0.25, 0.8),             // proporción de formas solo-contorno
-      vig: rnd(0.45, 0.65),             // fuerza de la viñeta
+      wire: rnd(0.25, 0.8),             
+      vig: rnd(0.45, 0.65),            
     };
     shapes = [];
     const n = Math.round(rnd(24, 44));
     for (let i = 0; i < n; i++) {
-      const depth = rnd(0.35, 1.3);     // parallax: lejos = pequeño, lento y tenue
+      const depth = rnd(0.35, 1.3);     
       shapes.push({
         x: Math.random(), y: Math.random(),
         s: rnd(12, 74) * depth,
@@ -75,7 +68,7 @@
         a: rnd(0.03, 0.09) * (1.7 - depth * 0.5),
         k: pick(kinds),
         h: rnd(-scene.spread / 2, scene.spread / 2),
-        wob: rnd(0, Math.PI * 2), wobA: rnd(0, 12),   // bamboleo lateral propio
+        wob: rnd(0, Math.PI * 2), wobA: rnd(0, 12),   
         wire: Math.random() < scene.wire,
       });
     }
@@ -94,7 +87,7 @@
     ctx2.closePath();
   }
 
-  // ---------- estallido de final de partida (corto: ~1 s) ----------
+  // estallido de final de partida corto: ~1 s
   const sparks = [];
   function burst(px, py, hue) {
     for (let i = 0; i < 70; i++) {
@@ -104,7 +97,7 @@
         vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - rnd(0, 140),
         s: rnd(3, 10), r: rnd(0, Math.PI * 2), vr: rnd(-7, 7),
         h: hue + rnd(-16, 16),
-        life: 1, decay: rnd(0.9, 1.7),          // vive entre ~0.6 y ~1.1 s
+        life: 1, decay: rnd(0.9, 1.7),   // vive entre ~0.6 y ~1.1 s
         k: Math.random() < 0.5 ? 3 : 4,
       });
     }
@@ -116,8 +109,8 @@
       const p = sparks[i];
       p.life -= dt * p.decay;
       if (p.life <= 0) { sparks.splice(i, 1); continue; }
-      p.vy += 560 * dt;                          // gravedad
-      p.vx *= 1 - 1.2 * dt;                      // fricción
+      p.vy += 560 * dt;                        
+      p.vx *= 1 - 1.2 * dt;                     
       p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
       fg.save();
       fg.translate(p.x, p.y); fg.rotate(p.r);
@@ -132,14 +125,14 @@
 
   function frame(now) {
     requestAnimationFrame(frame);
-    if (document.hidden) { tPrev = now; return; }              // pausa en 2º plano
+    if (document.hidden) { tPrev = now; return; }              
     const dt = Math.min(0.05, (now - tPrev) / 1000); tPrev = now;
 
     intensity += (target - intensity) * Math.min(1, dt * 2);
     tAcc += dt * (0.5 + intensity * 2);
-    const hue = scene.hue + Math.sin(tAcc * 0.11) * 10 + intensity * 46;  // -> rojizo al final
+    const hue = scene.hue + Math.sin(tAcc * 0.11) * 10 + intensity * 46;  
     const spd = 1 + intensity * 2.2;
-    const flow = scene.flow + Math.sin(tAcc * scene.drift) * 0.8;         // la dirección serpentea
+    const flow = scene.flow + Math.sin(tAcc * scene.drift) * 0.8;         
     const fx = Math.cos(flow), fy = Math.sin(flow);
 
     // gradiente de fondo orientado según el flujo de la escena
@@ -162,7 +155,7 @@
       g.fillStyle = rg; g.fillRect(0, 0, W, H);
     }
 
-    // formas a la deriva (dirección global + bamboleo + parallax)
+    // formas a la deriva
     for (const s of shapes) {
       s.wob += dt * 0.6;
       s.x += (fx * scene.speed * s.depth * spd + Math.cos(s.wob) * s.wobA) * dt / W;
@@ -197,7 +190,7 @@
     vg.addColorStop(1, `rgba(2,3,8,${scene.vig})`);
     g.fillStyle = vg; g.fillRect(0, 0, W, H);
 
-    drawSparks(dt);   // estallidos de final de partida (canvas superior)
+    drawSparks(dt);   
   }
   requestAnimationFrame(frame);
 
