@@ -288,38 +288,94 @@ class Game {
     return true;
   }
 
+  // alguna pieza de ese color ataca la casilla dada
+  _sqAttacked(color, r, c) {
+    for (let rr = 0; rr < 8; rr++) for (let cc = 0; cc < 8; cc++) {
+      const q = this.board[rr][cc];
+      if (!q || q.color !== color) continue;
+      for (const m of E.genMoves(this.board, rr, cc)) if (m.r === r && m.c === c) return true;
+    }
+    return false;
+  }
+
+  // alguna OTRA pieza del color defiende la casilla ocupada por una pieza suya.
+  // truco: se pone temporalmente una pieza enemiga ahi para que las propias la vean
+  _sqDefended(color, r, c) {
+    const saved = this.board[r][c];
+    this.board[r][c] = { type: 'p', color: color === 'w' ? 'b' : 'w', id: -9 };
+    const def = this._sqAttacked(color, r, c);
+    this.board[r][c] = saved;
+    return def;
+  }
+
   _aiStep(now) {
     if (this.phase !== 'live' || !this.vsCPU) return;
-    const color = 'b';
-    const surcharge = E.inCheck(this.board, color) ? CHECK_SURCHARGE : 0;
+    const color = 'b', foe = 'w';
+    const V = E.VALUE;
+    const inCheckNow = E.inCheck(this.board, color);
+    const surcharge = inCheckNow ? CHECK_SURCHARGE : 0;
+
+    // piezas propias que ahora mismo estan amenazadas y sin defensa suficiente
+    const hangingNow = {};
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = this.board[r][c];
+      if (p && p.color === color && p.type !== 'k' && this._sqAttacked(foe, r, c)) {
+        if (!this._sqDefended(color, r, c)) hangingNow[r * 8 + c] = V[p.type];
+      }
+    }
+
     const moves = [];
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
       const p = this.board[r][c];
-      if (p && p.color === color) {
-        const cost = this.moveCost[p.type] + surcharge;
-        if (this.energy[color] >= cost) {
-          for (const m of E.genMoves(this.board, r, c)) {
-            let score = 0;
-            if (m.cap) {
-              const victim = this.board[m.r][m.c];
-              score = E.VALUE[victim.type] * 10 * this.ai.aggression;
-              if (victim.type === 'k') score += 1000;
-            }
-            if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
-            score += Math.random() * 2;
-            moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score });
-          }
+      if (!p || p.color !== color) continue;
+      const cost = this.moveCost[p.type] + surcharge;
+      if (this.energy[color] < cost) continue;
+      for (const m of E.genMoves(this.board, r, c)) {
+        const victim = this.board[m.r][m.c];
+        let score = 0;
+        if (victim) {
+          score += V[victim.type] * 10 * this.ai.aggression;
+          if (victim.type === 'k') score += 10000;
         }
+        // simula la jugada para medir sus consecuencias
+        this.board[m.r][m.c] = p; this.board[r][c] = null;
+        const kingSafe = !E.inCheck(this.board, color);
+        const attackedAfter = this._sqAttacked(foe, m.r, m.c);
+        const defendedAfter = attackedAfter ? this._sqDefended(color, m.r, m.c) : false;
+        const givesCheck = E.inCheck(this.board, foe);
+        this.board[r][c] = p; this.board[m.r][m.c] = victim || null;
+
+        if (!kingSafe) score -= 400;                           // deja al rey vendido
+        if (attackedAfter) {
+          if (!defendedAfter) score -= V[p.type] * 9;          // cuelga la pieza
+          else if (victim && V[p.type] > V[victim.type]) score -= (V[p.type] - V[victim.type]) * 8;
+          else if (!victim) score -= V[p.type] * 3;            // se mete donde pegan
+        }
+        if (hangingNow[r * 8 + c]) score += hangingNow[r * 8 + c] * (attackedAfter && !defendedAfter ? 0 : 6);
+        if (givesCheck) score += 4 * this.ai.aggression;
+        if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
+        if (p.type === 'k' && !inCheckNow) score -= 3;         // no pasear al rey sin motivo
+        if ((p.type === 'n' || p.type === 'b') && (r === 0 || r === 7)) score += 1.5;   // desarrollo
+        score += Math.random() * 2;
+        moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score, cap: !!victim, safe: kingSafe });
       }
     }
     if (!moves.length) return;
-    moves.sort((a, b) => b.score - a.score);
-    const hasCapture = moves[0].score >= 10;
-    // acumula energia antes de mover sin capturar segun su avaricia
-    if (!hasCapture && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
-    let pick = hasCapture ? moves[0] : moves[Math.floor(Math.random() * Math.min(4, moves.length))];
-    // error humano: a veces juega cualquier cosa
-    if (Math.random() < this.ai.blunder) pick = moves[Math.floor(Math.random() * moves.length)];
+    // el rey NO se regala: solo jugadas que lo dejan a salvo. Si no existe
+    // ninguna (mate inevitable), juega lo que haya.
+    const safeMoves = moves.filter(m => m.safe);
+    const pool = safeMoves.length ? safeMoves : moves;
+    pool.sort((a, b) => b.score - a.score);
+    const best = pool[0];
+    const goodCapture = best.cap && best.score > 8;
+    // acumula energia antes de gastar en jugadas mediocres segun su avaricia
+    if (!goodCapture && !inCheckNow && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
+    let pick = goodCapture || inCheckNow ? best : pool[Math.floor(Math.random() * Math.min(3, pool.length))];
+    // error humano: a veces juega cualquier cosa puede regalar piezas,
+    // pero nunca una jugada que exponga al rey ni estando en jaque
+    if (!inCheckNow && best.score < 9000 && Math.random() < this.ai.blunder) {
+      pick = pool[Math.floor(Math.random() * pool.length)];
+    }
     this.applyMove(color, pick.fr, pick.fc, pick.tr, pick.tc, now);
   }
 

@@ -7,6 +7,9 @@
      title   mote corto bajo el nombre
      desc    personalidad que se muestra al seleccionarlo, con es y en
      quote   frase o consejo que te dice al derrotarlo, con es y en
+     gloat   frase que te dice cuando el te gana a ti, con es y en
+     taunts  frases que suelta mientras juega, con es y en. Lista de textos.
+             se elige una al azar cada cierto tiempo y cuando te come una pieza
      img     ruta de su imagen, por ejemplo /magnus.png puesta en public.
              si lo dejas en null usa la imagen predeterminada de abajo
      ai      su forma de jugar
@@ -44,6 +47,14 @@
         es: 'El caos es un arma. Cuando vayas perdiendo, complica la posicion: ahi es donde mueren los planes del rival.',
         en: 'Chaos is a weapon. When you are losing, complicate the position: that is where your opponent plans go to die.',
       },
+      gloat: {
+        es: "Te ahogaste en mis complicaciones. El caos no perdona a los turistas.",
+        en: "You drowned in my complications. Chaos does not forgive tourists.",
+      },
+      taunts: {
+        es: ['El orden es una ilusion. Deja que arda el tablero.', 'Ese sacrificio ya lo vi hace tres jugadas.', 'En la complicacion tu te pierdes y yo respiro.'],
+        en: ['Order is an illusion. Let the board burn.', 'I saw that sacrifice three moves ago.', 'In the chaos you get lost and I breathe.'],
+      },
       img: null,
       ai: { tickMs: 1400, aggression: 1.6, blunder: 0.35, hoard: 2, pawnPush: 0.3 },
     },
@@ -58,6 +69,14 @@
       quote: {
         es: 'La jugada perfecta no existe. Existe la jugada mas incomoda para tu rival. Juega contra la persona, no solo contra las piezas.',
         en: 'There is no perfect move. There is only the most uncomfortable move for your opponent. Play the person, not just the pieces.',
+      },
+      gloat: {
+        es: "No perdiste contra mis piezas: perdiste contra tu propia cabeza.",
+        en: "You did not lose to my pieces: you lost to your own head.",
+      },
+      taunts: {
+        es: ['No juego contra tus piezas, juego contra tu paciencia.', 'Cada jugada mia es una pregunta incomoda.', 'El que sobrevive al caos gana. Y yo llevo decadas sobreviviendo.'],
+        en: ['I do not play your pieces, I play your patience.', 'Every move of mine is an uncomfortable question.', 'Whoever survives the chaos wins. I have survived for decades.'],
       },
       img: null,
       ai: { tickMs: 1200, aggression: 1.0, blunder: 0.28, hoard: 3, pawnPush: 0.2 },
@@ -74,6 +93,14 @@
         es: 'No hace falta atacar. Quitale casillas al rival, una a una, hasta que se asfixie solo.',
         en: 'You do not need to attack. Take squares away from your opponent, one by one, until he suffocates on his own.',
       },
+      gloat: {
+        es: "Nunca hubo golpe. Solo te fuiste quedando sin aire.",
+        en: "There was never a blow. You just slowly ran out of air.",
+      },
+      taunts: {
+        es: ['Respira mientras puedas. Pronto no tendras casillas.', 'No hay prisa. Te ire apretando poco a poco.', 'Sientes como se cierran tus opciones?'],
+        en: ['Breathe while you can. Soon you will have no squares.', 'No hurry. I will squeeze you little by little.', 'Can you feel your options closing?'],
+      },
       img: null,
       ai: { tickMs: 1100, aggression: 0.7, blunder: 0.22, hoard: 5, pawnPush: 0.15 },
     },
@@ -88,6 +115,14 @@
       quote: {
         es: 'Las partidas se ganan en el final. Domina los finales y todo lo demas fluye solo.',
         en: 'Games are won in the endgame. Master the endgame and everything else flows on its own.',
+      },
+      gloat: {
+        es: "Sin esfuerzo. Vuelve cuando domines los finales.",
+        en: "Effortless. Come back when you master the endgame.",
+      },
+      taunts: {
+        es: ['Esto me sale sin pensar.', 'Llevame al final y veras lo que es tecnica.', 'No estudio aperturas; no las necesito contra ti.'],
+        en: ['This comes to me without thinking.', 'Take me to the endgame and you will see real technique.', 'I do not study openings; I do not need them against you.'],
       },
       img: null,
       ai: { tickMs: 950, aggression: 1.0, blunder: 0.16, hoard: 4, pawnPush: 0.2 },
@@ -104,6 +139,14 @@
         es: 'No te conformes con ganar: busca la jugada verdadera. La precision vale mas que la prisa.',
         en: 'Do not settle for winning: look for the true move. Precision is worth more than haste.',
       },
+      gloat: {
+        es: "Cada una de tus jugadas tenia refutacion. Te las mostre todas.",
+        en: "Every one of your moves had a refutation. I showed you all of them.",
+      },
+      taunts: {
+        es: ['Voy a refutar cada una de tus jugadas.', 'No quiero ganar. Quiero que entiendas por que pierdes.', 'La verdad del tablero no esta de tu lado.'],
+        en: ['I will refute every move you make.', 'I do not want to win. I want you to understand why you lose.', 'The truth of the board is not on your side.'],
+      },
       img: null,
       ai: { tickMs: 850, aggression: 1.3, blunder: 0.10, hoard: 4, pawnPush: 0.25 },
     },
@@ -118,6 +161,14 @@
       quote: {
         es: 'Cierra los ojos y mira el tablero en el techo. Si puedes ver el mate antes de tocarlo, ya es tuyo.',
         en: 'Close your eyes and see the board on the ceiling. If you can see the mate before you touch it, it is already yours.',
+      },
+      gloat: {
+        es: "Vi este final en el techo antes de que moviera tu primer peon.",
+        en: "I saw this ending on the ceiling before your first pawn moved.",
+      },
+      taunts: {
+        es: ['Ya vi el mate en el techo. Solo falta ejecutarlo.', 'Las piezas me hablan. A ti te dicen algo?', 'No calculo. Simplemente lo se.'],
+        en: ['I already saw the mate on the ceiling. Just have to run it.', 'The pieces talk to me. Do they tell you anything?', 'I do not calculate. I just know.'],
       },
       img: null,
       ai: { tickMs: 700, aggression: 1.7, blunder: 0.08, hoard: 3, pawnPush: 0.25 },
@@ -134,6 +185,14 @@
         es: 'Cada partida es una guerra y las guerras se ganan antes de empezar. Preparate mejor que tu rival y el tablero se inclinara solo.',
         en: 'Every game is a war and wars are won before they start. Prepare better than your opponent and the board will tilt on its own.',
       },
+      gloat: {
+        es: "Esto era una guerra y viniste sin preparacion. Vuelve armado.",
+        en: "This was a war and you came unprepared. Come back armed.",
+      },
+      taunts: {
+        es: ['Esto no es una partida, es una guerra. Y vas perdiendo.', 'Mi preparacion te va a sepultar.', 'Cada jugada mia es un golpe. Aguantas otro?'],
+        en: ['This is not a game, it is a war. And you are losing.', 'My preparation will bury you.', 'Every move of mine is a blow. Can you take another?'],
+      },
       img: null,
       ai: { tickMs: 600, aggression: 1.9, blunder: 0.05, hoard: 5, pawnPush: 0.2 },
     },
@@ -148,6 +207,14 @@
       quote: {
         es: 'No necesite atacarte. Solo espere tu ultimo error. La paciencia tambien gana partidas: exprime la posicion hasta que el rival se rinda solo.',
         en: 'I did not need to attack you. I just waited for your last mistake. Patience wins games too: squeeze the position until your opponent breaks.',
+      },
+      gloat: {
+        es: "Solo tuve que esperar. Tu ultimo error llego puntual, como siempre.",
+        en: "I only had to wait. Your last mistake arrived on time, as always.",
+      },
+      taunts: {
+        es: ['No necesito atacar. Solo espero tu error.', 'Puedo hacer esto todo el dia. Y tu?', 'Tranquilo. Ya vas a colapsar solo.'],
+        en: ['I do not need to attack. I just wait for your mistake.', 'I can do this all day. Can you?', 'Relax. You will collapse on your own soon.'],
       },
       img: null,
       ai: { tickMs: 500, aggression: 1.2, blunder: 0.02, hoard: 6, pawnPush: 0.2 },

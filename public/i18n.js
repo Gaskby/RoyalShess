@@ -74,6 +74,7 @@
     'menu.ladder':  { es: 'Escalera de leyendas', en: 'Ladder of legends' },
     'sub.ladder':   { es: 'escalera de leyendas', en: 'ladder of legends' },
     'ladder.play':  { es: 'Pelear', en: 'Fight' },
+    'ladder.prog':  { es: 'Leyendas vencidas', en: 'Legends defeated' },
     'ladder.next':  { es: 'Siguiente rival', en: 'Next rival' },
     'ladder.done':  { es: '¡Escalera completada! Eres la nueva leyenda.', en: 'Ladder complete! You are the new legend.' },
     'menu.note': {
@@ -120,6 +121,7 @@
     'result.rematchWait': { es: 'Esperando rival…',  en: 'Waiting for opponent…' },
     'result.again':       { es: 'Buscar otra',       en: 'Find another' },
     'result.cpu':         { es: 'vs CPU',            en: 'vs CPU' },
+    'result.menu':        { es: 'Menú principal',    en: 'Main menu' },
 
     // avisos toasts
     'toast.noEnergy':     { es: 'Sin energía',        en: 'No energy' },

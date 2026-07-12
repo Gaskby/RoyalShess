@@ -26,7 +26,7 @@
     <div class="side-top" id="sideTop">
       <div class="pcard" id="cardB">
         <div class="phead">
-          <div class="pname"><span class="dot"></span> <span data-i18n="card.black">Negras</span> <span class="tag" id="tagB"></span></div>
+          <div class="pname"><span class="dot"></span> <img class="rival-face" id="faceB" style="display:none" alt=""> <span data-i18n="card.black">Negras</span> <span class="tag" id="tagB"></span></div>
           <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
         </div>
         <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enB">10</span><small>/10</small></span></div>
@@ -43,26 +43,29 @@
         <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
       </div>
 
-      <div class="side-bottom" id="sideBottom">
-        <div class="pcard" id="cardW">
-          <div class="phead">
-            <div class="pname"><span class="dot"></span> <span data-i18n="card.white">Blancas</span> <span class="tag" id="tagW"></span></div>
-            <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
-          </div>
-          <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
-          <div class="ebar"><div class="efill" id="efW"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-          <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matW">39</div></div></div>
-        </div>
-      </div>
+    </div>
 
-      <div class="legend">
-        <h3 data-i18n="legend.title">Coste de mover · recuperas al comer</h3>
-        <div class="row" id="legendRow"></div>
-        <p data-i18n-html="legend.body"></p>
+    <div class="side-bottom" id="sideBottom">
+      <div class="pcard" id="cardW">
+        <div class="phead">
+          <div class="pname"><span class="dot"></span> <img class="rival-face" id="faceW" style="display:none" alt=""> <span data-i18n="card.white">Blancas</span> <span class="tag" id="tagW"></span></div>
+          <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
+        </div>
+        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
+        <div class="ebar"><div class="efill" id="efW"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matW">39</div></div></div>
       </div>
+    </div>
+
+    <div class="legend">
+      <h3 data-i18n="legend.title">Coste de mover · recuperas al comer</h3>
+      <div class="row" id="legendRow"></div>
+      <p data-i18n-html="legend.body"></p>
     </div>
   </div>
 </div>
+
+<div class="taunt" id="taunt"><img id="tauntImg" alt=""><span id="tauntTxt"></span></div>
 
 <div class="toast" id="toast">Sin energía</div>
 <div class="flash" id="flash"></div>
@@ -165,6 +168,7 @@
     </div>
 
     <div id="screenLadder" style="display:none">
+      <div class="ladder-prog" id="ladderProg"></div>
       <div class="ladder-list" id="ladderList"></div>
       <div class="menu-btns">
         <button class="btn" id="btnLadderBack" data-i18n="friend.back">Volver</button>
@@ -194,6 +198,7 @@
         <button class="playbtn" id="btnRematch" data-i18n="result.rematch">Revancha</button>
         <button class="btn big" id="btnAgain" data-i18n="result.again">Buscar otra</button>
         <button class="btn big" id="btnCPU2" data-i18n="result.cpu">vs CPU</button>
+        <button class="btn big" id="btnMenu2" data-i18n="result.menu">Menú principal</button>
       </div>
     </div>
   </div>

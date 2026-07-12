@@ -231,6 +231,15 @@ function updateHUD(){
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
   $('tagB').textContent = '· ' + label('b');
   $('tagB').style.color = you==='b' ? 'var(--black-acc)' : 'var(--ink-dim)';
+  // foto del rival junto a su nombre, solo en la escalera de leyendas
+  const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
+  for (const side of ['w','b']){
+    const face = $(side === 'w' ? 'faceW' : 'faceB');
+    if (rival && side !== you){
+      face.src = rival.img || RV.DEFAULT_IMG;
+      face.style.display = '';
+    } else face.style.display = 'none';
+  }
   
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -362,7 +371,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=null; hideBanner(); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=null; hideBanner(); stopTaunts(); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -387,6 +396,11 @@ function onState(msg){
     const captured = (prev.material.w + prev.material.b) !== (state.material.w + state.material.b);
     sfx(captured ? 'cap' : 'move');
     if (state.check.w || state.check.b) sfx('check');
+    // el rival de la escalera presume cuando te come una pieza
+    if (captured && prev.material[you] > state.material[you] && currentLadder != null && Math.random() < 0.5){
+      showTaunt();
+      scheduleTaunt(false);
+    }
   }
 
   // gestión de fase
@@ -397,7 +411,10 @@ function onState(msg){
     countdownEl.style.display = 'flex';
     cdNum.textContent = secs > 0 ? secs : tr('game.go');
   } else if (state.phase === 'live'){
-    if (prevPhase !== 'live'){ showScreen(null); sfx('go'); }
+    if (prevPhase !== 'live'){
+      showScreen(null); sfx('go');
+      if (currentLadder != null) scheduleTaunt(true);   // el rival abre la boca pronto
+    }
     countdownEl.style.display = 'none';
   } else if (state.phase === 'over'){
     countdownEl.style.display = 'none';
@@ -456,22 +473,30 @@ function showResult(){
     : state.reason==='abandon' ? tr('reason.abandon') : tr('reason.king');
   btnRematch.disabled = false;
   btnRematch.textContent = tr('result.rematch');
-  // escalera: al vencer avanza el progreso y muestra la frase del rival
+  stopTaunts();
+  // escalera: al vencer avanza el progreso y el rival te deja su consejo.
+  // si te gana el, te suelta su frase de victoria
   const rq = $('rivalQuote'), bn = $('btnNext');
-  if (currentLadder != null && won){
+  if (currentLadder != null && !draw){
     const r = RV.RIVALS[currentLadder];
-    if (currentLadder === ladderProg){
-      ladderProg++;
-      localStorage.setItem('rs-ladder', String(ladderProg));
-    }
     const lang = I18N.getLang();
     $('rqImg').src = r.img || RV.DEFAULT_IMG;
     $('rqName').textContent = r.name;
-    $('rqTxt').textContent = r.quote[lang] || r.quote.es;
+    rq.classList.toggle('lost', !won);
+    if (won){
+      if (currentLadder === ladderProg){
+        ladderProg++;
+        localStorage.setItem('rs-ladder', String(ladderProg));
+      }
+      $('rqTxt').textContent = r.quote[lang] || r.quote.es;
+      const hasNext = currentLadder + 1 < RV.RIVALS.length;
+      bn.style.display = hasNext ? '' : 'none';
+      if (!hasNext) showToast(tr('ladder.done'), true);
+    } else {
+      $('rqTxt').textContent = (r.gloat && (r.gloat[lang] || r.gloat.es)) || '';
+      bn.style.display = 'none';
+    }
     rq.style.display = '';
-    const hasNext = currentLadder + 1 < RV.RIVALS.length;
-    bn.style.display = hasNext ? '' : 'none';
-    if (!hasNext) showToast(tr('ladder.done'), true);
   } else {
     rq.style.display = 'none';
     bn.style.display = 'none';
@@ -579,6 +604,16 @@ btnCancel.addEventListener('click', () => send({t:'cancel'}));
 const inGame = () => !!(state && (state.phase === 'live' || state.phase === 'countdown'));
 menuBtn.addEventListener('click', () => { if (inGame()) showScreen('menu'); else send({t:'leave'}); });
 $('btnResume').addEventListener('click', () => showScreen(null));
+// menú principal desde la pantalla de resultado: sales de la sala y el
+// servidor te devuelve al lobby, que abre el menú
+$('btnMenu2').addEventListener('click', () => { currentLadder = null; send({t:'leave'}); });
+// Escape: desde cualquier subpantalla se regresa al menú principal
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board') showScreen('menu');
+  else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
+  else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
+});
 // elegir otro modo estando en partida = abandonarla primero
 function leaveIfInGame(){ if (inGame()) send({t:'leave'}); }
 // salas privadas
@@ -828,18 +863,34 @@ function buildLadder(){
   list.innerHTML = '';
   const lang = I18N.getLang();
   const rivals = RV.RIVALS;
+  // cabecera de progreso: cuántas leyendas llevas vencidas
+  const prog = $('ladderProg');
+  if (prog){
+    const done = Math.min(ladderProg, rivals.length);
+    prog.innerHTML =
+      `<span>${escHtml(tr('ladder.prog'))}</span>` +
+      `<div class="lpbar"><i style="width:${Math.round(100 * done / rivals.length)}%"></i></div>` +
+      `<b>${done}/${rivals.length}</b>`;
+  }
   for (let i = rivals.length - 1; i >= 0; i--){
     const r = rivals[i];
     const beaten = i < ladderProg, isNext = i === ladderProg, locked = i > ladderProg;
+    const boss = i === rivals.length - 1;
     const row = document.createElement('div');
     row.className = 'lrow' +
       (beaten ? ' beaten' : isNext ? ' next' : ' locked') +
-      (i === rivals.length - 1 ? ' boss' : '');
+      (boss ? ' boss' : '');
     const st = beaten ? '✓' : isNext ? '▶' : '🔒';
     const stCls = beaten ? 'beaten' : isNext ? 'next' : '';
+    // dificultad en 5 barritas según el piso de la torre
+    const diff = Math.ceil((i + 1) * 5 / rivals.length);
+    let dots = '';
+    for (let d = 1; d <= 5; d++) dots += `<i class="${d <= diff ? 'on' : ''}"></i>`;
     row.innerHTML =
-      `<img src="${r.img || RV.DEFAULT_IMG}" alt="">` +
-      `<div><div class="ln">${escHtml(r.name)}</div><div class="lt">${escHtml(r.title[lang] || r.title.es)}</div></div>` +
+      `<div class="lav"><img src="${r.img || RV.DEFAULT_IMG}" alt=""><span class="lvl">${i + 1}</span></div>` +
+      `<div class="lmain"><div class="ln">${boss ? '👑 ' : ''}${escHtml(r.name)}</div>` +
+        `<div class="lt">${escHtml(r.title[lang] || r.title.es)}</div>` +
+        `<div class="ldiff">${dots}</div></div>` +
       `<div class="st ${stCls}">${st}</div>`;
     if (!locked){
       if (ladderOpen === i){
@@ -865,6 +916,30 @@ function startLadderFight(idx){
   ensureAudio(); sendName(); leaveIfInGame();
   currentLadder = idx;
   send({ t:'ladder', idx });
+}
+
+// frases del rival durante la partida, solo en la escalera. Editables en rivals.js
+let tauntTimer = null, tauntHide = null;
+function showTaunt(){
+  if (currentLadder == null || !state || state.phase !== 'live') return;
+  const r = RV.RIVALS[currentLadder];
+  const list = (r.taunts && (r.taunts[I18N.getLang()] || r.taunts.es)) || [];
+  if (!list.length) return;
+  $('tauntImg').src = r.img || RV.DEFAULT_IMG;
+  $('tauntTxt').textContent = list[Math.floor(Math.random() * list.length)];
+  const el = $('taunt');
+  el.classList.add('show');
+  clearTimeout(tauntHide);
+  tauntHide = setTimeout(() => el.classList.remove('show'), 4500);
+}
+function scheduleTaunt(first){
+  clearTimeout(tauntTimer);
+  tauntTimer = setTimeout(() => { showTaunt(); scheduleTaunt(false); }, first ? 6000 : 16000 + Math.random() * 14000);
+}
+function stopTaunts(){
+  clearTimeout(tauntTimer); tauntTimer = null;
+  clearTimeout(tauntHide);
+  const el = $('taunt'); if (el) el.classList.remove('show');
 }
 $('btnLadder').addEventListener('click', () => { ladderOpen = ladderProg; buildLadder(); showScreen('ladder'); });
 $('btnLadderBack').addEventListener('click', () => showScreen('menu'));
