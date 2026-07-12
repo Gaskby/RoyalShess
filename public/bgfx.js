@@ -54,7 +54,7 @@
       speed: rnd(9, 24),               
       glows: Math.random() < 0.5 ? 2 : 3,
       wire: rnd(0.25, 0.8),             
-      vig: rnd(0.45, 0.65),            
+      vig: rnd(0.22, 0.4),   // viñeta suave: fuerte se veía como fondo cortado
     };
     shapes = [];
     const n = Math.round(rnd(24, 44));
@@ -184,8 +184,9 @@
       g.restore();
     }
 
-    // viñeta para que la UI respire encima
-    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.78);
+    // viñeta para que la UI respire encima: empieza lejos y termina más allá
+    // del borde para que nunca se vea un corte en pantallas anchas
+    const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.5, W / 2, H / 2, Math.max(W, H) * 1.05);
     vg.addColorStop(0, 'transparent');
     vg.addColorStop(1, `rgba(2,3,8,${scene.vig})`);
     g.fillStyle = vg; g.fillRect(0, 0, W, H);
