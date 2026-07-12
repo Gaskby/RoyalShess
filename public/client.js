@@ -29,6 +29,10 @@ if (!myToken){
 }
 let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de fondo
 let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chesscom'
+// escalera de leyendas: rivales vencidos hasta ahora y contra cual peleas
+const RV = window.RSRivals;
+let ladderProg = Math.max(0, parseInt(localStorage.getItem('rs-ladder') || '0', 10) || 0);
+let currentLadder = null;
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -337,15 +341,16 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   $('screenWaiting').style.display = name==='waiting' ? '' : 'none';
   $('screenSearch').style.display  = name==='search'  ? '' : 'none';
   $('screenHelp').style.display    = name==='help'    ? '' : 'none';
+  $('screenLadder').style.display  = name==='ladder'  ? '' : 'none';
   $('screenBoard').style.display   = name==='board'   ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board' };
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
   // el botón volver a la partida solo aparece si hay una partida en curso
   if (name==='menu') $('btnResume').style.display = (state && (state.phase==='live' || state.phase==='countdown')) ? '' : 'none';
 }
-function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
+function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; $('btnLadder').disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
 function setStatus(ok, key){ lastStatusKey = key; statusEl.classList.toggle('ok', ok); statusTxt.textContent = tr(key); }
 
 // WebSocket
@@ -357,7 +362,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; hideBanner(); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=null; hideBanner(); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -451,6 +456,26 @@ function showResult(){
     : state.reason==='abandon' ? tr('reason.abandon') : tr('reason.king');
   btnRematch.disabled = false;
   btnRematch.textContent = tr('result.rematch');
+  // escalera: al vencer avanza el progreso y muestra la frase del rival
+  const rq = $('rivalQuote'), bn = $('btnNext');
+  if (currentLadder != null && won){
+    const r = RV.RIVALS[currentLadder];
+    if (currentLadder === ladderProg){
+      ladderProg++;
+      localStorage.setItem('rs-ladder', String(ladderProg));
+    }
+    const lang = I18N.getLang();
+    $('rqImg').src = r.img || RV.DEFAULT_IMG;
+    $('rqName').textContent = r.name;
+    $('rqTxt').textContent = r.quote[lang] || r.quote.es;
+    rq.style.display = '';
+    const hasNext = currentLadder + 1 < RV.RIVALS.length;
+    bn.style.display = hasNext ? '' : 'none';
+    if (!hasNext) showToast(tr('ladder.done'), true);
+  } else {
+    rq.style.display = 'none';
+    bn.style.display = 'none';
+  }
   // el panel entra tras un instante: deja ver el estallido sobre el tablero
   setTimeout(() => {
     if (!state || state.phase !== 'over') return;           // por si volvió al menú
@@ -545,10 +570,10 @@ function buildLegend(){
 }
 
 // Botones
-btnQueue.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'queue'}); });
-btnAgain.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'queue'}); });
-btnCPU .addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'cpu'}); });
-btnCPU2.addEventListener('click', () => { ensureAudio(); sendName(); send({t:'cpu'}); });
+btnQueue.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); currentLadder = null; send({t:'queue'}); });
+btnAgain.addEventListener('click', () => { ensureAudio(); sendName(); currentLadder = null; send({t:'queue'}); });
+btnCPU .addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); currentLadder = null; send({t:'cpu'}); });
+btnCPU2.addEventListener('click', () => { ensureAudio(); sendName(); currentLadder = null; send({t:'cpu'}); });
 btnCancel.addEventListener('click', () => send({t:'cancel'}));
 // en partida, el menú solo se ABRE no abandona; fuera de partida vuelve al lobby
 const inGame = () => !!(state && (state.phase === 'live' || state.phase === 'countdown'));
@@ -560,7 +585,7 @@ function leaveIfInGame(){ if (inGame()) send({t:'leave'}); }
 btnFriend.addEventListener('click', () => { showScreen('friend'); setTimeout(()=>codeInput.focus(),50); });
 btnBack.addEventListener('click', () => showScreen('menu'));
 btnCreate.addEventListener('click', () => {
-  ensureAudio(); sendName(); leaveIfInGame();
+  ensureAudio(); sendName(); leaveIfInGame(); currentLadder = null;
   const opts = { minutes: +$('cfgMin').value, start: +$('cfgStart').value, regen: +$('cfgRegen').value, costs: {}, refunds: {} };
   ['p','n','b','r','q','k'].forEach(t => {
     const c = $('cfgCost_' + t); if (c && c.value !== '') opts.costs[t] = +c.value;
@@ -568,7 +593,7 @@ btnCreate.addEventListener('click', () => {
   });
   send({t:'create', code: codeInput.value, opts});
 });
-btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); send({t:'join', code: codeInput.value}); });
+btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGame(); currentLadder = null; send({t:'join', code: codeInput.value}); });
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
@@ -597,6 +622,7 @@ function applyLang(){
   buildLegend();
   buildCfgPieces();
   buildHelp();
+  buildLadder();
   if (curScreen) showScreen(curScreen);
   if (state) updateHUD();
   // la marca se aparta de la píldora de idiomas fija su ancho depende de cuántos haya
@@ -794,6 +820,55 @@ $('btnBoard').addEventListener('click', () => {
   showScreen('board');
 });
 $('btnBoardBack').addEventListener('click', () => showScreen('menu'));
+
+// escalera de leyendas: torre con el jefe arriba, peleas desde abajo
+let ladderOpen = null;   // fila expandida
+function buildLadder(){
+  const list = $('ladderList'); if (!list) return;
+  list.innerHTML = '';
+  const lang = I18N.getLang();
+  const rivals = RV.RIVALS;
+  for (let i = rivals.length - 1; i >= 0; i--){
+    const r = rivals[i];
+    const beaten = i < ladderProg, isNext = i === ladderProg, locked = i > ladderProg;
+    const row = document.createElement('div');
+    row.className = 'lrow' +
+      (beaten ? ' beaten' : isNext ? ' next' : ' locked') +
+      (i === rivals.length - 1 ? ' boss' : '');
+    const st = beaten ? '✓' : isNext ? '▶' : '🔒';
+    const stCls = beaten ? 'beaten' : isNext ? 'next' : '';
+    row.innerHTML =
+      `<img src="${r.img || RV.DEFAULT_IMG}" alt="">` +
+      `<div><div class="ln">${escHtml(r.name)}</div><div class="lt">${escHtml(r.title[lang] || r.title.es)}</div></div>` +
+      `<div class="st ${stCls}">${st}</div>`;
+    if (!locked){
+      if (ladderOpen === i){
+        const d = document.createElement('div');
+        d.className = 'ldesc';
+        d.innerHTML = escHtml(r.desc[lang] || r.desc.es) +
+          `<button class="lplay" data-idx="${i}">${escHtml(tr('ladder.play'))}</button>`;
+        row.appendChild(d);
+        d.querySelector('.lplay').addEventListener('click', (e) => {
+          e.stopPropagation();
+          startLadderFight(i);
+        });
+      }
+      row.addEventListener('click', () => {
+        ladderOpen = ladderOpen === i ? null : i;
+        buildLadder();
+      });
+    }
+    list.appendChild(row);
+  }
+}
+function startLadderFight(idx){
+  ensureAudio(); sendName(); leaveIfInGame();
+  currentLadder = idx;
+  send({ t:'ladder', idx });
+}
+$('btnLadder').addEventListener('click', () => { ladderOpen = ladderProg; buildLadder(); showScreen('ladder'); });
+$('btnLadderBack').addEventListener('click', () => showScreen('menu'));
+$('btnNext').addEventListener('click', () => startLadderFight(currentLadder + 1));
 
 // revancha: misma sala, mismos ajustes; en PvP esperan a que acepten los dos
 btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'}); });

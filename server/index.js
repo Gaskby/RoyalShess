@@ -67,6 +67,7 @@ wss.on('connection', (ws) => {
         break;
       case 'queue':  lobby.enqueue(client); break;
       case 'cpu':    lobby.startCPU(client); break;
+      case 'ladder': lobby.startLadder(client, m.idx); break;
       case 'create': lobby.createPrivate(client, m.code, m.opts); break;
       case 'join':   lobby.joinPrivate(client, m.code); break;
       case 'rematch': lobby.rematch(client); break;

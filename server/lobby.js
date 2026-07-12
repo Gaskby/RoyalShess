@@ -5,6 +5,7 @@
 const { Game } = require('./game.js');
 const stats = require('./stats.js');
 const CONFIG = require('../public/config.js');
+const { RIVALS } = require('../public/rivals.js');
 
 const RECONNECT_MS = (CONFIG.server.reconnectSeconds || 20) * 1000;
 const PIECE_TYPES = ['p', 'n', 'b', 'r', 'q', 'k'];
@@ -51,7 +52,7 @@ class Lobby {
 
   _makeRoom(vsCPU, opts = {}) {
     const id = this.roomSeq++;
-    const room = { id, game: new Game({ vsCPU, settings: opts.settings }), clients: [], code: opts.code || null, private: !!opts.private };
+    const room = { id, game: new Game({ vsCPU, settings: opts.settings, ai: opts.ai }), clients: [], code: opts.code || null, private: !!opts.private };
     this.rooms.set(id, room);
     return room;
   }
@@ -159,6 +160,23 @@ class Lobby {
     if (client.roomId != null) return;
     this._removeFromQueue(client);
     const room = this._makeRoom(true);
+    room.clients.push(client);
+    client.color = 'w'; client.roomId = room.id;
+    room.ranks = { w: client.token ? stats.rankOf(client.token) : null, b: null };
+    room.game.beginCountdown(Date.now());
+    this._broadcast(room, Date.now());
+  }
+
+  // pelea de la escalera contra el rival idx del archivo rivals.js
+  startLadder(client, idx) {
+    idx = Math.floor(+idx);
+    if (!Number.isFinite(idx) || idx < 0 || idx >= RIVALS.length) return;
+    this._detach(client);
+    if (client.roomId != null) return;
+    this._removeFromQueue(client);
+    const rival = RIVALS[idx];
+    const room = this._makeRoom(true, { ai: rival.ai });
+    room.rivalName = rival.name;
     room.clients.push(client);
     client.color = 'w'; client.roomId = room.id;
     room.ranks = { w: client.token ? stats.rankOf(client.token) : null, b: null };
@@ -291,7 +309,7 @@ class Lobby {
     if (room.awaiting) for (const color of ['w', 'b']) {
       if (room.awaiting[color] && !names[color]) names[color] = room.awaiting[color].name || null;
     }
-    if (room.game.vsCPU && !names.b) names.b = 'CPU';
+    if (room.game.vsCPU && !names.b) names.b = room.rivalName || 'CPU';
     return names;
   }
 

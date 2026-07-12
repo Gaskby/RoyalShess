@@ -332,6 +332,49 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .board-row .wl{ color:var(--ink-dim); text-align:right; font-size:12px; }
 .board-me{ font-family:'Chakra Petch'; font-weight:600; color:var(--gold); margin-bottom:8px; }
 
+/* escalera de leyendas: torre con el jefe arriba */
+.ladder-list{
+  display:flex; flex-direction:column; gap:7px; max-height:min(52vh,420px); overflow:auto;
+  margin:4px 0 12px; text-align:left; padding-right:4px;
+}
+.lrow{
+  display:grid; grid-template-columns:48px 1fr auto; gap:10px; align-items:center;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:8px 12px;
+  cursor:pointer; transition:border-color .15s, box-shadow .15s;
+}
+.lrow:hover{ border-color:#3a3f64; }
+.lrow.locked{ opacity:.45; cursor:not-allowed; filter:grayscale(.6); }
+.lrow.next{ border-color:var(--gold); box-shadow:0 0 14px rgba(255,207,74,.25); }
+.lrow.beaten{ border-color:rgba(107,255,176,.4); }
+.lrow.boss{ background:linear-gradient(180deg,#1a1626,var(--panel-2)); }
+.lrow img{ width:48px; height:48px; border-radius:10px; display:block; }
+.lrow .ln{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; letter-spacing:.04em; }
+.lrow .lt{ font-size:11.5px; color:var(--ink-dim); }
+.lrow .st{ font-size:18px; }
+.lrow .st.next{ color:var(--gold); animation:freepulse .9s ease-in-out infinite; }
+.lrow .st.beaten{ color:var(--energy-a); }
+.ldesc{
+  grid-column:1 / -1; font-size:12.5px; color:var(--ink-dim); line-height:1.5;
+  border-top:1px solid var(--line); padding-top:8px; margin-top:2px;
+}
+.ldesc .lplay{
+  display:block; margin:10px auto 2px; font-family:'Chakra Petch'; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:#241a02;
+  background:linear-gradient(90deg,var(--gold),#ffe28a); border:0; border-radius:10px;
+  padding:9px 26px; cursor:pointer;
+}
+
+/* frase del rival al derrotarlo */
+.rival-quote{
+  display:flex; gap:12px; align-items:center; text-align:left;
+  background:var(--panel-2); border:1px solid var(--gold); border-radius:12px;
+  padding:12px 14px; margin:10px auto 4px; max-width:360px;
+  box-shadow:0 0 18px rgba(255,207,74,.2);
+}
+.rival-quote .rq-img{ width:56px; height:56px; border-radius:10px; flex:0 0 auto; }
+.rival-quote .rq-name{ font-family:'Chakra Petch'; font-weight:700; font-size:13px; color:var(--gold); margin-bottom:3px; }
+.rival-quote .rq-txt{ font-size:12.5px; line-height:1.5; color:var(--ink); font-style:italic; }
+
 /* tutorial cómo jugar */
 .help-list{
   text-align:left; max-height:min(48vh,380px); overflow:auto;

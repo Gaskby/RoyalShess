@@ -71,6 +71,11 @@
     'menu.help':    { es: 'Cómo jugar',          en: 'How to play' },
     'menu.board':   { es: 'Clasificación',       en: 'Leaderboard' },
     'menu.resume':  { es: '▶ Volver a la partida', en: '▶ Back to the match' },
+    'menu.ladder':  { es: 'Escalera de leyendas', en: 'Ladder of legends' },
+    'sub.ladder':   { es: 'escalera de leyendas', en: 'ladder of legends' },
+    'ladder.play':  { es: 'Pelear', en: 'Fight' },
+    'ladder.next':  { es: 'Siguiente rival', en: 'Next rival' },
+    'ladder.done':  { es: '¡Escalera completada! Eres la nueva leyenda.', en: 'Ladder complete! You are the new legend.' },
     'menu.note': {
       es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>vs CPU:</b> práctica. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
       en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>vs CPU:</b> practice. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',

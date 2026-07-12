@@ -32,6 +32,11 @@ class Game {
     for (const t of ['p', 'n', 'b', 'r', 'q', 'k']) {
       this.refundOf[t] = (s.refunds && s.refunds[t] != null) ? s.refunds[t] : E.VALUE[t] * REFUND;
     }
+    // personalidad de la CPU, la escalera manda la suya por rival
+    this.ai = Object.assign(
+      { tickMs: AI_TICK_MS, aggression: 1, blunder: 0.15, hoard: 3, pawnPush: 0.2 },
+      opts.ai || {}
+    );
     this.reset();
   }
 
@@ -297,10 +302,10 @@ class Game {
             let score = 0;
             if (m.cap) {
               const victim = this.board[m.r][m.c];
-              score = E.VALUE[victim.type] * 10;
+              score = E.VALUE[victim.type] * 10 * this.ai.aggression;
               if (victim.type === 'k') score += 1000;
             }
-            if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * 0.2;
+            if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
             score += Math.random() * 2;
             moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score });
           }
@@ -310,8 +315,11 @@ class Game {
     if (!moves.length) return;
     moves.sort((a, b) => b.score - a.score);
     const hasCapture = moves[0].score >= 10;
-    if (!hasCapture && this.energy[color] < 3 && Math.random() < 0.5) return;
-    const pick = hasCapture ? moves[0] : moves[Math.floor(Math.random() * Math.min(4, moves.length))];
+    // acumula energia antes de mover sin capturar segun su avaricia
+    if (!hasCapture && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
+    let pick = hasCapture ? moves[0] : moves[Math.floor(Math.random() * Math.min(4, moves.length))];
+    // error humano: a veces juega cualquier cosa
+    if (Math.random() < this.ai.blunder) pick = moves[Math.floor(Math.random() * moves.length)];
     this.applyMove(color, pick.fr, pick.fc, pick.tr, pick.tc, now);
   }
 
@@ -333,7 +341,7 @@ class Game {
       this._end(mw > mb ? 'w' : (mb > mw ? 'b' : 'draw'), 'time');
       return;
     }
-    if (this.vsCPU && now - this.lastAI >= AI_TICK_MS) { this.lastAI = now; this._aiStep(now); }
+    if (this.vsCPU && now - this.lastAI >= this.ai.tickMs) { this.lastAI = now; this._aiStep(now); }
   }
 
   serialize(you, now) {
