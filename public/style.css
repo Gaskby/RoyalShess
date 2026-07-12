@@ -29,7 +29,9 @@ body.theme-chesscom .rbeam.w{ background:rgba(255,255,255,.55); box-shadow:0 0 6
 body.theme-chesscom .rbeam.b{ background:rgba(43,41,38,.5); box-shadow:0 0 6px rgba(0,0,0,.35); }
 body.theme-chesscom .playbtn{ background:linear-gradient(90deg,#81b64c,#a3d160); color:#14200a; box-shadow:0 0 24px rgba(129,182,76,.35); }
 *{ box-sizing:border-box; margin:0; padding:0; }
-html,body{ height:100%; }
+/* body SIN height fija: crece con el contenido para que su fondo degradado
+   cubra toda la página si hay scroll ya tiene min-height:100dvh abajo */
+html{ height:100%; }
 body{
   background:
     radial-gradient(1200px 700px at 50% -10%, #141833 0%, transparent 60%),
