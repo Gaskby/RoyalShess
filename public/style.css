@@ -71,6 +71,9 @@ body::before{
 }
 .btn:hover{ border-color:#3a3f64; box-shadow:0 0 0 1px #3a3f64,0 6px 20px rgba(0,0,0,.4); }
 .btn:active{ transform:translateY(1px) scale(.98); }
+.btn:disabled{ opacity:.35; cursor:not-allowed; }
+.btn:disabled:hover{ border-color:var(--line); box-shadow:none; }
+.btn:disabled:active{ transform:none; }
 
 /* tarjetas SIEMPRE en columna: rival arriba, tablero al centro y TU energía
    abajo, alineadas con el ancho del tablero en cualquier pantalla */

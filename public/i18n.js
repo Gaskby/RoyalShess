@@ -77,9 +77,10 @@
     'ladder.prog':  { es: 'Leyendas vencidas', en: 'Legends defeated' },
     'ladder.next':  { es: 'Siguiente rival', en: 'Next rival' },
     'ladder.done':  { es: '¡Escalera completada! Eres la nueva leyenda.', en: 'Ladder complete! You are the new legend.' },
+    'ladder.hidden':{ es: 'Rival oculto', en: 'Hidden rival' },
     'menu.note': {
-      es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>vs CPU:</b> práctica. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
-      en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>vs CPU:</b> practice. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',
+      es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>Escalera:</b> derrota a las leyendas una a una. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
+      en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>Ladder:</b> defeat the legends one by one. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',
     },
 
     // sala privada

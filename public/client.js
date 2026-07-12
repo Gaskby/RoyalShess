@@ -359,7 +359,8 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   // el botón volver a la partida solo aparece si hay una partida en curso
   if (name==='menu') $('btnResume').style.display = (state && (state.phase==='live' || state.phase==='countdown')) ? '' : 'none';
 }
-function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=!on; $('btnLadder').disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
+// vs CPU rápido desactivado: contra la máquina solo se pelea en la escalera de leyendas
+function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabled=!on; btnCPU.disabled=true; $('btnLadder').disabled=!on; btnQueue.textContent = tr(on ? 'menu.search' : 'status.connecting'); }
 function setStatus(ok, key){ lastStatusKey = key; statusEl.classList.toggle('ok', ok); statusTxt.textContent = tr(key); }
 
 // WebSocket
@@ -858,6 +859,14 @@ $('btnBoardBack').addEventListener('click', () => showScreen('menu'));
 
 // escalera de leyendas: torre con el jefe arriba, peleas desde abajo
 let ladderOpen = null;   // fila expandida
+// silueta para los rivales aún bloqueados: no ves quién es hasta que te toque
+const MYSTERY_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+  '<rect width="100" height="100" rx="14" fill="#0b0c16"/>' +
+  '<text x="50" y="70" font-size="52" text-anchor="middle" fill="#3a3f63" opacity="0.9">?</text>' +
+  '<rect width="100" height="100" rx="14" fill="none" stroke="#23263d" stroke-width="3"/>' +
+  '</svg>'
+);
 function buildLadder(){
   const list = $('ladderList'); if (!list) return;
   list.innerHTML = '';
@@ -886,10 +895,14 @@ function buildLadder(){
     const diff = Math.ceil((i + 1) * 5 / rivals.length);
     let dots = '';
     for (let d = 1; d <= 5; d++) dots += `<i class="${d <= diff ? 'on' : ''}"></i>`;
+    // los rivales bloqueados quedan en secreto: silueta y sin nombre
+    const img   = locked ? MYSTERY_IMG : (r.img || RV.DEFAULT_IMG);
+    const name  = locked ? '???' : escHtml(r.name);
+    const title = locked ? escHtml(tr('ladder.hidden')) : escHtml(r.title[lang] || r.title.es);
     row.innerHTML =
-      `<div class="lav"><img src="${r.img || RV.DEFAULT_IMG}" alt=""><span class="lvl">${i + 1}</span></div>` +
-      `<div class="lmain"><div class="ln">${boss ? '👑 ' : ''}${escHtml(r.name)}</div>` +
-        `<div class="lt">${escHtml(r.title[lang] || r.title.es)}</div>` +
+      `<div class="lav"><img src="${img}" alt=""><span class="lvl">${i + 1}</span></div>` +
+      `<div class="lmain"><div class="ln">${boss ? '👑 ' : ''}${name}</div>` +
+        `<div class="lt">${title}</div>` +
         `<div class="ldiff">${dots}</div></div>` +
       `<div class="st ${stCls}">${st}</div>`;
     if (!locked){
