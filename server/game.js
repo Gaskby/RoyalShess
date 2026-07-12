@@ -34,7 +34,7 @@ class Game {
     }
     // personalidad de la CPU, la escalera manda la suya por rival
     this.ai = Object.assign(
-      { tickMs: AI_TICK_MS, aggression: 1, blunder: 0.15, hoard: 3, pawnPush: 0.2 },
+      { tickMs: AI_TICK_MS, aggression: 1, blunder: 0.05, hoard: 3, pawnPush: 0.2 },
       opts.ai || {}
     );
     this.reset();
@@ -308,55 +308,101 @@ class Game {
     return def;
   }
 
+  // coste real de una jugada de la CPU, replicando los descuentos, rachas,
+  // peajes y cupón de applyMove para no intentar jugadas que serían rechazadas
+  _estimateCost(color, p, fr, fc, tr, tc, target, surcharge) {
+    const coupon = this.freeRecapture[color];
+    if (coupon && target && tr === coupon.r && tc === coupon.c && target.id === coupon.id) return 0;
+    let base = this.moveCost[p.type];
+    if (p.type === 'q') base = Math.max(Math.min(QUEEN_MIN, this.moveCost.q), base - (this.queenStreak.get(p.id) || 0));
+    let cost = base + surcharge;
+    if (p.type === 'p' && this.lastMoveId[color] === p.id) cost += this.moveStreak[color];
+    if (p.type === 'n' && !target && this.knightDiscount.has(p.id)) cost -= 1;
+    cost += this._rookLineToll(fr, fc, tr, tc);
+    return cost < 0 ? 0 : cost;
+  }
+
+  // peor réplica inmediata del rival sobre la posición ACTUAL del tablero
+  // (ya simulada): material neto que su mejor captura nos puede ganar.
+  // Tiene en cuenta su energía y que recapturar en justCapturedAt le sale
+  // gratis por el cupón de recaptura.
+  _worstReply(foeColor, myColor, justCapturedAt) {
+    const V = E.VALUE;
+    const sur = E.inCheck(this.board, foeColor) ? CHECK_SURCHARGE : 0;
+    let worst = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const q = this.board[r][c];
+      if (!q || q.color !== foeColor) continue;
+      for (const m of E.genMoves(this.board, r, c)) {
+        const t = this.board[m.r][m.c];
+        if (!t || t.color !== myColor || t.type === 'k') continue;
+        const free = justCapturedAt && m.r === justCapturedAt.r && m.c === justCapturedAt.c;
+        if (!free && this.energy[foeColor] < this.moveCost[q.type] + sur) continue;
+        let net = V[t.type];
+        if (this._sqDefended(myColor, m.r, m.c)) net -= V[q.type];   // se la comeríamos de vuelta
+        if (net > worst) worst = net;
+      }
+    }
+    return worst;
+  }
+
   _aiStep(now) {
     if (this.phase !== 'live' || !this.vsCPU) return;
     const color = 'b', foe = 'w';
     const V = E.VALUE;
     const inCheckNow = E.inCheck(this.board, color);
     const surcharge = inCheckNow ? CHECK_SURCHARGE : 0;
-
-    // piezas propias que ahora mismo estan amenazadas y sin defensa suficiente
-    const hangingNow = {};
-    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
-      const p = this.board[r][c];
-      if (p && p.color === color && p.type !== 'k' && this._sqAttacked(foe, r, c)) {
-        if (!this._sqDefended(color, r, c)) hangingNow[r * 8 + c] = V[p.type];
-      }
-    }
+    const foeInCheck = this.checkSince[foe] != null;
+    // solo se puede capturar al rey rival cuando su gracia de jaque venció
+    const graceDone = foeInCheck && now - this.checkSince[foe] >= GRACE_MS;
 
     const moves = [];
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
       const p = this.board[r][c];
       if (!p || p.color !== color) continue;
-      const cost = this.moveCost[p.type] + surcharge;
-      if (this.energy[color] < cost) continue;
       for (const m of E.genMoves(this.board, r, c)) {
         const victim = this.board[m.r][m.c];
+        if (victim && victim.type === 'k' && !graceDone) continue;   // el servidor la rechazaría
+        if (m.castle && !this._castleAllowed(color, r, c, m.c)) continue;
+        const cost = this._estimateCost(color, p, r, c, m.r, m.c, victim, surcharge);
+        if (this.energy[color] < cost) continue;
+
         let score = 0;
         if (victim) {
           score += V[victim.type] * 10 * this.ai.aggression;
-          if (victim.type === 'k') score += 10000;
+          if (victim.type === 'k') score += 100000;
+          if (cost === 0 && this.freeRecapture[color]) score += 6;   // recaptura con cupón: gratis
         }
-        // simula la jugada para medir sus consecuencias
+
+        // simula la jugada y mide qué nos puede hacer el rival justo después
+        const promotes = p.type === 'p' && (m.r === 0 || m.r === 7);
         this.board[m.r][m.c] = p; this.board[r][c] = null;
+        if (promotes) p.type = 'q';
         const kingSafe = !E.inCheck(this.board, color);
-        const attackedAfter = this._sqAttacked(foe, m.r, m.c);
-        const defendedAfter = attackedAfter ? this._sqDefended(color, m.r, m.c) : false;
         const givesCheck = E.inCheck(this.board, foe);
+        const worst = kingSafe ? this._worstReply(foe, color, victim ? { r: m.r, c: m.c } : null) : 0;
+        if (promotes) p.type = 'p';
         this.board[r][c] = p; this.board[m.r][m.c] = victim || null;
 
-        if (!kingSafe) score -= 400;                           // deja al rey vendido
-        if (attackedAfter) {
-          if (!defendedAfter) score -= V[p.type] * 9;          // cuelga la pieza
-          else if (victim && V[p.type] > V[victim.type]) score -= (V[p.type] - V[victim.type]) * 8;
-          else if (!victim) score -= V[p.type] * 3;            // se mete donde pegan
+        if (!kingSafe) score -= 400;      // deja al rey vendido
+        score -= worst * 8;               // lo que su mejor réplica nos costaría
+        score -= cost * 0.5;              // la energía es tempo: mejor barato
+
+        // el jaque sostenido es el camino a la victoria: corre el reloj de gracia
+        if (givesCheck) {
+          const wasChecker = this.checkers[foe].has(p.id);
+          if (!foeInCheck) score += 8 * this.ai.aggression;        // arranca el reloj
+          else if (wasChecker) score += 12 * this.ai.aggression;   // lo mantiene corriendo
+          else score += 2;                                         // atacante nuevo: reinicia la gracia
+        } else if (foeInCheck && this.checkers[foe].has(p.id)) {
+          score -= 10;                    // no sueltes el jaque que ya tienes
         }
-        if (hangingNow[r * 8 + c]) score += hangingNow[r * 8 + c] * (attackedAfter && !defendedAfter ? 0 : 6);
-        if (givesCheck) score += 4 * this.ai.aggression;
+
+        if (promotes) score += 25;
         if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
-        if (p.type === 'k' && !inCheckNow) score -= 3;         // no pasear al rey sin motivo
+        if (p.type === 'k' && !inCheckNow) score -= 3;   // no pasear al rey sin motivo
         if ((p.type === 'n' || p.type === 'b') && (r === 0 || r === 7)) score += 1.5;   // desarrollo
-        score += Math.random() * 2;
+        score += Math.random() * 0.6;
         moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score, cap: !!victim, safe: kingSafe });
       }
     }
@@ -366,15 +412,14 @@ class Game {
     const safeMoves = moves.filter(m => m.safe);
     const pool = safeMoves.length ? safeMoves : moves;
     pool.sort((a, b) => b.score - a.score);
-    const best = pool[0];
-    const goodCapture = best.cap && best.score > 8;
+    let pick = pool[0];
+    const goodMove = pick.score > 8;   // captura rentable, jaque o respuesta a amenaza
     // acumula energia antes de gastar en jugadas mediocres segun su avaricia
-    if (!goodCapture && !inCheckNow && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
-    let pick = goodCapture || inCheckNow ? best : pool[Math.floor(Math.random() * Math.min(3, pool.length))];
-    // error humano: a veces juega cualquier cosa puede regalar piezas,
+    if (!goodMove && !inCheckNow && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
+    // error humano: a veces juega algo flojo (de la mitad buena de sus opciones),
     // pero nunca una jugada que exponga al rey ni estando en jaque
-    if (!inCheckNow && best.score < 9000 && Math.random() < this.ai.blunder) {
-      pick = pool[Math.floor(Math.random() * pool.length)];
+    if (!inCheckNow && pick.score < 9000 && Math.random() < this.ai.blunder) {
+      pick = pool[Math.floor(Math.random() * Math.max(1, Math.ceil(pool.length / 2)))];
     }
     this.applyMove(color, pick.fr, pick.fc, pick.tr, pick.tc, now);
   }
@@ -397,7 +442,13 @@ class Game {
       this._end(mw > mb ? 'w' : (mb > mw ? 'b' : 'draw'), 'time');
       return;
     }
-    if (this.vsCPU && now - this.lastAI >= this.ai.tickMs) { this.lastAI = now; this._aiStep(now); }
+    if (this.vsCPU) {
+      // con un rey en jaque manda el reloj de gracia: la CPU reacciona más rápido,
+      // tanto para salvar a su rey como para cazar al tuyo cuando venza la gracia
+      const urgent = this.checkSince.w != null || this.checkSince.b != null;
+      const wait = urgent ? Math.min(this.ai.tickMs, 320) : this.ai.tickMs;
+      if (now - this.lastAI >= wait) { this.lastAI = now; this._aiStep(now); }
+    }
   }
 
   serialize(you, now) {

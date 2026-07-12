@@ -56,7 +56,7 @@
         en: ['Order is an illusion. Let the board burn.', 'I saw that sacrifice three moves ago.', 'In the chaos you get lost and I breathe.'],
       },
       img: null,
-      ai: { tickMs: 1400, aggression: 1.6, blunder: 0.35, hoard: 2, pawnPush: 0.3 },
+      ai: { tickMs: 900, aggression: 1.7, blunder: 0.10, hoard: 2, pawnPush: 0.3 },
     },
     {
       id: 'lasker',
@@ -79,7 +79,7 @@
         en: ['I do not play your pieces, I play your patience.', 'Every move of mine is an uncomfortable question.', 'Whoever survives the chaos wins. I have survived for decades.'],
       },
       img: null,
-      ai: { tickMs: 1200, aggression: 1.0, blunder: 0.28, hoard: 3, pawnPush: 0.2 },
+      ai: { tickMs: 800, aggression: 1.1, blunder: 0.08, hoard: 3, pawnPush: 0.2 },
     },
     {
       id: 'karpov',
@@ -102,7 +102,7 @@
         en: ['Breathe while you can. Soon you will have no squares.', 'No hurry. I will squeeze you little by little.', 'Can you feel your options closing?'],
       },
       img: null,
-      ai: { tickMs: 1100, aggression: 0.7, blunder: 0.22, hoard: 5, pawnPush: 0.15 },
+      ai: { tickMs: 720, aggression: 0.9, blunder: 0.06, hoard: 5, pawnPush: 0.15 },
     },
     {
       id: 'capablanca',
@@ -125,7 +125,7 @@
         en: ['This comes to me without thinking.', 'Take me to the endgame and you will see real technique.', 'I do not study openings; I do not need them against you.'],
       },
       img: null,
-      ai: { tickMs: 950, aggression: 1.0, blunder: 0.16, hoard: 4, pawnPush: 0.2 },
+      ai: { tickMs: 620, aggression: 1.1, blunder: 0.05, hoard: 4, pawnPush: 0.2 },
     },
     {
       id: 'fischer',
@@ -148,7 +148,7 @@
         en: ['I will refute every move you make.', 'I do not want to win. I want you to understand why you lose.', 'The truth of the board is not on your side.'],
       },
       img: null,
-      ai: { tickMs: 850, aggression: 1.3, blunder: 0.10, hoard: 4, pawnPush: 0.25 },
+      ai: { tickMs: 520, aggression: 1.4, blunder: 0.03, hoard: 4, pawnPush: 0.25 },
     },
     {
       id: 'beth',
@@ -171,7 +171,7 @@
         en: ['I already saw the mate on the ceiling. Just have to run it.', 'The pieces talk to me. Do they tell you anything?', 'I do not calculate. I just know.'],
       },
       img: null,
-      ai: { tickMs: 700, aggression: 1.7, blunder: 0.08, hoard: 3, pawnPush: 0.25 },
+      ai: { tickMs: 430, aggression: 1.8, blunder: 0.02, hoard: 3, pawnPush: 0.25 },
     },
     {
       id: 'kasparov',
@@ -194,7 +194,7 @@
         en: ['This is not a game, it is a war. And you are losing.', 'My preparation will bury you.', 'Every move of mine is a blow. Can you take another?'],
       },
       img: null,
-      ai: { tickMs: 600, aggression: 1.9, blunder: 0.05, hoard: 5, pawnPush: 0.2 },
+      ai: { tickMs: 360, aggression: 2.0, blunder: 0.01, hoard: 5, pawnPush: 0.2 },
     },
     {
       id: 'magnus',
@@ -217,7 +217,7 @@
         en: ['I do not need to attack. I just wait for your mistake.', 'I can do this all day. Can you?', 'Relax. You will collapse on your own soon.'],
       },
       img: null,
-      ai: { tickMs: 500, aggression: 1.2, blunder: 0.02, hoard: 6, pawnPush: 0.2 },
+      ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2 },
     },
   ];
 

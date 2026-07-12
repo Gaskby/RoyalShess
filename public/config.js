@@ -48,7 +48,7 @@
 
     // CPU modo práctica
     ai: {
-      tickMs: 650,   // cada cuántos ms decide un movimiento menor = más rápida
+      tickMs: 500,   // cada cuántos ms decide un movimiento menor = más rápida
     },
 
     // SERVIDOR
