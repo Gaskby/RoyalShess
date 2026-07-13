@@ -26,26 +26,46 @@ window.RSMusic = (function () {
   // parámetros de la pista actual se rebarajan por partida
   let key = 57, baseBpm = 76, swing = 0.12;
   let prog = [0, 5, 3, 4];
-  const SCALE = [0, 2, 3, 5, 7, 8, 10];   // menor natural
+  const SCALES = [
+    [0, 2, 3, 5, 7, 8, 10],   // menor natural: el lo-fi clásico
+    [0, 2, 3, 5, 7, 9, 10],   // dórico: menor con luz
+    [0, 1, 3, 5, 7, 8, 10],   // frigio: oscuro y tenso
+    [0, 2, 3, 5, 7, 8, 11],   // menor armónica: dramática
+  ];
+  let scaleNow = SCALES[0];
   const PENTA = [0, 3, 5, 7, 10, 12, 15];   // pentatónica menor
   const PROGS = [
     [0, 5, 3, 4], [0, 2, 5, 4], [0, 5, 1, 4],
     [0, 3, 5, 4], [0, 4, 5, 3], [0, 2, 3, 4],
   ];
+  // identidad extra de la pista: timbre del lead, patrón de bajo, voicing,
+  // densidad de melodía y tiempo del eco. Todo sale de la misma semilla
+  let leadType = 'triangle', bassMode = 0, chordExt = [0, 2, 4, 6];
+  let melodyBias = 0.08, delayT = 0.29;
 
   const rnd = (a, b) => a + rand() * (b - a);
   const pick = (a) => a[Math.floor(rand() * a.length)];
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
-  const deg = (d, oct = 0) => key + SCALE[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct);
+  const deg = (d, oct = 0) => key + scaleNow[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct);
 
   function newTrack() {
     // con semilla toda la musica sale del generador determinista: la cancion
-    // del rival es siempre la misma, nota a nota en sus decisiones
+    // del rival es siempre la misma, nota a nota en sus decisiones.
+    // OJO: el ORDEN de estas derivaciones es parte del contrato de las semillas
+    // de rivals.js; añadir dimensiones nuevas siempre AL FINAL
     rand = songSeed != null ? mulberry32(songSeed) : Math.random;
     key = pick([53, 55, 57, 58, 60]);   // F, G, A, Bb, C
     prog = pick(PROGS);
-    baseBpm = rnd(70, 80);
-    swing = rnd(0.09, 0.17);
+    baseBpm = rnd(66, 84);
+    swing = rnd(0.06, 0.19);
+    // dimensiones extra para que cada cancion tenga voz propia
+    scaleNow = pick(SCALES);
+    leadType = pick(['triangle', 'sine', 'square']);
+    melodyBias = rnd(0.05, 0.15);
+    bassMode = Math.floor(rand() * 3);
+    chordExt = pick([[0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 8]]);   // séptima o novena
+    delayT = rnd(0.22, 0.38);
+    if (delayIn) delayIn.delayTime.value = delayT;
     step = 0; bar = 0;
   }
 
@@ -59,7 +79,7 @@ window.RSMusic = (function () {
     drumBus = ctx.createGain(); drumBus.gain.value = 0.9;
 
     // eco con retroalimentación filtrada dub suave para la melodía
-    delayIn = ctx.createDelay(1); delayIn.delayTime.value = 0.29;
+    delayIn = ctx.createDelay(1); delayIn.delayTime.value = delayT;
     const fb = ctx.createGain(); fb.gain.value = 0.34;
     const dlp = ctx.createBiquadFilter(); dlp.type = 'lowpass'; dlp.frequency.value = 1500;
     delayIn.connect(dlp); dlp.connect(fb); fb.connect(delayIn);
@@ -129,19 +149,22 @@ window.RSMusic = (function () {
 
   function chord(t) {
     const d = prog[bar % prog.length];
-    for (const iv of [0, 2, 4, 6]) {   // acorde con séptima
+    for (const iv of chordExt) {   // acorde con séptima o novena según la pista
       const f = hz(deg(d + iv));
       tone(padBus, 'triangle', f, t, 0.35, 3.4, 0.055, rnd(-7, 7));
       tone(padBus, 'triangle', f, t, 0.35, 3.4, 0.045, rnd(-7, 7));
     }
     tone(delayIn, 'sine', hz(deg(d) + 12), t, 0.3, 1.8, 0.03);  // brillo al eco
   }
-  const bass = (t, v) => tone(padBus, 'sine', hz(deg(prog[bar % prog.length]) - 24), t, 0.012, 0.5, 0.5 * v);
+  // up sube el bajo una octava para los patrones que saltan
+  const bass = (t, v, up) => tone(padBus, 'sine', hz(deg(prog[bar % prog.length]) - 24 + (up ? 12 : 0)), t, 0.012, 0.5, 0.5 * v);
 
   let mIdx = 2;   // memoria melódica paseo aleatorio
+  // cada pista canta con su propio timbre; el cuadrado suena fuerte, se baja
+  const LEAD_VOL = { triangle: 0.14, sine: 0.17, square: 0.07 };
   function melody(t) {
     mIdx = Math.max(0, Math.min(PENTA.length - 1, mIdx + pick([-2, -1, -1, 1, 1, 2])));
-    tone(delayIn, 'triangle', hz(key + 12 + PENTA[mIdx]), t, 0.012, 0.55, 0.14);
+    tone(delayIn, leadType, hz(key + 12 + PENTA[mIdx]), t, 0.012, 0.55, LEAD_VOL[leadType]);
   }
 
   function scheduleStep(s, t) {
@@ -160,12 +183,20 @@ window.RSMusic = (function () {
     if (i < 0.25) { if (s % 4 === 0) hat(t, 0.55); }
     else if (i < 0.55) { if (s % 2 === 0) hat(t, s % 4 === 0 ? 0.8 : 0.5); }
     else hat(t, s % 2 === 0 ? 0.9 : 0.4);
-    // armonía y bajo
+    // armonía y bajo: cada pista camina distinto
     if (s === 0) chord(t);
-    if (s === 0 || s === 10) bass(t, 1);
+    if (bassMode === 0) {          // clásico: negra y contratiempo
+      if (s === 0 || s === 10) bass(t, 1);
+    } else if (bassMode === 1) {   // sincopado: empuja hacia delante
+      if (s === 0) bass(t, 1);
+      if (s === 7 || s === 10) bass(t, 0.7);
+    } else {                        // saltarín: responde una octava arriba
+      if (s === 0) bass(t, 1);
+      if (s === 8) bass(t, 0.6, true);
+    }
     if (s === 7 && i > 0.6 && rand() < 0.5) bass(t, 0.6);
-    // melodía dispersa más presente al final
-    if (s % 2 === 0 && rand() < 0.08 + i * 0.22) melody(t);
+    // melodía dispersa, cada pista con su densidad propia
+    if (s % 2 === 0 && rand() < melodyBias + i * 0.22) melody(t);
   }
 
   function tick() {
@@ -214,6 +245,10 @@ window.RSMusic = (function () {
     // semilla de la próxima pista: llamar ANTES de start. null vuelve al azar
     setSeed(s) { songSeed = s == null ? null : (s >>> 0); },
     // parámetros de la pista sonando, útil para depurar canciones de rivales
-    trackInfo() { return { seed: songSeed, key, bpm: baseBpm, swing, prog: prog.slice() }; },
+    trackInfo() {
+      return { seed: songSeed, key, bpm: baseBpm, swing, prog: prog.slice(),
+               scale: SCALES.indexOf(scaleNow), lead: leadType, bassMode,
+               melodyBias, delay: delayT };
+    },
   };
 })();

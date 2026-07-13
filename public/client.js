@@ -38,6 +38,19 @@ let ladderLoop = Math.max(0, parseInt(localStorage.getItem('rs-ladder-loop') || 
 let currentLadder = null;
 // un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
 const isPossessed = (r) => ladderLoop > 0 && !r.secret;
+// aplica o quita el efecto poseido a un retrato. Cada uno parpadea a su aire:
+// arranca en un punto aleatorio del ciclo y con duracion ligeramente distinta,
+// para que la torre no parpadee entera al unisono
+function possessFx(el, on){
+  el.classList.toggle('possessed', on);
+  if (on){
+    el.style.animationDelay = (-Math.random() * 3).toFixed(2) + 's';
+    el.style.animationDuration = (2.2 + Math.random() * 1.6).toFixed(2) + 's';
+  } else {
+    el.style.animationDelay = '';
+    el.style.animationDuration = '';
+  }
+}
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -242,7 +255,7 @@ function updateHUD(){
     const face = $(side === 'w' ? 'faceW' : 'faceB');
     if (rival && side !== you){
       face.src = rival.img || RV.DEFAULT_IMG;
-      face.classList.toggle('possessed', isPossessed(rival));
+      if (face.classList.contains('possessed') !== isPossessed(rival)) possessFx(face, isPossessed(rival));
       face.style.display = '';
     } else face.style.display = 'none';
   }
@@ -491,7 +504,7 @@ function showResult(){
     const r = RV.RIVALS[currentLadder];
     const lang = I18N.getLang();
     $('rqImg').src = r.img || RV.DEFAULT_IMG;
-    $('rqImg').classList.toggle('possessed', isPossessed(r));
+    possessFx($('rqImg'), isPossessed(r));
     $('rqName').textContent = r.name;
     rq.classList.toggle('lost', !won);
     if (won){
@@ -928,11 +941,12 @@ function buildLadder(){
     const name  = locked ? '???' : escHtml(r.name);
     const title = locked ? escHtml(tr('ladder.hidden')) : escHtml(r.title[lang] || r.title.es);
     row.innerHTML =
-      `<div class="lav"><img src="${img}"${!locked && isPossessed(r) ? ' class="possessed"' : ''} alt=""><span class="lvl">${i + 1}</span></div>` +
+      `<div class="lav"><img src="${img}" alt=""><span class="lvl">${i + 1}</span></div>` +
       `<div class="lmain"><div class="ln">${boss ? '👑 ' : ''}${name}</div>` +
         `<div class="lt">${title}</div>` +
         `<div class="ldiff">${dots}</div></div>` +
       `<div class="st ${stCls}">${st}</div>`;
+    if (!locked && isPossessed(r)) possessFx(row.querySelector('.lav img'), true);
     if (!locked){
       if (ladderOpen === i){
         const d = document.createElement('div');
@@ -977,7 +991,7 @@ function showTaunt(){
   const list = (r.taunts && (r.taunts[I18N.getLang()] || r.taunts.es)) || [];
   if (!list.length) return;
   $('tauntImg').src = r.img || RV.DEFAULT_IMG;
-  $('tauntImg').classList.toggle('possessed', isPossessed(r));
+  possessFx($('tauntImg'), isPossessed(r));
   $('tauntTxt').textContent = list[Math.floor(Math.random() * list.length)];
   const el = $('taunt');
   el.classList.add('show');

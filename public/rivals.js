@@ -77,7 +77,7 @@
         en: ['Order is an illusion. Let the board burn.', 'I saw that sacrifice three moves ago.', 'In the chaos you get lost and I breathe.'],
       },
       img: '/Imagenes/Alekhine.png',
-      songSeed: 156,   // La menor, 79 bpm, swing alto: frenetica y torcida como sus complicaciones
+      songSeed: 156,   // La menor, 83 bpm, swing altisimo y novenas: frenetica y torcida como sus complicaciones
       ai: { tickMs: 900, aggression: 1.7, blunder: 0.10, hoard: 2, pawnPush: 0.3 },
     },
     {
@@ -101,7 +101,7 @@
         en: ['I do not play your pieces, I play your patience.', 'Every move of mine is an uncomfortable question.', 'Whoever survives the chaos wins. I have survived for decades.'],
       },
       img: '/Imagenes/lasker.png',
-      songSeed: 1,   // Sib menor, 75 bpm, el swing mas torcido: incomoda, nunca se asienta
+      songSeed: 1,   // Sib armonica, 75 bpm, el swing mas torcido: incomoda, nunca se asienta
       ai: { tickMs: 800, aggression: 1.1, blunder: 0.08, hoard: 3, pawnPush: 0.2 },
     },
     {
@@ -125,7 +125,7 @@
         en: ['Breathe while you can. Soon you will have no squares.', 'No hurry. I will squeeze you little by little.', 'Can you feel your options closing?'],
       },
       img: '/Imagenes/karpov.png',
-      songSeed: 13,   // La menor, 71 bpm, casi sin swing: lenta y constante, aprieta sin soltar
+      songSeed: 13,   // La menor, 67 bpm, sin swing y casi sin melodia: lenta, aprieta sin soltar
       ai: { tickMs: 720, aggression: 0.9, blunder: 0.06, hoard: 5, pawnPush: 0.15 },
     },
     {
@@ -149,7 +149,7 @@
         en: ['This comes to me without thinking.', 'Take me to the endgame and you will see real technique.', 'I do not study openings; I do not need them against you.'],
       },
       img: '/Imagenes/capablanca.png',
-      songSeed: 87,   // Fa menor, 74 bpm, swing suave: calida y fluida, sin esfuerzo aparente
+      songSeed: 87,   // Fa menor, 73 bpm, swing suave: calida y fluida, sin esfuerzo aparente
       ai: { tickMs: 620, aggression: 1.1, blunder: 0.05, hoard: 4, pawnPush: 0.2 },
     },
     {
@@ -173,7 +173,7 @@
         en: ['I will refute every move you make.', 'I do not want to win. I want you to understand why you lose.', 'The truth of the board is not on your side.'],
       },
       img: '/Imagenes/bobby fisher.png',
-      songSeed: 31,   // Sib menor, 77 bpm, swing minimo: limpia, recta y letal como su calculo
+      songSeed: 31,   // Sib dorico, 79 bpm, swing minimo: limpia, recta y letal como su calculo
       ai: { tickMs: 520, aggression: 1.4, blunder: 0.03, hoard: 4, pawnPush: 0.25 },
     },
     {
@@ -197,7 +197,7 @@
         en: ['I already saw the mate on the ceiling. Just have to run it.', 'The pieces talk to me. Do they tell you anything?', 'I do not calculate. I just know.'],
       },
       img: '/Imagenes/GambitQueen.png',
-      songSeed: 38,   // Sib menor, 71 bpm, swing sonador: flotante como el tablero del techo
+      songSeed: 38,   // Sib armonica, 67 bpm, swing sonador: flotante como el tablero del techo
       ai: { tickMs: 430, aggression: 1.8, blunder: 0.02, hoard: 3, pawnPush: 0.25 },
     },
     {
@@ -221,7 +221,7 @@
         en: ['This is not a game, it is a war. And you are losing.', 'My preparation will bury you.', 'Every move of mine is a blow. Can you take another?'],
       },
       img: '/Imagenes/gary.png',
-      songSeed: 74,   // Fa menor, 80 bpm, el tempo mas rapido: la tormenta que no para de golpear
+      songSeed: 74,   // Fa frigio, 84 bpm y la melodia mas densa: la tormenta que no para de golpear
       ai: { tickMs: 360, aggression: 2.0, blunder: 0.01, hoard: 5, pawnPush: 0.2 },
     },
     {
@@ -245,7 +245,7 @@
         en: ['I do not need to attack. I just wait for your mistake.', 'I can do this all day. Can you?', 'Relax. You will collapse on your own soon.'],
       },
       img: '/Imagenes/magnus.png',
-      songSeed: 34,   // Sib menor, 71 bpm, swing sereno: paciente y sin prisa, como su asfixia
+      songSeed: 34,   // Sib menor, 68 bpm, swing sereno: paciente y sin prisa, como su asfixia
       ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2 },
     },
     {
@@ -270,7 +270,7 @@
         en: ['Analyzing... your defeat is a matter of time.', 'I do not feel. I do not doubt. I do not tire.', 'I have calculated 200 million positions. You lose in all of them.', 'HUMAN ERROR DETECTED.'],
       },
       img: DEEPBLUE_IMG,
-      songSeed: 75,   // Sol menor, 79 bpm, swing 0.09 (el minimo): un metronomo de maquina
+      songSeed: 75,   // Sol dorico, 82 bpm, swing 0.06 (el minimo), melodia densa y eco seco: un metronomo de maquina
       ai: { tickMs: 240, aggression: 1.7, blunder: 0, hoard: 6, pawnPush: 0.25 },
     },
   ];
