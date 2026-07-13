@@ -436,6 +436,9 @@ function onState(msg){
 function updateAmbience(){
   if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); return; }
   if (state.phase === 'countdown' || state.phase === 'live'){
+    // cada rival de la escalera tiene su propia canción: misma semilla, misma pista
+    const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
+    window.RSMusic.setSeed(rival && rival.songSeed != null ? rival.songSeed : null);
     if (musicOn) window.RSMusic.start(audioCtx); else window.RSMusic.stop();
     const p = state.matchMs ? Math.max(0, Math.min(1, 1 - state.timeLeft / state.matchMs)) : 0;
     const inten = state.phase === 'live' ? Math.pow(p, 1.35) : 0;

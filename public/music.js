@@ -8,6 +8,20 @@ window.RSMusic = (function () {
   let step = 0, bar = 0, nextT = 0;
   let intensity = 0, target = 0;
   let danger = false;   // en jaque: la música se tensa
+  // semilla de la canción: null = pista al azar por partida; un número = SIEMPRE
+  // la misma pista. La escalera pone aquí la songSeed del rival de rivals.js
+  let songSeed = null;
+  let rand = Math.random;   // generador musical actual: azar o semilla
+
+  // generador determinista: la misma semilla produce la misma secuencia
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
 
   // parámetros de la pista actual se rebarajan por partida
   let key = 57, baseBpm = 76, swing = 0.12;
@@ -19,12 +33,15 @@ window.RSMusic = (function () {
     [0, 3, 5, 4], [0, 4, 5, 3], [0, 2, 3, 4],
   ];
 
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  const rnd = (a, b) => a + rand() * (b - a);
+  const pick = (a) => a[Math.floor(rand() * a.length)];
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
   const deg = (d, oct = 0) => key + SCALE[((d % 7) + 7) % 7] + 12 * (Math.floor(d / 7) + oct);
 
   function newTrack() {
+    // con semilla toda la musica sale del generador determinista: la cancion
+    // del rival es siempre la misma, nota a nota en sus decisiones
+    rand = songSeed != null ? mulberry32(songSeed) : Math.random;
     key = pick([53, 55, 57, 58, 60]);   // F, G, A, Bb, C
     prog = pick(PROGS);
     baseBpm = rnd(70, 80);
@@ -133,12 +150,12 @@ window.RSMusic = (function () {
     if (danger && s % 4 === 2) tone(padBus, 'sawtooth', hz(deg(0) - 12), t, 0.005, 0.13, 0.10);
     // bombo: base en 0 y 8; se densifica con la intensidad
     if (s === 0 || s === 8) kick(t, 1);
-    if (s === 10 && i > 0.35 && Math.random() < 0.7) kick(t, 0.8);
-    if (s === 6 && i > 0.65 && Math.random() < 0.45) kick(t, 0.7);
+    if (s === 10 && i > 0.35 && rand() < 0.7) kick(t, 0.8);
+    if (s === 6 && i > 0.65 && rand() < 0.45) kick(t, 0.7);
     // caja en 4 y 12, fantasmas y redoble al final del bloque
     if (s === 4 || s === 12) snare(t, 1);
-    if (s === 15 && i > 0.5 && Math.random() < 0.3) snare(t, 0.3);
-    if (bar % 4 === 3 && i > 0.55 && (s === 13 || s === 14 || s === 15) && Math.random() < 0.6) snare(t, 0.25);
+    if (s === 15 && i > 0.5 && rand() < 0.3) snare(t, 0.3);
+    if (bar % 4 === 3 && i > 0.55 && (s === 13 || s === 14 || s === 15) && rand() < 0.6) snare(t, 0.25);
     // hats: de casi nada a semicorcheas según intensidad
     if (i < 0.25) { if (s % 4 === 0) hat(t, 0.55); }
     else if (i < 0.55) { if (s % 2 === 0) hat(t, s % 4 === 0 ? 0.8 : 0.5); }
@@ -146,9 +163,9 @@ window.RSMusic = (function () {
     // armonía y bajo
     if (s === 0) chord(t);
     if (s === 0 || s === 10) bass(t, 1);
-    if (s === 7 && i > 0.6 && Math.random() < 0.5) bass(t, 0.6);
+    if (s === 7 && i > 0.6 && rand() < 0.5) bass(t, 0.6);
     // melodía dispersa más presente al final
-    if (s % 2 === 0 && Math.random() < 0.08 + i * 0.22) melody(t);
+    if (s % 2 === 0 && rand() < 0.08 + i * 0.22) melody(t);
   }
 
   function tick() {
@@ -162,7 +179,7 @@ window.RSMusic = (function () {
       step = (step + 1) % 16;
       if (step === 0) {
         bar++;
-        if (bar % 8 === 0 && Math.random() < 0.4) prog = pick(PROGS);   // variación
+        if (bar % 8 === 0 && rand() < 0.4) prog = pick(PROGS);   // variación
       }
       nextT += spb;
     }
@@ -194,5 +211,9 @@ window.RSMusic = (function () {
     setIntensity(x) { target = Math.max(0, Math.min(1, x)); },
     setDanger(d) { danger = !!d; },
     isRunning() { return running; },
+    // semilla de la próxima pista: llamar ANTES de start. null vuelve al azar
+    setSeed(s) { songSeed = s == null ? null : (s >>> 0); },
+    // parámetros de la pista sonando, útil para depurar canciones de rivales
+    trackInfo() { return { seed: songSeed, key, bpm: baseBpm, swing, prog: prog.slice() }; },
   };
 })();
