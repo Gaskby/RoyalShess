@@ -78,6 +78,11 @@
     'ladder.next':  { es: 'Siguiente rival', en: 'Next rival' },
     'ladder.done':  { es: '¡Escalera completada! Eres la nueva leyenda.', en: 'Ladder complete! You are the new legend.' },
     'ladder.hidden':{ es: 'Rival oculto', en: 'Hidden rival' },
+    'ladder.awaken':{ es: 'Algo despierta en la cima de la torre...', en: 'Something awakens at the top of the tower...' },
+    'ladder.nightmare': { es: 'Pesadilla', en: 'Nightmare' },
+    'ladder.ngplus':    { es: '☠ Nueva vuelta: modo pesadilla', en: '☠ New run: nightmare mode' },
+    'ladder.loopStart': { es: 'El espíritu de Deep Blue posee la torre...', en: 'The spirit of Deep Blue possesses the tower...' },
+    'ladder.doneNightmare': { es: '¡Pesadilla superada! Ni la máquina pudo contigo.', en: 'Nightmare cleared! Not even the machine could stop you.' },
     'menu.note': {
       es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>Escalera:</b> derrota a las leyendas una a una. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
       en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>Ladder:</b> defeat the legends one by one. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',

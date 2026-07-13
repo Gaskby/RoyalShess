@@ -397,6 +397,39 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .ldesc .lplay:hover{ box-shadow:0 0 28px rgba(255,207,74,.55); }
 .ldesc .lplay:active{ transform:scale(.97); }
 
+/* modo pesadilla: retratos poseidos por el espiritu de Deep Blue.
+   filtro azul espectral + parpadeo tipo interferencia */
+img.possessed{
+  filter: grayscale(.6) sepia(.9) hue-rotate(175deg) saturate(4.2) contrast(1.25) brightness(.82)
+          drop-shadow(0 0 6px rgba(51,102,255,.85));
+  animation: possessFlicker 2.8s steps(1,end) infinite;
+}
+@keyframes possessFlicker{
+  0%,100%{ opacity:1 }
+  6%{ opacity:.7 }
+  8%{ opacity:1 }
+  47%{ opacity:.78 }
+  49%{ opacity:1 }
+  76%{ opacity:.85 }
+  78%{ opacity:1 }
+}
+/* insignia de vuelta pesadilla en la cabecera de la torre */
+.ladder-prog .loopmark{
+  font-family:'Chakra Petch'; font-weight:700; font-size:12px; letter-spacing:.08em;
+  color:#7fb0ff; border:1px solid rgba(51,102,255,.55); border-radius:8px; padding:2px 8px;
+  text-shadow:0 0 8px rgba(51,102,255,.6); white-space:nowrap;
+}
+/* boton de nueva vuelta: aparece en lo alto de la torre al completarla */
+.ladder-list .ngplus{
+  display:block; width:100%; margin:0 0 4px; font-family:'Chakra Petch'; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase; font-size:13px; color:#cfe0ff;
+  background:linear-gradient(90deg,#0a1b45,#123069); border:1px solid rgba(51,102,255,.6);
+  border-radius:10px; padding:12px 20px; cursor:pointer;
+  box-shadow:0 0 18px rgba(51,102,255,.35); transition:transform .1s, box-shadow .15s;
+}
+.ladder-list .ngplus:hover{ box-shadow:0 0 30px rgba(51,102,255,.6); }
+.ladder-list .ngplus:active{ transform:scale(.97); }
+
 /* frase del rival al derrotarlo */
 .rival-quote{
   display:flex; gap:12px; align-items:center; text-align:left;

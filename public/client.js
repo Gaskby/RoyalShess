@@ -32,7 +32,12 @@ let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chessco
 // escalera de leyendas: rivales vencidos hasta ahora y contra cual peleas
 const RV = window.RSRivals;
 let ladderProg = Math.max(0, parseInt(localStorage.getItem('rs-ladder') || '0', 10) || 0);
+// nueva vuelta: 0 es la primera pasada; cada vuelta extra es modo pesadilla,
+// con rivales mas rapidos y precisos y retratos poseidos por deep blue
+let ladderLoop = Math.max(0, parseInt(localStorage.getItem('rs-ladder-loop') || '0', 10) || 0);
 let currentLadder = null;
+// un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
+const isPossessed = (r) => ladderLoop > 0 && !r.secret;
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
@@ -237,6 +242,7 @@ function updateHUD(){
     const face = $(side === 'w' ? 'faceW' : 'faceB');
     if (rival && side !== you){
       face.src = rival.img || RV.DEFAULT_IMG;
+      face.classList.toggle('possessed', isPossessed(rival));
       face.style.display = '';
     } else face.style.display = 'none';
   }
@@ -482,17 +488,21 @@ function showResult(){
     const r = RV.RIVALS[currentLadder];
     const lang = I18N.getLang();
     $('rqImg').src = r.img || RV.DEFAULT_IMG;
+    $('rqImg').classList.toggle('possessed', isPossessed(r));
     $('rqName').textContent = r.name;
     rq.classList.toggle('lost', !won);
     if (won){
-      if (currentLadder === ladderProg){
+      const firstWin = currentLadder === ladderProg;   // primera vez que lo vences
+      if (firstWin){
         ladderProg++;
         localStorage.setItem('rs-ladder', String(ladderProg));
       }
       $('rqTxt').textContent = r.quote[lang] || r.quote.es;
-      const hasNext = currentLadder + 1 < RV.RIVALS.length;
-      bn.style.display = hasNext ? '' : 'none';
-      if (!hasNext) showToast(tr('ladder.done'), true);
+      const next = RV.RIVALS[currentLadder + 1];
+      bn.style.display = next ? '' : 'none';
+      if (!next) showToast(tr(ladderLoop > 0 ? 'ladder.doneNightmare' : 'ladder.done'), true);
+      // al caer el ultimo rival visible se revela el jefe secreto
+      else if (next.secret && firstWin) showToast(tr('ladder.awaken'), true);
     } else {
       $('rqTxt').textContent = (r.gloat && (r.gloat[lang] || r.gloat.es)) || '';
       bn.style.display = 'none';
@@ -872,19 +882,34 @@ function buildLadder(){
   list.innerHTML = '';
   const lang = I18N.getLang();
   const rivals = RV.RIVALS;
+  // el jefe secreto no existe para el jugador hasta que le toca pelear con el
+  const shown = (i) => !rivals[i].secret || ladderProg >= i;
+  let topIdx = rivals.length - 1;
+  while (topIdx > 0 && !shown(topIdx)) topIdx--;
+  const total = rivals.filter((_, i) => shown(i)).length;
   // cabecera de progreso: cuántas leyendas llevas vencidas
   const prog = $('ladderProg');
   if (prog){
-    const done = Math.min(ladderProg, rivals.length);
+    const done = Math.min(ladderProg, total);
+    const mark = ladderLoop > 0 ? `<b class="loopmark">☠ ${escHtml(tr('ladder.nightmare'))} ×${ladderLoop}</b>` : '';
     prog.innerHTML =
-      `<span>${escHtml(tr('ladder.prog'))}</span>` +
-      `<div class="lpbar"><i style="width:${Math.round(100 * done / rivals.length)}%"></i></div>` +
-      `<b>${done}/${rivals.length}</b>`;
+      `<span>${escHtml(tr('ladder.prog'))}</span>` + mark +
+      `<div class="lpbar"><i style="width:${Math.round(100 * done / total)}%"></i></div>` +
+      `<b>${done}/${total}</b>`;
+  }
+  // torre completada: se abre la nueva vuelta en modo pesadilla
+  if (ladderProg >= rivals.length){
+    const ng = document.createElement('button');
+    ng.className = 'ngplus';
+    ng.textContent = tr('ladder.ngplus');
+    ng.addEventListener('click', startNightmare);
+    list.appendChild(ng);
   }
   for (let i = rivals.length - 1; i >= 0; i--){
+    if (!shown(i)) continue;
     const r = rivals[i];
     const beaten = i < ladderProg, isNext = i === ladderProg, locked = i > ladderProg;
-    const boss = i === rivals.length - 1;
+    const boss = i === topIdx;
     const row = document.createElement('div');
     row.className = 'lrow' +
       (beaten ? ' beaten' : isNext ? ' next' : ' locked') +
@@ -900,7 +925,7 @@ function buildLadder(){
     const name  = locked ? '???' : escHtml(r.name);
     const title = locked ? escHtml(tr('ladder.hidden')) : escHtml(r.title[lang] || r.title.es);
     row.innerHTML =
-      `<div class="lav"><img src="${img}" alt=""><span class="lvl">${i + 1}</span></div>` +
+      `<div class="lav"><img src="${img}"${!locked && isPossessed(r) ? ' class="possessed"' : ''} alt=""><span class="lvl">${i + 1}</span></div>` +
       `<div class="lmain"><div class="ln">${boss ? '👑 ' : ''}${name}</div>` +
         `<div class="lt">${title}</div>` +
         `<div class="ldiff">${dots}</div></div>` +
@@ -928,7 +953,17 @@ function buildLadder(){
 function startLadderFight(idx){
   ensureAudio(); sendName(); leaveIfInGame();
   currentLadder = idx;
-  send({ t:'ladder', idx });
+  send({ t:'ladder', idx, loop: ladderLoop });
+}
+// nueva vuelta: la torre se reinicia y todos los rivales despiertan poseidos
+function startNightmare(){
+  ladderLoop++;
+  ladderProg = 0;
+  ladderOpen = 0;
+  localStorage.setItem('rs-ladder-loop', String(ladderLoop));
+  localStorage.setItem('rs-ladder', '0');
+  showToast(tr('ladder.loopStart'), true);
+  buildLadder();
 }
 
 // frases del rival durante la partida, solo en la escalera. Editables en rivals.js
@@ -939,6 +974,7 @@ function showTaunt(){
   const list = (r.taunts && (r.taunts[I18N.getLang()] || r.taunts.es)) || [];
   if (!list.length) return;
   $('tauntImg').src = r.img || RV.DEFAULT_IMG;
+  $('tauntImg').classList.toggle('possessed', isPossessed(r));
   $('tauntTxt').textContent = list[Math.floor(Math.random() * list.length)];
   const el = $('taunt');
   el.classList.add('show');

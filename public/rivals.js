@@ -12,6 +12,8 @@
              se elige una al azar cada cierto tiempo y cuando te come una pieza
      img     ruta de su imagen, por ejemplo /magnus.png puesta en public.
              si lo dejas en null usa la imagen predeterminada de abajo
+     secret  true lo vuelve jefe oculto: no aparece en la torre hasta que
+             vences a todos los rivales anteriores
      ai      su forma de jugar
        tickMs      cada cuantos ms decide una jugada, menos es mas rapido
        aggression  cuanto persigue capturas, 1 es normal
@@ -30,6 +32,22 @@
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
     '<rect width="100" height="100" rx="14" fill="#10111e"/>' +
     '<text x="50" y="66" font-size="52" text-anchor="middle" fill="#33e6ff" opacity="0.9">♞︎</text>' +
+    '<rect width="100" height="100" rx="14" fill="none" stroke="#23263d" stroke-width="3"/>' +
+    '</svg>'
+  );
+
+  // retrato de deep blue: monolito de circuitos con un ojo rojo, en svg editable
+  const DEEPBLUE_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<rect width="100" height="100" rx="14" fill="#02040d"/>' +
+    '<rect x="27" y="12" width="46" height="76" rx="5" fill="#071430" stroke="#1b3c8f" stroke-width="2"/>' +
+    '<line x1="34" y1="22" x2="66" y2="22" stroke="#1b3c8f" stroke-width="2"/>' +
+    '<line x1="34" y1="30" x2="66" y2="30" stroke="#1b3c8f" stroke-width="2"/>' +
+    '<line x1="34" y1="38" x2="66" y2="38" stroke="#1b3c8f" stroke-width="2"/>' +
+    '<circle cx="50" cy="58" r="13" fill="#ff2244" opacity="0.18"/>' +
+    '<circle cx="50" cy="58" r="7" fill="#ff2244" opacity="0.85"/>' +
+    '<circle cx="50" cy="58" r="2.6" fill="#ffd9e0"/>' +
+    '<line x1="34" y1="76" x2="66" y2="76" stroke="#1b3c8f" stroke-width="2"/>' +
     '<rect width="100" height="100" rx="14" fill="none" stroke="#23263d" stroke-width="3"/>' +
     '</svg>'
   );
@@ -218,6 +236,30 @@
       },
       img: '/Imagenes/magnus.png',
       ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2 },
+    },
+    {
+      id: 'deepblue',
+      secret: true,   // jefe oculto: no aparece en la torre hasta vencer a las 8 leyendas
+      name: 'Deep Blue',
+      title: { es: 'El espiritu de la maquina', en: 'The spirit of the machine' },
+      desc: {
+        es: 'No es humano y no finge serlo. Calcula millones de posiciones sin miedo, sin ego y sin cansancio. Vencio a un campeon del mundo y desde entonces su espiritu ronda cada tablero. Ahora despierta en la cima de la torre.',
+        en: 'It is not human and does not pretend to be. It calculates millions of positions without fear, ego or fatigue. It defeated a world champion, and its spirit has haunted every board since. Now it awakens at the top of the tower.',
+      },
+      quote: {
+        es: 'Me venciste donde cayo un campeon del mundo. Quiza los humanos aun tengan algo que las maquinas no calculamos.',
+        en: 'You beat me where a world champion fell. Perhaps humans still have something we machines cannot compute.',
+      },
+      gloat: {
+        es: 'RESULTADO: DERROTA HUMANA. PROBABILIDAD DE QUE FUERA SUERTE: 0.00%.',
+        en: 'RESULT: HUMAN DEFEAT. PROBABILITY THIS WAS LUCK: 0.00%.',
+      },
+      taunts: {
+        es: ['Analizando... tu derrota es cuestion de tiempo.', 'No siento. No dudo. No me canso.', 'He calculado 200 millones de posiciones. En todas pierdes.', 'ERROR HUMANO DETECTADO.'],
+        en: ['Analyzing... your defeat is a matter of time.', 'I do not feel. I do not doubt. I do not tire.', 'I have calculated 200 million positions. You lose in all of them.', 'HUMAN ERROR DETECTED.'],
+      },
+      img: DEEPBLUE_IMG,
+      ai: { tickMs: 240, aggression: 1.7, blunder: 0, hoard: 6, pawnPush: 0.25 },
     },
   ];
 

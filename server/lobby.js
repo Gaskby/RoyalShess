@@ -33,6 +33,20 @@ function cleanSettings(o) {
   return Object.keys(s).length ? s : null;
 }
 
+// nueva vuelta de la escalera: cada pesadilla acelera y afina a todos los rivales.
+// loop 0 devuelve la personalidad original; el tope evita valores absurdos del cliente
+function nightmareAI(ai, loop) {
+  if (!loop) return ai;
+  const speed = Math.pow(0.62, loop);
+  return {
+    tickMs: Math.max(150, Math.round(ai.tickMs * speed)),
+    aggression: ai.aggression + 0.4 * loop,
+    blunder: ai.blunder * Math.pow(0.25, loop),
+    hoard: Math.max(2, ai.hoard - loop),
+    pawnPush: ai.pawnPush,
+  };
+}
+
 function genCode() {
   const a = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let s = ''; for (let i = 0; i < 4; i++) s += a[Math.floor(Math.random() * a.length)];
@@ -167,16 +181,18 @@ class Lobby {
     this._broadcast(room, Date.now());
   }
 
-  // pelea de la escalera contra el rival idx del archivo rivals.js
-  startLadder(client, idx) {
+  // pelea de la escalera contra el rival idx del archivo rivals.js.
+  // loop > 0 es nueva vuelta en modo pesadilla: misma escalera, rivales potenciados
+  startLadder(client, idx, loop) {
     idx = Math.floor(+idx);
     if (!Number.isFinite(idx) || idx < 0 || idx >= RIVALS.length) return;
+    loop = Math.min(9, Math.max(0, Math.floor(+loop) || 0));
     this._detach(client);
     if (client.roomId != null) return;
     this._removeFromQueue(client);
     const rival = RIVALS[idx];
-    const room = this._makeRoom(true, { ai: rival.ai });
-    room.rivalName = rival.name;
+    const room = this._makeRoom(true, { ai: nightmareAI(rival.ai, loop) });
+    room.rivalName = (loop ? '☠ ' : '') + rival.name;
     room.clients.push(client);
     client.color = 'w'; client.roomId = room.id;
     room.ranks = { w: client.token ? stats.rankOf(client.token) : null, b: null };
