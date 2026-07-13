@@ -55,7 +55,7 @@
         es: ['El orden es una ilusion. Deja que arda el tablero.', 'Ese sacrificio ya lo vi hace tres jugadas.', 'En la complicacion tu te pierdes y yo respiro.'],
         en: ['Order is an illusion. Let the board burn.', 'I saw that sacrifice three moves ago.', 'In the chaos you get lost and I breathe.'],
       },
-      img: null,
+      img: '/Imagenes/Alekhine.png',
       ai: { tickMs: 900, aggression: 1.7, blunder: 0.10, hoard: 2, pawnPush: 0.3 },
     },
     {
@@ -78,7 +78,7 @@
         es: ['No juego contra tus piezas, juego contra tu paciencia.', 'Cada jugada mia es una pregunta incomoda.', 'El que sobrevive al caos gana. Y yo llevo decadas sobreviviendo.'],
         en: ['I do not play your pieces, I play your patience.', 'Every move of mine is an uncomfortable question.', 'Whoever survives the chaos wins. I have survived for decades.'],
       },
-      img: null,
+      img: '/Imagenes/lasker.png',
       ai: { tickMs: 800, aggression: 1.1, blunder: 0.08, hoard: 3, pawnPush: 0.2 },
     },
     {
@@ -101,7 +101,7 @@
         es: ['Respira mientras puedas. Pronto no tendras casillas.', 'No hay prisa. Te ire apretando poco a poco.', 'Sientes como se cierran tus opciones?'],
         en: ['Breathe while you can. Soon you will have no squares.', 'No hurry. I will squeeze you little by little.', 'Can you feel your options closing?'],
       },
-      img: null,
+      img: '/Imagenes/karpov.png',
       ai: { tickMs: 720, aggression: 0.9, blunder: 0.06, hoard: 5, pawnPush: 0.15 },
     },
     {
@@ -124,7 +124,7 @@
         es: ['Esto me sale sin pensar.', 'Llevame al final y veras lo que es tecnica.', 'No estudio aperturas; no las necesito contra ti.'],
         en: ['This comes to me without thinking.', 'Take me to the endgame and you will see real technique.', 'I do not study openings; I do not need them against you.'],
       },
-      img: null,
+      img: '/Imagenes/capablanca.png',
       ai: { tickMs: 620, aggression: 1.1, blunder: 0.05, hoard: 4, pawnPush: 0.2 },
     },
     {
@@ -147,7 +147,7 @@
         es: ['Voy a refutar cada una de tus jugadas.', 'No quiero ganar. Quiero que entiendas por que pierdes.', 'La verdad del tablero no esta de tu lado.'],
         en: ['I will refute every move you make.', 'I do not want to win. I want you to understand why you lose.', 'The truth of the board is not on your side.'],
       },
-      img: null,
+      img: '/Imagenes/bobby fisher.png',
       ai: { tickMs: 520, aggression: 1.4, blunder: 0.03, hoard: 4, pawnPush: 0.25 },
     },
     {
@@ -170,7 +170,7 @@
         es: ['Ya vi el mate en el techo. Solo falta ejecutarlo.', 'Las piezas me hablan. A ti te dicen algo?', 'No calculo. Simplemente lo se.'],
         en: ['I already saw the mate on the ceiling. Just have to run it.', 'The pieces talk to me. Do they tell you anything?', 'I do not calculate. I just know.'],
       },
-      img: null,
+      img: '/Imagenes/GambitQueen.png',
       ai: { tickMs: 430, aggression: 1.8, blunder: 0.02, hoard: 3, pawnPush: 0.25 },
     },
     {
@@ -193,7 +193,7 @@
         es: ['Esto no es una partida, es una guerra. Y vas perdiendo.', 'Mi preparacion te va a sepultar.', 'Cada jugada mia es un golpe. Aguantas otro?'],
         en: ['This is not a game, it is a war. And you are losing.', 'My preparation will bury you.', 'Every move of mine is a blow. Can you take another?'],
       },
-      img: null,
+      img: '/Imagenes/gary.png',
       ai: { tickMs: 360, aggression: 2.0, blunder: 0.01, hoard: 5, pawnPush: 0.2 },
     },
     {
@@ -216,7 +216,7 @@
         es: ['No necesito atacar. Solo espero tu error.', 'Puedo hacer esto todo el dia. Y tu?', 'Tranquilo. Ya vas a colapsar solo.'],
         en: ['I do not need to attack. I just wait for your mistake.', 'I can do this all day. Can you?', 'Relax. You will collapse on your own soon.'],
       },
-      img: null,
+      img: '/Imagenes/magnus.png',
       ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2 },
     },
   ];
