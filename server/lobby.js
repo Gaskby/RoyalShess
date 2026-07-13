@@ -44,6 +44,9 @@ function nightmareAI(ai, loop) {
     blunder: ai.blunder * Math.pow(0.25, loop),
     hoard: Math.max(2, ai.hoard - loop),
     pawnPush: ai.pawnPush,
+    // ventaja de la maquina poseida: energia inicial extra y regeneracion mas rapida
+    startBonus: Math.min(3, loop),
+    regenBoost: Math.min(1.75, 1 + 0.25 * loop),
   };
 }
 

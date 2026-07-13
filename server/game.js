@@ -44,7 +44,12 @@ class Game {
     const init = E.newBoard();
     this.board = init.board;
     this.nextId = init.nextId;
-    this.energy = { w: this.startEnergy, b: this.startEnergy };
+    // ventaja de la maquina en pesadilla: arranca con energia extra (ai.startBonus)
+    this.energy = {
+      w: this.startEnergy,
+      b: Math.min(MAX_ENERGY, this.startEnergy + (this.vsCPU ? (this.ai.startBonus || 0) : 0)),
+    };
+    this.aiPrev = null;   // ultima jugada de la CPU, para no deshacerla en bucle
     this.lastMove = null;
     this.phase = 'lobby';        // 'lobby' | 'countdown' | 'live' | 'over'
     this.winner = null;   // w | b | draw | null
@@ -100,7 +105,8 @@ class Game {
     const boost = (this.phase === 'live' && this.timeLeft(now) <= LATE_MS) ? LATE_BOOST : 1;
     const gain = (dt / 1000) * this.regenPerSec * boost;
     this.energy.w = Math.min(MAX_ENERGY, this.energy.w + gain);
-    this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain);
+    // ventaja de la maquina en pesadilla: regenera mas rapido (ai.regenBoost)
+    this.energy.b = Math.min(MAX_ENERGY, this.energy.b + gain * (this.vsCPU ? (this.ai.regenBoost || 1) : 1));
   }
 
  
@@ -355,6 +361,13 @@ class Game {
     const foeInCheck = this.checkSince[foe] != null;
     // solo se puede capturar al rey rival cuando su gracia de jaque venció
     const graceDone = foeInCheck && now - this.checkSince[foe] >= GRACE_MS;
+    // si va perdiendo en material y el reloj se acaba, se lanza: por tiempo
+    // gana el que tenga mas material, asi que esperar es perder
+    const desperate = this.timeLeft(now) <= LATE_MS &&
+      E.material(this.board, color) < E.material(this.board, foe);
+    const aggr = this.ai.aggression * (desperate ? 1.5 : 1);
+    // cercania al centro: las piezas menores y la dama pelean mejor desde ahi
+    const cent = (rr, cc) => 3.5 - Math.max(Math.abs(rr - 3.5), Math.abs(cc - 3.5));
 
     const moves = [];
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
@@ -369,7 +382,7 @@ class Game {
 
         let score = 0;
         if (victim) {
-          score += V[victim.type] * 10 * this.ai.aggression;
+          score += V[victim.type] * 10 * aggr;
           if (victim.type === 'k') score += 100000;
           if (cost === 0 && this.freeRecapture[color]) score += 6;   // recaptura con cupón: gratis
         }
@@ -381,19 +394,31 @@ class Game {
         const kingSafe = !E.inCheck(this.board, color);
         const givesCheck = E.inCheck(this.board, foe);
         const worst = kingSafe ? this._worstReply(foe, color, victim ? { r: m.r, c: m.c } : null) : 0;
+        // amenaza que deja la pieza desde su nueva casilla: la mejor captura
+        // RENTABLE que tendría al turno siguiente. Premia horquillas y presión.
+        let threat = 0;
+        if (kingSafe) {
+          for (const m2 of E.genMoves(this.board, m.r, m.c)) {
+            const t2 = this.board[m2.r][m2.c];
+            if (!t2 || t2.color !== foe || t2.type === 'k') continue;
+            const gain = this._sqDefended(foe, m2.r, m2.c) ? V[t2.type] - V[p.type] : V[t2.type];
+            if (gain > threat) threat = gain;
+          }
+        }
         if (promotes) p.type = 'p';
         this.board[r][c] = p; this.board[m.r][m.c] = victim || null;
 
         if (!kingSafe) score -= 400;      // deja al rey vendido
         score -= worst * 8;               // lo que su mejor réplica nos costaría
+        score += threat * 2;              // amenaza creada para el siguiente turno
         score -= cost * 0.5;              // la energía es tempo: mejor barato
 
         // el jaque sostenido es el camino a la victoria: corre el reloj de gracia
         if (givesCheck) {
           const wasChecker = this.checkers[foe].has(p.id);
-          if (!foeInCheck) score += 8 * this.ai.aggression;        // arranca el reloj
-          else if (wasChecker) score += 12 * this.ai.aggression;   // lo mantiene corriendo
-          else score += 2;                                         // atacante nuevo: reinicia la gracia
+          if (!foeInCheck) score += 8 * aggr;        // arranca el reloj
+          else if (wasChecker) score += 12 * aggr;   // lo mantiene corriendo
+          else score += 2;                           // atacante nuevo: reinicia la gracia
         } else if (foeInCheck && this.checkers[foe].has(p.id)) {
           score -= 10;                    // no sueltes el jaque que ya tienes
         }
@@ -402,7 +427,12 @@ class Game {
         if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
         if (p.type === 'k' && !inCheckNow) score -= 3;   // no pasear al rey sin motivo
         if ((p.type === 'n' || p.type === 'b') && (r === 0 || r === 7)) score += 1.5;   // desarrollo
-        score += Math.random() * 0.6;
+        // ganar centro con menores y dama; perderlo sin motivo resta
+        if (p.type === 'n' || p.type === 'b' || p.type === 'q') score += (cent(m.r, m.c) - cent(r, c)) * 0.8;
+        // no deshacer la jugada anterior: el vaiven regala tempo y energia
+        if (this.aiPrev && p.id === this.aiPrev.id && m.r === this.aiPrev.fr && m.c === this.aiPrev.fc) score -= 5;
+        // el ruido aleatorio baja con la precision del rival: los finos casi no dudan
+        score += Math.random() * (0.25 + this.ai.blunder * 4);
         moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score, cap: !!victim, safe: kingSafe });
       }
     }
@@ -421,7 +451,9 @@ class Game {
     if (!inCheckNow && pick.score < 9000 && Math.random() < this.ai.blunder) {
       pick = pool[Math.floor(Math.random() * Math.max(1, Math.ceil(pool.length / 2)))];
     }
-    this.applyMove(color, pick.fr, pick.fc, pick.tr, pick.tc, now);
+    const pid = this.board[pick.fr][pick.fc].id;
+    const res = this.applyMove(color, pick.fr, pick.fc, pick.tr, pick.tc, now);
+    if (res.ok) this.aiPrev = { id: pid, fr: pick.fr, fc: pick.fc };
   }
 
   _end(winner, reason) { this.phase = 'over'; this.winner = winner; this.reason = reason; }
