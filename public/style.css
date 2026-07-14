@@ -28,6 +28,33 @@ body.theme-chesscom #cardB .efill{ background:linear-gradient(90deg,#a3d160,#81b
 body.theme-chesscom .rbeam.w{ background:rgba(255,255,255,.55); box-shadow:0 0 6px rgba(255,255,255,.4); }
 body.theme-chesscom .rbeam.b{ background:rgba(43,41,38,.5); box-shadow:0 0 6px rgba(0,0,0,.35); }
 body.theme-chesscom .playbtn{ background:linear-gradient(90deg,#81b64c,#a3d160); color:#14200a; box-shadow:0 0 24px rgba(129,182,76,.35); }
+
+/* TEMA Terminal CRT: fosforo verde de 1997, el año en que Deep Blue vencio.
+   Se desbloquea superando el modo pesadilla (rs-nightmare-done) */
+body.theme-crt{
+  --bg:#010f07; --bg-2:#02160b; --panel:#03200f; --panel-2:#052b15; --line:#0f4426;
+  --ink:#a7ffcf; --ink-dim:#4e8f68;
+  --white-acc:#7dffb0; --black-acc:#2fe07a;
+  --energy-a:#33ff88; --energy-b:#7dffb0; --danger:#ffb347; --gold:#c8ff5c;
+  --sq-light:#0a3a1e; --sq-dark:#04220f; --sel:#c8ff5c;
+  --piece-w:#c9ffe2; --piece-w-glow:rgba(51,255,136,.8);
+  --piece-b:#2fe07a; --piece-b-glow:rgba(10,80,40,.95);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #06301a 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, #04240f 0%, transparent 55%),
+    var(--bg);
+}
+/* scanlines de monitor viejo por encima de todo; los clics las atraviesan */
+body.theme-crt::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:300;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
+}
+body.theme-crt .board-wrap{ background:linear-gradient(180deg,#02180c,#010e06); }
+body.theme-crt #cardW .efill{ background:linear-gradient(90deg,#7dffb0,#c9ffe2); box-shadow:0 0 10px rgba(125,255,176,.4); }
+body.theme-crt #cardB .efill{ background:linear-gradient(90deg,#1fa85c,#2fe07a); box-shadow:0 0 10px rgba(47,224,122,.4); }
+body.theme-crt .rbeam.w{ background:rgba(125,255,176,.5); box-shadow:0 0 6px rgba(125,255,176,.4); }
+body.theme-crt .rbeam.b{ background:rgba(20,120,60,.55); box-shadow:0 0 6px rgba(20,120,60,.45); }
+body.theme-crt .playbtn{ background:linear-gradient(90deg,#33ff88,#7dffb0); color:#03200f; box-shadow:0 0 24px rgba(51,255,136,.35); }
 *{ box-sizing:border-box; margin:0; padding:0; }
 /* body SIN height fija: crece con el contenido para que su fondo degradado
    cubra toda la página si hay scroll ya tiene min-height:100dvh abajo */
@@ -315,6 +342,21 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .theme-row{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
 .theme-label{ font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-dim); }
 .tbtn.on{ border-color:var(--white-acc); color:var(--white-acc); box-shadow:0 0 12px rgba(120,220,255,.2); }
+.tbtn.locked{ opacity:.55; }
+
+/* corona de campeon de pesadilla: flota sobre tu nombre en la tarjeta.
+   La variante con <b> esconde unas iniciales dentro de la corona */
+.crown{
+  position:relative; display:inline-block; font-size:15px; line-height:1;
+  transform:translateY(-3px); filter:drop-shadow(0 0 6px rgba(255,207,74,.75));
+  animation:crownfloat 2.6s ease-in-out infinite;
+}
+@keyframes crownfloat{ 0%,100%{ transform:translateY(-3px) } 50%{ transform:translateY(-6px) } }
+.crown b{
+  position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
+  font-family:'Chakra Petch'; font-weight:700; font-size:6px; letter-spacing:.4px;
+  color:#5a3a00; text-shadow:0 0 2px rgba(255,255,200,.6); pointer-events:none;
+}
 
 /* idioma: fijo arriba a la izquierda, por encima de todo incluido el menú */
 .lang-row{ position:fixed; top:16px; left:16px; z-index:70; display:inline-flex; gap:6px; }
@@ -398,13 +440,15 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .ldesc .lplay:active{ transform:scale(.97); }
 
 /* modo pesadilla: retratos poseidos por el espiritu de Deep Blue.
-   filtro azul espectral + parpadeo tipo interferencia */
+   filtro azul espectral + parpadeo tipo interferencia. Hay 4 patrones de
+   parpadeo distintos; possessFx en client.js sortea patron, duracion y fase
+   para cada retrato, asi la torre nunca parpadea al unisono */
 img.possessed{
   filter: grayscale(.6) sepia(.9) hue-rotate(175deg) saturate(4.2) contrast(1.25) brightness(.82)
           drop-shadow(0 0 6px rgba(51,102,255,.85));
-  animation: possessFlicker 2.8s steps(1,end) infinite;
+  animation: possessA 2.8s steps(1,end) infinite;
 }
-@keyframes possessFlicker{
+@keyframes possessA{   /* tres cortes repartidos */
   0%,100%{ opacity:1 }
   6%{ opacity:.7 }
   8%{ opacity:1 }
@@ -412,6 +456,26 @@ img.possessed{
   49%{ opacity:1 }
   76%{ opacity:.85 }
   78%{ opacity:1 }
+}
+@keyframes possessB{   /* un apagon profundo y un roce */
+  0%,100%{ opacity:1 }
+  12%{ opacity:.5 }
+  17%{ opacity:1 }
+  64%{ opacity:.85 }
+  66%{ opacity:1 }
+}
+@keyframes possessC{   /* aleteo doble rapido y corte tardio */
+  0%,100%{ opacity:1 }
+  4%{ opacity:.6 }
+  6%{ opacity:1 }
+  9%{ opacity:.65 }
+  11%{ opacity:1 }
+  58%{ opacity:.8 }
+  60%{ opacity:1 }
+}
+@keyframes possessD{   /* respiracion lenta, sin cortes */
+  0%,100%{ opacity:1 }
+  50%{ opacity:.62 }
 }
 /* insignia de vuelta pesadilla en la cabecera de la torre */
 .ladder-prog .loopmark{
@@ -447,9 +511,12 @@ img.possessed{
 /* mini foto del rival junto a su nombre en la tarjeta */
 .rival-face{ width:26px; height:26px; border-radius:6px; vertical-align:middle; border:1px solid var(--line); }
 
-/* burbuja de frases del rival durante la partida */
+/* burbuja de frases del rival durante la partida: centrada arriba.
+   El valor de top lo calcula positionTaunt() en client.js para que su borde
+   inferior nunca entre en el tablero (antes iba a 110px fijo y en pantallas
+   bajas cubría las piezas). pointer-events:none: los clics la atraviesan */
 .taunt{
-  position:fixed; left:50%; top:110px; transform:translateX(-50%) translateY(-10px) scale(.95);
+  position:fixed; left:50%; top:84px; transform:translateX(-50%) translateY(-10px) scale(.95);
   display:flex; align-items:center; gap:10px; max-width:min(86vw,420px);
   background:var(--panel); border:1px solid var(--black-acc); border-radius:14px;
   padding:10px 16px; opacity:0; pointer-events:none; z-index:56;
@@ -458,6 +525,10 @@ img.possessed{
 }
 .taunt.show{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
 .taunt img{ width:38px; height:38px; border-radius:9px; flex:0 0 auto; }
+@media (max-width:640px){
+  .taunt{ max-width:88vw; font-size:12px; padding:8px 12px; gap:8px; }
+  .taunt img{ width:32px; height:32px; }
+}
 
 /* tutorial cómo jugar */
 .help-list{

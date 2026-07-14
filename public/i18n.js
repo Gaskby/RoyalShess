@@ -83,6 +83,8 @@
     'ladder.ngplus':    { es: '☠ Nueva vuelta: modo pesadilla', en: '☠ New run: nightmare mode' },
     'ladder.loopStart': { es: 'El espíritu de Deep Blue posee la torre...', en: 'The spirit of Deep Blue possesses the tower...' },
     'ladder.doneNightmare': { es: '¡Pesadilla superada! Ni la máquina pudo contigo.', en: 'Nightmare cleared! Not even the machine could stop you.' },
+    'theme.locked':    { es: 'Tema bloqueado: supera el modo pesadilla para ganarlo', en: 'Locked theme: beat nightmare mode to earn it' },
+    'reward.unlocked': { es: '¡Tema TERMINAL CRT y corona de campeón desbloqueados!', en: 'TERMINAL CRT theme and champion crown unlocked!' },
     'menu.note': {
       es: '<b>Buscar partida:</b> rival al azar. <b>Con un amigo:</b> sala privada con código. <b>Escalera:</b> derrota a las leyendas una a una. No hay turnos: cada quien mueve cuando tiene energía. La partida dura {min} minutos.',
       en: '<b>Find match:</b> random opponent. <b>With a friend:</b> private room with a code. <b>Ladder:</b> defeat the legends one by one. No turns: everyone moves whenever they have energy. Matches last {min} minutes.',

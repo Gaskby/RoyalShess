@@ -35,18 +35,33 @@ let ladderProg = Math.max(0, parseInt(localStorage.getItem('rs-ladder') || '0', 
 // nueva vuelta: 0 es la primera pasada; cada vuelta extra es modo pesadilla,
 // con rivales mas rapidos y precisos y retratos poseidos por deep blue
 let ladderLoop = Math.max(0, parseInt(localStorage.getItem('rs-ladder-loop') || '0', 10) || 0);
+// campeon de pesadilla: vencer a toda la torre en una vuelta pesadilla
+// desbloquea el tema TERMINAL CRT y la corona sobre tu nombre
+let nightmareDone = localStorage.getItem('rs-nightmare-done') === '1';
 let currentLadder = null;
 // un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
 const isPossessed = (r) => ladderLoop > 0 && !r.secret;
 // aplica o quita el efecto poseido a un retrato. Cada uno parpadea a su aire:
-// arranca en un punto aleatorio del ciclo y con duracion ligeramente distinta,
-// para que la torre no parpadee entera al unisono
+// sortea uno de los 4 patrones de style.css, una duracion propia y un punto
+// de arranque aleatorio del ciclo, para que la torre no parpadee al unisono.
+// possessD respira suave, asi que va con curva en vez de cortes
+const POSSESS_ANIMS = [
+  ['possessA', 'steps(1,end)'],
+  ['possessB', 'steps(1,end)'],
+  ['possessC', 'steps(1,end)'],
+  ['possessD', 'ease-in-out'],
+];
 function possessFx(el, on){
   el.classList.toggle('possessed', on);
   if (on){
-    el.style.animationDelay = (-Math.random() * 3).toFixed(2) + 's';
-    el.style.animationDuration = (2.2 + Math.random() * 1.6).toFixed(2) + 's';
+    const [name, timing] = POSSESS_ANIMS[Math.floor(Math.random() * POSSESS_ANIMS.length)];
+    el.style.animationName = name;
+    el.style.animationTimingFunction = timing;
+    el.style.animationDelay = (-Math.random() * 4).toFixed(2) + 's';
+    el.style.animationDuration = (2 + Math.random() * 2.5).toFixed(2) + 's';
   } else {
+    el.style.animationName = '';
+    el.style.animationTimingFunction = '';
     el.style.animationDelay = '';
     el.style.animationDuration = '';
   }
@@ -249,6 +264,24 @@ function updateHUD(){
   $('tagW').style.color = you==='w' ? 'var(--white-acc)' : 'var(--ink-dim)';
   $('tagB').textContent = '· ' + label('b');
   $('tagB').style.color = you==='b' ? 'var(--black-acc)' : 'var(--ink-dim)';
+  // corona de campeon de pesadilla flotando sobre TU nombre, en cualquier modo.
+  // secreto: si te llamas karina, la corona lleva sus iniciales grabadas
+  for (const side of ['w','b']){
+    const card = $(side === 'w' ? 'cardW' : 'cardB');
+    let cr = card.querySelector('.crown');
+    if (!cr){
+      cr = document.createElement('span');
+      cr.className = 'crown';
+      card.querySelector('.pname').prepend(cr);
+    }
+    const mine = nightmareDone && side === you;
+    cr.style.display = mine ? '' : 'none';
+    if (mine){
+      const kk = /^karina$/i.test((myName || '').trim());
+      cr.innerHTML = '👑' + (kk ? '<b>KK</b>' : '');
+    }
+  }
+
   // foto del rival junto a su nombre, solo en la escalera de leyendas
   const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
   for (const side of ['w','b']){
@@ -516,7 +549,16 @@ function showResult(){
       $('rqTxt').textContent = r.quote[lang] || r.quote.es;
       const next = RV.RIVALS[currentLadder + 1];
       bn.style.display = next ? '' : 'none';
-      if (!next) showToast(tr(ladderLoop > 0 ? 'ladder.doneNightmare' : 'ladder.done'), true);
+      if (!next){
+        showToast(tr(ladderLoop > 0 ? 'ladder.doneNightmare' : 'ladder.done'), true);
+        // superar la pesadilla corona al campeon: tema CRT + corona en el nombre
+        if (ladderLoop > 0 && !nightmareDone){
+          nightmareDone = true;
+          localStorage.setItem('rs-nightmare-done', '1');
+          applyTheme();   // el boton CRT pierde el candado al instante
+          setTimeout(() => showToast(tr('reward.unlocked'), true), 1400);
+        }
+      }
       // al caer el ultimo rival visible se revela el jefe secreto
       else if (next.secret && firstWin) showToast(tr('ladder.awaken'), true);
     } else {
@@ -995,9 +1037,23 @@ function showTaunt(){
   $('tauntTxt').textContent = list[Math.floor(Math.random() * list.length)];
   const el = $('taunt');
   el.classList.add('show');
+  positionTaunt();
   clearTimeout(tauntHide);
   tauntHide = setTimeout(() => el.classList.remove('show'), 4500);
 }
+// coloca la burbuja centrada arriba pero elevandola lo justo para que su borde
+// inferior quede SIEMPRE por encima del tablero, sea cual sea la resolucion
+function positionTaunt(){
+  const el = $('taunt');
+  if (!el.classList.contains('show')) return;
+  const boardTop = boardWrap.getBoundingClientRect().top;
+  const h = el.offsetHeight || 52;
+  let top = boardTop - 10 - h;          // 10px de aire sobre el tablero
+  if (top < 6) top = 6;                 // pantallas muy bajas: pegada arriba
+  el.style.top = top + 'px';
+}
+// si la ventana cambia de tamano con la burbuja visible, recolocala
+window.addEventListener('resize', positionTaunt);
 function scheduleTaunt(first){
   clearTimeout(tauntTimer);
   tauntTimer = setTimeout(() => { showTaunt(); scheduleTaunt(false); }, first ? 6000 : 16000 + Math.random() * 14000);
@@ -1016,14 +1072,24 @@ btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'});
 
 // tema visual: clase en <body + fondo animado a juego persiste en localStorage
 function applyTheme(){
+  if (theme === 'crt' && !nightmareDone) theme = 'neon';   // candado: aun no lo ganaste
   document.body.classList.toggle('theme-chesscom', theme === 'chesscom');
-  $('themeNeon').classList.toggle('on', theme !== 'chesscom');
+  document.body.classList.toggle('theme-crt', theme === 'crt');
+  $('themeNeon').classList.toggle('on', theme !== 'chesscom' && theme !== 'crt');
   $('themeClassic').classList.toggle('on', theme === 'chesscom');
+  const crt = $('themeCRT');
+  crt.classList.toggle('on', theme === 'crt');
+  crt.classList.toggle('locked', !nightmareDone);
+  crt.textContent = (nightmareDone ? '' : '🔒 ') + 'CRT';
   if (window.RSBG && window.RSBG.setTheme) window.RSBG.setTheme(theme);
 }
 function setTheme(t){ theme = t; localStorage.setItem('rs-theme', t); applyTheme(); }
 $('themeNeon').addEventListener('click', () => setTheme('neon'));
 $('themeClassic').addEventListener('click', () => setTheme('chesscom'));
+$('themeCRT').addEventListener('click', () => {
+  if (!nightmareDone){ showToast(tr('theme.locked')); return; }
+  setTheme('crt');
+});
 applyTheme();
 
 // opciones del menú: nombre + arrastre persisten en localStorage

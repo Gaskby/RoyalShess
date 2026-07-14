@@ -34,8 +34,11 @@
   let themePal = null;   // paleta forzada por el tema del cliente
 
   function setTheme(name) {
-    // tema clasico usa verdes apagados acordes al tablero
-    themePal = name === 'chesscom' ? { hues: [78, 95, 110], sat: [16, 30] } : null;
+    // tema clasico usa verdes apagados acordes al tablero;
+    // el CRT usa fosforo verde saturado de monitor viejo
+    themePal = name === 'chesscom' ? { hues: [78, 95, 110], sat: [16, 30] }
+             : name === 'crt'      ? { hues: [135, 145, 155], sat: [55, 80] }
+             : null;
     newScene();
   }
 
