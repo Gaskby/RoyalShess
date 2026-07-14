@@ -353,9 +353,10 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 }
 @keyframes crownfloat{ 0%,100%{ transform:translateY(-3px) } 50%{ transform:translateY(-6px) } }
 .crown b{
-  position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
-  font-family:'Chakra Petch'; font-weight:700; font-size:6px; letter-spacing:.4px;
-  color:#5a3a00; text-shadow:0 0 2px rgba(255,255,200,.6); pointer-events:none;
+  position:absolute; left:50%; top:-8px; transform:translateX(-50%);
+  font-family:'Chakra Petch'; font-weight:700; font-size:7.5px; letter-spacing:.6px;
+  color:var(--gold); text-shadow:0 0 5px rgba(255,207,74,.9), 0 0 2px rgba(0,0,0,.8);
+  pointer-events:none;
 }
 
 /* idioma: fijo arriba a la izquierda, por encima de todo incluido el menú */
