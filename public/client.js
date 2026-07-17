@@ -110,6 +110,9 @@ function displaySquareEl(dr, dc){ return gridEl.children[dr*8 + dc]; }
 
 // Render
 const pieceEls = new Map();
+// efectos de derrota por pieza id -> cls 'topple'|'dissolve', delay ms.
+// se aplican en cada render porque el className se reescribe entero
+const pieceFx = new Map();
 function render(){
   if (!state) return;
   if (you !== lastYou){ buildGrid(); lastYou = you; }   // rehacer si cambió tu color
@@ -142,16 +145,29 @@ function render(){
     }
     el.firstChild.textContent = GLYPH[p.type];
     const isChecker = state.checkers && state.checkers.includes(p.id);   // pieza que da jaque a TU rey
+    const fx = pieceFx.get(p.id);
     el.className = 'piece ' + p.color +
       ((drag && drag.lifted && drag.id === p.id) ? ' dragging' : '') +
-      (isChecker ? ' checker' : '');
+      (isChecker ? ' checker' : '') +
+      (fx ? ' ' + fx.cls : '');
+    el.firstChild.style.animationDelay = (fx && fx.delay) ? fx.delay + 'ms' : '';
     const { dr, dc } = toDisplay(r, c);
     if (isChecker) displaySquareEl(dr, dc).classList.add('threat');      // y su casilla marcada
     // Si esta pieza se está arrastrando, no la recolocamos: la controla el puntero.
     if (!(drag && drag.lifted && drag.id === p.id)) el.style.transform = `translate(${dc*100}%, ${dr*100}%)`;
   }
   for (const [id, el] of pieceEls){
-    if (!present.has(id)){ el.classList.add('dead'); pieceEls.delete(id); setTimeout(()=>el.remove(),200); }
+    if (!present.has(id)){
+      const fx = pieceFx.get(id);
+      if (fx && fx.cls === 'topple'){
+        // el rey capturado no se desvanece: se tumba con su propia animacion
+        el.classList.add('topple');
+        pieceEls.delete(id);
+        setTimeout(() => el.remove(), 1300);
+      } else {
+        el.classList.add('dead'); pieceEls.delete(id); setTimeout(()=>el.remove(),200);
+      }
+    }
   }
 
   if (state.lastMove){
@@ -444,6 +460,18 @@ function onState(msg){
   const prev = state;
   state = msg; you = msg.you;
 
+  // coreografia de la victoria: al capturar al rey rival, este se tumba
+  // (estaba en el estado anterior) y su ejercito se disuelve en cascada
+  if (msg.phase === 'over' && prev && prev.phase !== 'over' && msg.winner === you && msg.reason === 'king'){
+    const foeColor = you === 'w' ? 'b' : 'w';
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){
+      const pp = prev.board && prev.board[r][c];
+      if (pp && pp.color === foeColor && pp.type === 'k') pieceFx.set(pp.id, { cls: 'topple', delay: 0 });
+      const np = msg.board[r][c];
+      if (np && np.color === foeColor) pieceFx.set(np.id, { cls: 'dissolve', delay: Math.round(350 + Math.random() * 900) });
+    }
+  }
+
   // sonidos por cambios
   if (prev && JSON.stringify(prev.lastMove) !== JSON.stringify(state.lastMove)){
     const captured = (prev.material.w + prev.material.b) !== (state.material.w + state.material.b);
@@ -459,7 +487,7 @@ function onState(msg){
   // gestión de fase
   if (state.phase === 'countdown'){
     // solo cierra pantallas al ENTRAR en la fase: así el menú puede quedarse abierto
-    if (prevPhase !== 'countdown'){ showScreen(null); window.RSBG.newScene(); }
+    if (prevPhase !== 'countdown'){ showScreen(null); window.RSBG.newScene(); pieceFx.clear(); }
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
     cdNum.textContent = secs > 0 ? secs : tr('game.go');
@@ -533,49 +561,138 @@ function showResult(){
   // escalera: al vencer avanza el progreso y el rival te deja su consejo.
   // si te gana el, te suelta su frase de victoria
   const rq = $('rivalQuote'), bn = $('btnNext');
+  let rqText = '';          // la frase se escribe a maquina cuando el panel aparece
+  let wonLadder = false;    // vencer a un rival: retrato agrietado
+  let wasPossessed = false; // vencerlo en pesadilla: exorcismo
+  let finalBoss = null;     // vencer al ultimo de la torre: apagon CRT + coronacion
   if (currentLadder != null && !draw){
     const r = RV.RIVALS[currentLadder];
     const lang = I18N.getLang();
+    resetPortraitFx();   // limpia esquirlas y grietas de una partida anterior
     $('rqImg').src = r.img || RV.DEFAULT_IMG;
     possessFx($('rqImg'), isPossessed(r));
     $('rqName').textContent = r.name;
     rq.classList.toggle('lost', !won);
     if (won){
+      wonLadder = true;
+      wasPossessed = isPossessed(r);
       const firstWin = currentLadder === ladderProg;   // primera vez que lo vences
       if (firstWin){
         ladderProg++;
         localStorage.setItem('rs-ladder', String(ladderProg));
       }
-      $('rqTxt').textContent = r.quote[lang] || r.quote.es;
+      rqText = r.quote[lang] || r.quote.es;
       const next = RV.RIVALS[currentLadder + 1];
       bn.style.display = next ? '' : 'none';
       if (!next){
+        finalBoss = r;
         showToast(tr(ladderLoop > 0 ? 'ladder.doneNightmare' : 'ladder.done'), true);
         // superar la pesadilla corona al campeon: tema CRT + corona en el nombre
         if (ladderLoop > 0 && !nightmareDone){
           nightmareDone = true;
           localStorage.setItem('rs-nightmare-done', '1');
           applyTheme();   // el boton CRT pierde el candado al instante
-          setTimeout(() => showToast(tr('reward.unlocked'), true), 1400);
+          setTimeout(() => showToast(tr('reward.unlocked'), true), 5200);
         }
       }
       // al caer el ultimo rival visible se revela el jefe secreto
       else if (next.secret && firstWin) showToast(tr('ladder.awaken'), true);
     } else {
-      $('rqTxt').textContent = (r.gloat && (r.gloat[lang] || r.gloat.es)) || '';
+      rqText = (r.gloat && (r.gloat[lang] || r.gloat.es)) || '';
       bn.style.display = 'none';
     }
+    $('rqTxt').textContent = '';
     rq.style.display = '';
   } else {
     rq.style.display = 'none';
     bn.style.display = 'none';
   }
-  // el panel entra tras un instante: deja ver el estallido sobre el tablero
+  // coreografia: el rey se tumba primero (1.1s); al jefe final le sigue el
+  // apagon CRT y la coronacion antes de que entre el panel
+  let panelDelay = won ? 950 : 550;
+  if (finalBoss){
+    if (finalBoss.id === 'deepblue'){
+      setTimeout(crtShutdown, 800);      // la maquina se apaga (pantalla negra)
+      setTimeout(crownDrop, 2200);       // la corona cae sobre tu nombre en el negro
+      panelDelay = 4300;
+    } else {
+      setTimeout(crownDrop, 500);
+      panelDelay = 2300;
+    }
+  }
   setTimeout(() => {
     if (!state || state.phase !== 'over') return;           // por si volvió al menú
     showScreen('result');
     $('overlaySub').textContent = reasonTxt;
-  }, 550);
+    if (rq.style.display !== 'none'){
+      typeText($('rqTxt'), rqText);
+      if (wonLadder && wasPossessed) setTimeout(exorcise, 300);
+    }
+  }, panelDelay);
+}
+
+// === piezas de la coreografia de derrota ===
+// limpia los restos visuales del retrato entre una partida y otra
+function resetPortraitFx(){
+  $('rqImg').parentElement.querySelectorAll('.wisp').forEach(x => x.remove());
+}
+// pesadilla: el espiritu de deep blue abandona al vencido y el retrato
+// queda limpio, liberado de la posesion
+function exorcise(){
+  const wrap = $('rqImg').parentElement;
+  const w = document.createElement('i');
+  w.className = 'wisp';
+  wrap.appendChild(w);
+  setTimeout(() => possessFx($('rqImg'), false), 450);
+  setTimeout(() => w.remove(), 1500);
+}
+// la frase del rival se escribe letra a letra con cursor parpadeante
+let typeTimer = null;
+function typeText(el, txt){
+  clearInterval(typeTimer);
+  if (!txt){ el.textContent = ''; el.classList.remove('typing'); return; }
+  el.classList.add('typing');
+  el.textContent = '';
+  let i = 0;
+  typeTimer = setInterval(() => {
+    el.textContent = txt.slice(0, ++i);
+    if (i >= txt.length){ clearInterval(typeTimer); el.classList.remove('typing'); }
+  }, 24);
+}
+// apagon de monitor viejo: la pantalla colapsa a una linea, a un punto y a
+// negro; el negro se mantiene hasta que "reenciende" al quitar el elemento
+function crtShutdown(){
+  const d = document.createElement('div');
+  d.id = 'crtOff';
+  d.appendChild(document.createElement('i'));
+  document.body.appendChild(d);
+  sfx('end');
+  setTimeout(() => d.remove(), 3400);
+}
+// la corona cae desde lo alto y aterriza con rebote sobre tu nombre
+function crownDrop(){
+  const card = $(you === 'w' ? 'cardW' : 'cardB');
+  const pname = card && card.querySelector('.pname');
+  if (!pname) return;
+  const t = pname.getBoundingClientRect();
+  const tx = Math.round(t.left + 6), ty = Math.round(t.top - 8);
+  const c = document.createElement('div');
+  c.className = 'crowndrop';
+  c.textContent = '👑';
+  document.body.appendChild(c);
+  c.animate([
+    { transform: `translate(${tx}px, -90px) scale(2.6) rotate(-14deg)`, opacity: 0 },
+    { transform: `translate(${tx}px, ${Math.round(ty * 0.55)}px) scale(1.8) rotate(8deg)`, opacity: 1, offset: 0.5 },
+    { transform: `translate(${tx}px, ${ty}px) scale(1) rotate(0deg)`, offset: 0.72 },
+    { transform: `translate(${tx}px, ${ty - 16}px) scale(1.08) rotate(-4deg)`, offset: 0.84 },
+    { transform: `translate(${tx}px, ${ty}px) scale(1) rotate(0deg)` },
+  ], { duration: 1300, easing: 'ease-in', fill: 'forwards' });
+  sfx('win');
+  setTimeout(() => {
+    c.style.transition = 'opacity .6s';
+    c.style.opacity = '0';
+    setTimeout(() => c.remove(), 700);
+  }, 2400);
 }
 
 // efectos de final de partida: cian al ganar, rojo al perder, dorado en empate

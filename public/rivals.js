@@ -23,6 +23,21 @@
        blunder     probabilidad de 0 a 1 de jugar cualquier cosa
        hoard       energia minima que junta antes de mover sin capturar
        pawnPush    ganas de empujar peones
+     ai: rasgos de ESTILO, todos opcionales. Cambian como piensa, no cuanto acierta
+       risk        cuanto respeta la peor replica del rival: <1 sacrifica y
+                   se mete en lios, >1 no regala absolutamente nada (normal 1)
+       kingHunt    ganas de rondar al rey rival: sus piezas convergen sobre el
+       efficiency  cuanto le duele gastar energia (normal 0.5)
+       opportunist golpea justo cuando te quedas seco de energia
+       tradeBias   +1 cambia piezas cuando va ganando en material (por tiempo
+                   gana el material), -1 evita cambios y mantiene la tension
+       endgame     con pocas piezas afina: cero errores y empuja a coronar
+       smother     le quita jugadas legales al rival, la boa constrictor.
+                   CARO: solo se aplica a sus mejores candidatos
+       depth       calcula media jugada mas alla del horizonte.
+                   CARO: solo se aplica a sus mejores candidatos
+       book        apertura preparada [[filaDesde,colDesde,filaHasta,colHasta],...]
+                   la sigue hasta que una jugada sea ilegal o arriesgue al rey
    Cambia numeros y textos, guarda y reinicia el servidor. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -78,7 +93,9 @@
       },
       img: '/Imagenes/Alekhine.png',
       songSeed: 156,   // La menor, 83 bpm, swing altisimo y novenas: frenetica y torcida como sus complicaciones
-      ai: { tickMs: 900, aggression: 1.7, blunder: 0.10, hoard: 2, pawnPush: 0.3 },
+      // kamikaze: sacrifica material por ataque y vive rondando a tu rey
+      ai: { tickMs: 900, aggression: 1.7, blunder: 0.10, hoard: 2, pawnPush: 0.3,
+            risk: 0.35, kingHunt: 1.4, efficiency: 0.3 },
     },
     {
       id: 'lasker',
@@ -102,7 +119,9 @@
       },
       img: '/Imagenes/lasker.png',
       songSeed: 1,   // Sib armonica, 75 bpm, el swing mas torcido: incomoda, nunca se asienta
-      ai: { tickMs: 800, aggression: 1.1, blunder: 0.08, hoard: 3, pawnPush: 0.2 },
+      // psicologo: espera a que estes seco de energia y entonces golpea
+      ai: { tickMs: 800, aggression: 1.1, blunder: 0.08, hoard: 3, pawnPush: 0.2,
+            opportunist: 1.3, kingHunt: 0.4 },
     },
     {
       id: 'karpov',
@@ -126,7 +145,9 @@
       },
       img: '/Imagenes/karpov.png',
       songSeed: 13,   // La menor, 67 bpm, sin swing y casi sin melodia: lenta, aprieta sin soltar
-      ai: { tickMs: 720, aggression: 0.9, blunder: 0.06, hoard: 5, pawnPush: 0.15 },
+      // boa constrictor: te quita jugadas legales, evita cambios, no arriesga
+      ai: { tickMs: 720, aggression: 0.9, blunder: 0.06, hoard: 5, pawnPush: 0.15,
+            smother: 1.0, tradeBias: -0.8, risk: 1.3, efficiency: 0.7 },
     },
     {
       id: 'capablanca',
@@ -150,7 +171,9 @@
       },
       img: '/Imagenes/capablanca.png',
       songSeed: 87,   // Fa menor, 73 bpm, swing suave: calida y fluida, sin esfuerzo aparente
-      ai: { tickMs: 620, aggression: 1.1, blunder: 0.05, hoard: 4, pawnPush: 0.2 },
+      // tecnico sin esfuerzo: nunca malgasta energia y en el final no falla
+      ai: { tickMs: 620, aggression: 1.1, blunder: 0.05, hoard: 4, pawnPush: 0.2,
+            endgame: 1, efficiency: 0.9, risk: 1.1 },
     },
     {
       id: 'fischer',
@@ -174,7 +197,9 @@
       },
       img: '/Imagenes/bobby fisher.png',
       songSeed: 31,   // Sib dorico, 79 bpm, swing minimo: limpia, recta y letal como su calculo
-      ai: { tickMs: 520, aggression: 1.4, blunder: 0.03, hoard: 4, pawnPush: 0.25 },
+      // claridad letal: preciso, presiona a tu rey y ve mas alla del horizonte
+      ai: { tickMs: 520, aggression: 1.4, blunder: 0.03, hoard: 4, pawnPush: 0.25,
+            kingHunt: 1.0, risk: 1.2, depth: 0.4 },
     },
     {
       id: 'beth',
@@ -198,7 +223,9 @@
       },
       img: '/Imagenes/GambitQueen.png',
       songSeed: 38,   // Sib armonica, 67 bpm, swing sonador: flotante como el tablero del techo
-      ai: { tickMs: 430, aggression: 1.8, blunder: 0.02, hoard: 3, pawnPush: 0.25 },
+      // redes de mate: todas sus piezas convergen sobre tu rey, acepta sacrificios
+      ai: { tickMs: 430, aggression: 1.8, blunder: 0.02, hoard: 3, pawnPush: 0.25,
+            kingHunt: 1.8, risk: 0.7 },
     },
     {
       id: 'kasparov',
@@ -222,7 +249,11 @@
       },
       img: '/Imagenes/gary.png',
       songSeed: 74,   // Fa frigio, 84 bpm y la melodia mas densa: la tormenta que no para de golpear
-      ai: { tickMs: 360, aggression: 2.0, blunder: 0.01, hoard: 5, pawnPush: 0.2 },
+      // preparacion aterradora: sale con un guion de desarrollo y luego ataca
+      // sin medir gastos. book: Cf6, d5, Af5, e6, Cc6 (coordenadas de tablero)
+      ai: { tickMs: 360, aggression: 2.0, blunder: 0.01, hoard: 5, pawnPush: 0.2,
+            kingHunt: 0.8, risk: 0.7, efficiency: 0.3, opportunist: 0.5,
+            book: [[0,6,2,5],[1,3,3,3],[0,2,3,5],[1,4,2,4],[0,1,2,2]] },
     },
     {
       id: 'magnus',
@@ -246,7 +277,10 @@
       },
       img: '/Imagenes/magnus.png',
       songSeed: 34,   // Sib menor, 68 bpm, swing sereno: paciente y sin prisa, como su asfixia
-      ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2 },
+      // exprimidor: no regala nada, cambia piezas cuando va ganando y te
+      // asfixia camino a ganar por tiempo y material
+      ai: { tickMs: 300, aggression: 1.4, blunder: 0, hoard: 6, pawnPush: 0.2,
+            tradeBias: 1.0, risk: 1.4, efficiency: 0.8, endgame: 0.6, smother: 0.4 },
     },
     {
       id: 'deepblue',
@@ -271,7 +305,9 @@
       },
       img: DEEPBLUE_IMG,
       songSeed: 75,   // Sol dorico, 82 bpm, swing 0.06 (el minimo), melodia densa y eco seco: un metronomo de maquina
-      ai: { tickMs: 240, aggression: 1.7, blunder: 0, hoard: 6, pawnPush: 0.25 },
+      // fuerza bruta: calcula mas alla del horizonte, asfixia y caza sin dudar
+      ai: { tickMs: 240, aggression: 1.7, blunder: 0, hoard: 6, pawnPush: 0.25,
+            depth: 1.0, risk: 1.2, kingHunt: 0.6, smother: 0.3, efficiency: 0.4 },
     },
   ];
 

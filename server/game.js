@@ -50,6 +50,7 @@ class Game {
       b: Math.min(MAX_ENERGY, this.startEnergy + (this.vsCPU ? (this.ai.startBonus || 0) : 0)),
     };
     this.aiPrev = null;   // ultima jugada de la CPU, para no deshacerla en bucle
+    this.bookIdx = 0;     // proxima jugada del libro de aperturas del rival
     this.lastMove = null;
     this.phase = 'lobby';        // 'lobby' | 'countdown' | 'live' | 'over'
     this.winner = null;   // w | b | draw | null
@@ -352,6 +353,53 @@ class Game {
     return worst;
   }
 
+  // jugadas legales disponibles para un color. La boa constrictor puntua
+  // cuantas de estas le quita al rival con cada jugada suya
+  _mobility(color) {
+    let n = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const p = this.board[r][c];
+      if (p && p.color === color) n += E.genMoves(this.board, r, c).length;
+    }
+    return n;
+  }
+
+  // igual que _worstReply pero devuelve LA jugada, no solo el dano:
+  // la mejor captura neta que foeColor puede permitirse ahora mismo
+  _bestCaptureMove(foeColor, myColor, justCapturedAt) {
+    const V = E.VALUE;
+    const sur = E.inCheck(this.board, foeColor) ? CHECK_SURCHARGE : 0;
+    let best = null, bestNet = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+      const q = this.board[r][c];
+      if (!q || q.color !== foeColor) continue;
+      for (const m of E.genMoves(this.board, r, c)) {
+        const t = this.board[m.r][m.c];
+        if (!t || t.color !== myColor || t.type === 'k') continue;
+        const free = justCapturedAt && m.r === justCapturedAt.r && m.c === justCapturedAt.c;
+        if (!free && this.energy[foeColor] < this.moveCost[q.type] + sur) continue;
+        let net = V[t.type];
+        if (this._sqDefended(myColor, m.r, m.c)) net -= V[q.type];
+        if (net > bestNet) { bestNet = net; best = { fr: r, fc: c, tr: m.r, tc: m.c }; }
+      }
+    }
+    return best;
+  }
+
+  // mira media jugada MAS ALLA del horizonte: deja que el rival ejecute su
+  // mejor captura sobre la posicion simulada y mide nuestra mejor respuesta.
+  // Positivo = la linea esconde un contragolpe que la evaluacion corta no ve
+  _deepGain(color, foe, capturedAt) {
+    const reply = this._bestCaptureMove(foe, color, capturedAt);
+    if (!reply) return 0;
+    const p = this.board[reply.fr][reply.fc];
+    const victim = this.board[reply.tr][reply.tc];
+    this.board[reply.tr][reply.tc] = p; this.board[reply.fr][reply.fc] = null;
+    const counter = this._worstReply(color, foe, { r: reply.tr, c: reply.tc });
+    this.board[reply.fr][reply.fc] = p; this.board[reply.tr][reply.tc] = victim || null;
+    return counter;
+  }
+
   _aiStep(now) {
     if (this.phase !== 'live' || !this.vsCPU) return;
     const color = 'b', foe = 'w';
@@ -361,13 +409,59 @@ class Game {
     const foeInCheck = this.checkSince[foe] != null;
     // solo se puede capturar al rey rival cuando su gracia de jaque venció
     const graceDone = foeInCheck && now - this.checkSince[foe] >= GRACE_MS;
+    // rasgos de estilo del rival, con valores neutros si no los define.
+    // Cada uno cambia COMO evalua, no solo cuanto acierta: aqui viven las
+    // personalidades de verdad (ver la guia de campos en rivals.js)
+    const A = this.ai;
+    const risk        = A.risk != null ? A.risk : 1;
+    const kingHunt    = A.kingHunt || 0;
+    const efficiency  = A.efficiency != null ? A.efficiency : 0.5;
+    const opportunist = A.opportunist || 0;
+    const tradeBias   = A.tradeBias || 0;
+    const endgame     = A.endgame || 0;
+
+    // material y piezas en juego, una sola vez por decision
+    const myMat = E.material(this.board, color), foeMat = E.material(this.board, foe);
+    let pieceCount = 0;
+    for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) if (this.board[r][c]) pieceCount++;
+    // el tecnico de finales afina cuando el tablero se vacia: menos errores,
+    // mas empuje de peones hacia la coronacion
+    const inEndgame = endgame > 0 && pieceCount <= 12;
+    const blunderNow  = inEndgame ? A.blunder * (1 - endgame) : A.blunder;
+    const pawnPushNow = inEndgame ? A.pawnPush + 0.4 * endgame : A.pawnPush;
+
     // si va perdiendo en material y el reloj se acaba, se lanza: por tiempo
     // gana el que tenga mas material, asi que esperar es perder
-    const desperate = this.timeLeft(now) <= LATE_MS &&
-      E.material(this.board, color) < E.material(this.board, foe);
-    const aggr = this.ai.aggression * (desperate ? 1.5 : 1);
+    const desperate = this.timeLeft(now) <= LATE_MS && myMat < foeMat;
+    const aggr = A.aggression * (desperate ? 1.5 : 1);
     // cercania al centro: las piezas menores y la dama pelean mejor desde ahi
     const cent = (rr, cc) => 3.5 - Math.max(Math.abs(rr - 3.5), Math.abs(cc - 3.5));
+    // donde vive el rey rival, para los cazadores de reyes
+    const fk = kingHunt ? E.findKing(this.board, foe) : null;
+
+    // libro de aperturas: jugadas preparadas que ejecuta mientras la posicion
+    // lo permita. Se abandona si una jugada ya no es legal o expone al rey
+    if (A.book && this.bookIdx < A.book.length && !inCheckNow) {
+      const [bfr, bfc, btr, btc] = A.book[this.bookIdx];
+      const bp = this.board[bfr][bfc];
+      const legal = bp && bp.color === color &&
+        E.genMoves(this.board, bfr, bfc).some(m => m.r === btr && m.c === btc);
+      if (!legal) { this.bookIdx = 999; }
+      else {
+        const bTarget = this.board[btr][btc];
+        const bCost = this._estimateCost(color, bp, bfr, bfc, btr, btc, bTarget, surcharge);
+        if (this.energy[color] < bCost) return;   // espera juntar energia para el guion
+        this.board[btr][btc] = bp; this.board[bfr][bfc] = null;
+        const bSafe = !E.inCheck(this.board, color);
+        this.board[bfr][bfc] = bp; this.board[btr][btc] = bTarget || null;
+        if (bSafe) {
+          this.bookIdx++;
+          this.applyMove(color, bfr, bfc, btr, btc, now);
+          return;
+        }
+        this.bookIdx = 999;
+      }
+    }
 
     const moves = [];
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
@@ -385,6 +479,12 @@ class Game {
           score += V[victim.type] * 10 * aggr;
           if (victim.type === 'k') score += 100000;
           if (cost === 0 && this.freeRecapture[color]) score += 6;   // recaptura con cupón: gratis
+          // actitud ante los CAMBIOS (capturar pieza defendida): con tradeBias
+          // positivo simplifica cuando va ganando en material porque por tiempo
+          // gana el material; negativo evita cambios y mantiene la tension
+          if (tradeBias && victim.type !== 'k' && this._sqDefended(foe, m.r, m.c)) {
+            score += tradeBias * V[victim.type] * (myMat > foeMat ? 2 : -1.5);
+          }
         }
 
         // simula la jugada y mide qué nos puede hacer el rival justo después
@@ -405,13 +505,29 @@ class Game {
             if (gain > threat) threat = gain;
           }
         }
+        // caza del rey: cuantas casillas pegadas al rey rival muerde la pieza
+        // desde su nueva posicion, y si el movimiento acorta la distancia
+        if (kingHunt && fk && kingSafe && p.type !== 'k') {
+          let bites = 0;
+          for (const m2 of E.genMoves(this.board, m.r, m.c)) {
+            if (Math.abs(m2.r - fk.r) <= 1 && Math.abs(m2.c - fk.c) <= 1) bites++;
+          }
+          const dBefore = Math.max(Math.abs(r - fk.r), Math.abs(c - fk.c));
+          const dAfter  = Math.max(Math.abs(m.r - fk.r), Math.abs(m.c - fk.c));
+          score += (bites * 1.5 + (dBefore - dAfter) * 0.6) * kingHunt;
+        }
         if (promotes) p.type = 'p';
         this.board[r][c] = p; this.board[m.r][m.c] = victim || null;
 
         if (!kingSafe) score -= 400;      // deja al rey vendido
-        score -= worst * 8;               // lo que su mejor réplica nos costaría
+        score -= worst * 8 * risk;        // lo que su mejor réplica nos costaría
         score += threat * 2;              // amenaza creada para el siguiente turno
-        score -= cost * 0.5;              // la energía es tempo: mejor barato
+        score -= cost * efficiency;       // la energía es tempo: mejor barato
+        // oportunista: golpea justo cuando el rival esta seco de energia
+        // y no puede responder ni defenderse
+        if (opportunist && this.energy[foe] < 2.5) {
+          score += (threat * 1.2 + (givesCheck ? 5 : 0) + (victim ? 3 : 0)) * opportunist;
+        }
 
         // el jaque sostenido es el camino a la victoria: corre el reloj de gracia
         if (givesCheck) {
@@ -424,7 +540,7 @@ class Game {
         }
 
         if (promotes) score += 25;
-        if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * this.ai.pawnPush;
+        if (p.type === 'p') score += (color === 'b' ? m.r : 7 - m.r) * pawnPushNow;
         if (p.type === 'k' && !inCheckNow) score -= 3;   // no pasear al rey sin motivo
         if ((p.type === 'n' || p.type === 'b') && (r === 0 || r === 7)) score += 1.5;   // desarrollo
         // ganar centro con menores y dama; perderlo sin motivo resta
@@ -432,7 +548,7 @@ class Game {
         // no deshacer la jugada anterior: el vaiven regala tempo y energia
         if (this.aiPrev && p.id === this.aiPrev.id && m.r === this.aiPrev.fr && m.c === this.aiPrev.fc) score -= 5;
         // el ruido aleatorio baja con la precision del rival: los finos casi no dudan
-        score += Math.random() * (0.25 + this.ai.blunder * 4);
+        score += Math.random() * (0.25 + blunderNow * 4);
         moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, score, cap: !!victim, safe: kingSafe });
       }
     }
@@ -442,13 +558,37 @@ class Game {
     const safeMoves = moves.filter(m => m.safe);
     const pool = safeMoves.length ? safeMoves : moves;
     pool.sort((a, b) => b.score - a.score);
+
+    // FASE CARA solo sobre los mejores candidatos, para no fundir el servidor:
+    // smother mide cuantas jugadas legales le quita al rival (la boa de Karpov)
+    // y depth mira media jugada mas alla del horizonte (el calculo de Deep Blue)
+    if ((A.smother || A.depth) && pool.length > 1) {
+      const smother = A.smother || 0, depth = A.depth || 0;
+      const baseMob = smother ? this._mobility(foe) : 0;
+      const K = Math.min(5, pool.length);
+      for (let i = 0; i < K; i++) {
+        const mv = pool[i];
+        const p = this.board[mv.fr][mv.fc];
+        const victim = this.board[mv.tr][mv.tc];
+        if (victim && victim.type === 'k') continue;   // capturar al rey no necesita refinarse
+        const promotes = p.type === 'p' && (mv.tr === 0 || mv.tr === 7);
+        this.board[mv.tr][mv.tc] = p; this.board[mv.fr][mv.fc] = null;
+        if (promotes) p.type = 'q';
+        if (smother) mv.score += (baseMob - this._mobility(foe)) * smother;
+        if (depth) mv.score += this._deepGain(color, foe, victim ? { r: mv.tr, c: mv.tc } : null) * 1.2 * depth;
+        if (promotes) p.type = 'p';
+        this.board[mv.fr][mv.fc] = p; this.board[mv.tr][mv.tc] = victim || null;
+      }
+      pool.sort((a, b) => b.score - a.score);
+    }
+
     let pick = pool[0];
     const goodMove = pick.score > 8;   // captura rentable, jaque o respuesta a amenaza
     // acumula energia antes de gastar en jugadas mediocres segun su avaricia
     if (!goodMove && !inCheckNow && this.energy[color] < this.ai.hoard && Math.random() < 0.6) return;
     // error humano: a veces juega algo flojo (de la mitad buena de sus opciones),
     // pero nunca una jugada que exponga al rey ni estando en jaque
-    if (!inCheckNow && pick.score < 9000 && Math.random() < this.ai.blunder) {
+    if (!inCheckNow && pick.score < 9000 && Math.random() < blunderNow) {
       pick = pool[Math.floor(Math.random() * Math.max(1, Math.ceil(pool.length / 2)))];
     }
     const pid = this.board[pick.fr][pick.fc].id;

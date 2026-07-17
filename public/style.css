@@ -212,7 +212,9 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .chip .g{ font-size:18px; color:#dfe6ff; } .chip b{ font-family:'Chakra Petch'; color:var(--white-acc); } .chip i{ color:var(--energy-a); font-style:normal; }
 .legend p{ margin-top:10px; font-size:12.5px; color:var(--ink-dim); line-height:1.5; }
 
-.toast{ position:fixed; left:50%; top:14%; transform:translateX(-50%) translateY(-10px); background:var(--danger); color:#fff; font-family:'Chakra Petch'; font-weight:700; letter-spacing:.1em; padding:8px 16px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .18s,transform .18s; box-shadow:0 0 24px rgba(255,45,74,.5); z-index:50; text-transform:uppercase; font-size:13px; }
+/* z-index 70: por encima del overlay de resultado (60) para que los avisos
+   de desbloqueo se vean tambien con el panel abierto */
+.toast{ position:fixed; left:50%; top:14%; transform:translateX(-50%) translateY(-10px); background:var(--danger); color:#fff; font-family:'Chakra Petch'; font-weight:700; letter-spacing:.1em; padding:8px 16px; border-radius:10px; opacity:0; pointer-events:none; transition:opacity .18s,transform .18s; box-shadow:0 0 24px rgba(255,45,74,.5); z-index:70; text-transform:uppercase; font-size:13px; }
 .toast.good{ background:var(--energy-a); color:#04220f; box-shadow:0 0 24px rgba(107,255,176,.5); }
 
 /* banner persistente rival desconectado, esperando reconexión */
@@ -508,6 +510,57 @@ img.possessed{
 /* variante cuando el rival te gana a ti */
 .rival-quote.lost{ border-color:var(--danger); box-shadow:0 0 18px rgba(255,45,74,.25); }
 .rival-quote.lost .rq-name{ color:var(--danger); }
+
+/* === animaciones de derrota del rival === */
+.rq-imgwrap{ position:relative; flex:0 0 auto; width:56px; height:56px; }
+/* exorcismo: el espiritu de deep blue abandona al poseido y se disipa */
+.rq-imgwrap .wisp{
+  position:absolute; left:50%; top:52%; width:22px; height:26px; margin-left:-11px;
+  border-radius:50% 50% 44% 44%; pointer-events:none;
+  background:radial-gradient(circle at 50% 38%, rgba(160,200,255,.95), rgba(51,102,255,.55) 55%, transparent 72%);
+  filter:blur(1px) drop-shadow(0 0 10px rgba(51,102,255,.9));
+  animation:wispup 1.35s ease-out forwards;
+}
+@keyframes wispup{
+  0%{ transform:translateY(0) scale(.5); opacity:0 }
+  22%{ opacity:1 }
+  100%{ transform:translateY(-52px) scale(1.25); opacity:0 }
+}
+/* cursor de maquina de escribir mientras el vencido suelta su frase */
+.rq-txt.typing::after{ content:"▌"; margin-left:1px; color:var(--gold); animation:cursorblink .7s steps(1) infinite; }
+@keyframes cursorblink{ 50%{ opacity:0 } }
+/* rey vencido: se tumba con rebote; el resto del ejercito se disuelve */
+.piece.topple{ z-index:6; }
+.piece.topple span{ display:inline-block; transform-origin:58% 86%; animation:topple 1.1s cubic-bezier(.45,0,.7,1) forwards; }
+@keyframes topple{
+  0%{ transform:rotate(0) }
+  50%{ transform:rotate(97deg) translateY(3%) }
+  62%{ transform:rotate(88deg) translateY(1%) }
+  72%{ transform:rotate(95deg) translateY(3%) }
+  84%{ transform:rotate(95deg) translateY(3%); opacity:1 }
+  100%{ transform:rotate(95deg) translateY(9%); opacity:0 }
+}
+.piece.dissolve span{ display:inline-block; animation:dissolvepiece .85s ease-in both; }
+@keyframes dissolvepiece{
+  0%{ transform:none; opacity:1; filter:none }
+  100%{ transform:translateY(-16%) scale(.55); opacity:0; filter:blur(3px) }
+}
+/* apagado de monitor CRT al vencer a deep blue: colapsa a una linea, punto, negro */
+#crtOff{ position:fixed; inset:0; z-index:400; background:#000; pointer-events:none; animation:crtbgin .12s both; }
+#crtOff i{ display:block; width:100%; height:100%; background:#eaffef; box-shadow:0 0 80px rgba(180,255,210,.9); animation:crtbeam 1.45s ease-in forwards; }
+@keyframes crtbgin{ from{ opacity:0 } to{ opacity:1 } }
+@keyframes crtbeam{
+  0%{ transform:scaleY(1); opacity:.35 }
+  40%{ transform:scaleY(.006); opacity:1 }
+  62%{ transform:scaleY(.006) scaleX(1); opacity:1 }
+  85%{ transform:scaleY(.006) scaleX(.03); opacity:1 }
+  100%{ transform:scaleY(.006) scaleX(.001); opacity:0 }
+}
+/* corona que cae del cielo sobre tu nombre al completar la escalera */
+.crowndrop{
+  position:fixed; left:0; top:0; z-index:450; font-size:26px; line-height:1;
+  pointer-events:none; filter:drop-shadow(0 0 12px rgba(255,207,74,.9));
+}
 
 /* mini foto del rival junto a su nombre en la tarjeta */
 .rival-face{ width:26px; height:26px; border-radius:6px; vertical-align:middle; border:1px solid var(--line); }

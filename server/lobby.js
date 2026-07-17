@@ -38,12 +38,14 @@ function cleanSettings(o) {
 function nightmareAI(ai, loop) {
   if (!loop) return ai;
   const speed = Math.pow(0.62, loop);
+  // el spread conserva los rasgos de estilo del rival (risk, kingHunt, smother,
+  // depth, book...): en pesadilla sigue siendo el mismo, solo que potenciado
   return {
+    ...ai,
     tickMs: Math.max(150, Math.round(ai.tickMs * speed)),
     aggression: ai.aggression + 0.4 * loop,
     blunder: ai.blunder * Math.pow(0.25, loop),
     hoard: Math.max(2, ai.hoard - loop),
-    pawnPush: ai.pawnPush,
     // ventaja de la maquina poseida: energia inicial extra y regeneracion mas rapida
     startBonus: Math.min(3, loop),
     regenBoost: Math.min(1.75, 1 + 0.25 * loop),
