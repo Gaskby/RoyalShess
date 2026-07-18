@@ -1,4 +1,7 @@
-/* RoyalShess MÚSICA LO-FI PROCEDURAL Web Audio, sin archivos. Un beat lo-fi generado en vivo: acordes con séptima filtrados, bajo,. melodía pentatónica con eco, batería con swing y crujido de vinilo.. - setIntensity0..1: al agotarse el reloj sube el tempo, se abre el. filtro y la batería se vuelve más densa.. - Variaciones: cada partida elige tonalidad, progresión, tempo y swing. al azar, y la progresión puede mutar cada 8 compases. */
+/* RoyalShess MÚSICA LO-FI PROCEDURAL Web Audio, sin archivos. Un beat lo-fi generado en vivo: acordes con séptima filtrados, bajo,. melodía pentatónica con eco, batería con swing y crujido de vinilo.. - setIntensity0..1: al agotarse el reloj sube el tempo, se abre el. filtro y la batería se vuelve más densa.. - Variaciones: cada partida elige tonalidad, progresión, tempo y swing. al azar, y la progresión puede mutar cada 8 compases.
+   Estilo 'ambient' (setStyle): modo alternativo tipo Duet/Tim Shiel — pads
+   de sierras desafinadas con reverb por convolución, arpegios con eco largo,
+   sub-bajo y sin batería. Mismo motor, mismas semillas, otro mundo sonoro. */
 window.RSMusic = (function () {
   let ctx = null;
   let out = null, master = null, comp = null, lpf = null;
@@ -12,6 +15,10 @@ window.RSMusic = (function () {
   // la misma pista. La escalera pone aquí la songSeed del rival de rivals.js
   let songSeed = null;
   let rand = Math.random;   // generador musical actual: azar o semilla
+  let style = 'lofi';       // 'lofi' (beat clásico) o 'ambient' (tipo Duet)
+  // nodos del modo ambient; se construyen junto al resto en build()
+  let ambBus = null, ambLpf = null, ambSubG = null, pluckBus = null;
+  let ambDelay = null, revSend = null, vinylGain = null;
 
   // generador determinista: la misma semilla produce la misma secuencia
   function mulberry32(a) {
@@ -43,6 +50,17 @@ window.RSMusic = (function () {
   let leadType = 'triangle', bassMode = 0, chordExt = [0, 2, 4, 6];
   let melodyBias = 0.08, delayT = 0.29;
 
+  // modo ambient: escalas luminosas que nunca resuelven y acordes sus/add9
+  const AMB_SCALES = [
+    [0, 2, 4, 6, 7, 9, 11],   // lidio: flotante, la marca de la casa
+    [0, 2, 4, 5, 7, 9, 11],   // mayor: cálido y sencillo
+  ];
+  const AMB_PROGS = [
+    [0, 5, 3, 4], [0, 3, 4, 0], [0, 2, 5, 3], [0, 4, 5, 2],
+  ];
+  const AMB_CHORDS = [[0, 2, 4, 8], [0, 1, 4, 8], [0, 2, 4, 6, 8], [0, 3, 4, 8]];
+  let arpMode = 0, arpDensity = 0.5, shimmerProb = 0.2, padDet = 7, arpIdx = 0;
+
   const rnd = (a, b) => a + rand() * (b - a);
   const pick = (a) => a[Math.floor(rand() * a.length)];
   const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -54,19 +72,38 @@ window.RSMusic = (function () {
     // OJO: el ORDEN de estas derivaciones es parte del contrato de las semillas
     // de rivals.js; añadir dimensiones nuevas siempre AL FINAL
     rand = songSeed != null ? mulberry32(songSeed) : Math.random;
-    key = pick([53, 55, 57, 58, 60]);   // F, G, A, Bb, C
-    prog = pick(PROGS);
-    baseBpm = rnd(66, 84);
-    swing = rnd(0.06, 0.19);
-    // dimensiones extra para que cada cancion tenga voz propia
-    scaleNow = pick(SCALES);
-    leadType = pick(['triangle', 'sine', 'square']);
-    melodyBias = rnd(0.05, 0.15);
-    bassMode = Math.floor(rand() * 3);
-    chordExt = pick([[0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 8]]);   // séptima o novena
-    delayT = rnd(0.22, 0.38);
-    if (delayIn) delayIn.delayTime.value = delayT;
-    step = 0; bar = 0;
+    if (style === 'ambient') {
+      // rama aparte: no comparte orden de derivaciones con el lo-fi, así el
+      // contrato de semillas de rivals.js queda intacto
+      key = pick([50, 52, 54, 55, 57]);   // D, E, F#, G, A
+      scaleNow = pick(AMB_SCALES);
+      prog = pick(AMB_PROGS);
+      baseBpm = rnd(56, 70);
+      swing = 0;   // recto e hipnótico, nada de swing
+      chordExt = pick(AMB_CHORDS);
+      leadType = pick(['sine', 'triangle']);
+      arpMode = Math.floor(rand() * 3);
+      arpDensity = rnd(0.4, 0.65);
+      shimmerProb = rnd(0.15, 0.4);
+      padDet = rnd(4, 10);
+      if (ambDelay) ambDelay.delayTime.value = 60 / baseBpm * 0.75;   // corchea con puntillo
+    } else {
+      key = pick([53, 55, 57, 58, 60]);   // F, G, A, Bb, C
+      prog = pick(PROGS);
+      baseBpm = rnd(66, 84);
+      swing = rnd(0.06, 0.19);
+      // dimensiones extra para que cada cancion tenga voz propia
+      scaleNow = pick(SCALES);
+      leadType = pick(['triangle', 'sine', 'square']);
+      melodyBias = rnd(0.05, 0.15);
+      bassMode = Math.floor(rand() * 3);
+      chordExt = pick([[0, 2, 4, 6], [0, 2, 4, 6], [0, 2, 4, 8]]);   // séptima o novena
+      delayT = rnd(0.22, 0.38);
+      if (delayIn) delayIn.delayTime.value = delayT;
+    }
+    // el crujido de vinilo solo pinta en el mundo lo-fi
+    if (vinylGain) vinylGain.gain.setTargetAtTime(style === 'ambient' ? 0 : 0.5, ctx.currentTime, 0.3);
+    step = 0; bar = 0; arpIdx = 0;
   }
 
   function build() {
@@ -105,9 +142,46 @@ window.RSMusic = (function () {
     }
     const vs = ctx.createBufferSource(); vs.buffer = vb; vs.loop = true;
     const vhp = ctx.createBiquadFilter(); vhp.type = 'highpass'; vhp.frequency.value = 1400;
-    const vg = ctx.createGain(); vg.gain.value = 0.5;
-    vs.connect(vhp); vhp.connect(vg); vg.connect(comp);
+    vinylGain = ctx.createGain(); vinylGain.gain.value = style === 'ambient' ? 0 : 0.5;
+    vs.connect(vhp); vhp.connect(vinylGain); vinylGain.connect(comp);
     vs.start();
+
+    // —— cadena del modo ambient tipo Duet ——
+    // reverb por convolución: ruido con caída exponencial, ~3.5 s de cola
+    const irLen = Math.floor(ctx.sampleRate * 3.5);
+    const ir = ctx.createBuffer(2, irLen, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) {
+      const d = ir.getChannelData(c);
+      for (let i = 0; i < irLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / irLen, 3);
+    }
+    const reverb = ctx.createConvolver(); reverb.buffer = ir;
+
+    ambBus = ctx.createGain();
+    ambLpf = ctx.createBiquadFilter(); ambLpf.type = 'lowpass'; ambLpf.frequency.value = 1000; ambLpf.Q.value = 0.3;
+    const ambDry = ctx.createGain(); ambDry.gain.value = 0.55;
+    revSend = ctx.createGain(); revSend.gain.value = 0.8;
+    const revOut = ctx.createGain(); revOut.gain.value = 0.9;
+    ambBus.connect(ambLpf);
+    ambLpf.connect(ambDry); ambDry.connect(comp);
+    ambLpf.connect(revSend); revSend.connect(reverb); reverb.connect(revOut); revOut.connect(comp);
+
+    // el filtro respira solo: LFO lentísimo sobre la frecuencia de corte
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 240;
+    lfo.connect(lfoG); lfoG.connect(ambLpf.frequency); lfo.start();
+
+    // eco largo para los arpegios; el retorno entra al bus y de ahí a la reverb
+    ambDelay = ctx.createDelay(1.5); ambDelay.delayTime.value = 0.45;
+    const aLp = ctx.createBiquadFilter(); aLp.type = 'lowpass'; aLp.frequency.value = 2200;
+    const aFb = ctx.createGain(); aFb.gain.value = 0.45;
+    ambDelay.connect(aLp); aLp.connect(aFb); aFb.connect(ambDelay);
+    aLp.connect(ambBus);
+    pluckBus = ctx.createGain();
+    pluckBus.connect(ambBus); pluckBus.connect(ambDelay);
+
+    // el sub-bajo va directo al compresor: sin reverb para que no embarre
+    ambSubG = ctx.createGain(); ambSubG.gain.value = 0.9;
+    ambSubG.connect(comp);
   }
 
   function env(g, t, atk, peak, dec) {
@@ -167,7 +241,59 @@ window.RSMusic = (function () {
     tone(delayIn, leadType, hz(key + 12 + PENTA[mIdx]), t, 0.012, 0.55, LEAD_VOL[leadType]);
   }
 
+  // —— voces del modo ambient ——
+  const chordDeg = () => prog[(bar >> 1) % prog.length];   // acorde cada 2 compases
+  function ambChord(t) {
+    const d = chordDeg();
+    for (const iv of chordExt) {   // dos sierras desafinadas por nota: pad ancho
+      const f = hz(deg(d + iv));
+      tone(ambBus, 'sawtooth', f, t, 1.6, 6.5, 0.030, -padDet + rnd(-2, 2));
+      tone(ambBus, 'sawtooth', f, t, 1.6, 6.5, 0.030, padDet + rnd(-2, 2));
+    }
+    tone(ambBus, 'triangle', hz(deg(d, -1)), t, 1.8, 6.5, 0.06);   // raíz grave cálida
+    tone(ambSubG, 'sine', hz(deg(d, -2)), t, 0.5, 5.5, 0.35);      // sub-bajo
+  }
+  // destello agudo que entra despacio, casi pura reverb
+  const shimmer = (t) => tone(revSend, 'sine', hz(deg(chordDeg()) + 24), t, 1.4, 4, 0.05);
+  function arpPluck(t, v) {
+    const d = chordDeg();
+    const seq = chordExt.map((iv) => d + iv).concat(chordExt.map((iv) => d + iv + 7));
+    let n;
+    if (arpMode === 0) n = seq[arpIdx % seq.length];              // sube
+    else if (arpMode === 1) {                                      // sube y baja
+      const m = seq.length * 2 - 2, k = arpIdx % m;
+      n = seq[k < seq.length ? k : m - k];
+    } else n = pick(seq);                                          // libre
+    arpIdx++;
+    tone(pluckBus, leadType, hz(deg(n) + 12), t, 0.004, rnd(0.35, 0.55), 0.11 * v);
+  }
+  // latido sordo para la tensión alta: lo más cerca de un bombo que llega Duet
+  function heartbeat(t, v) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(85, t);
+    o.frequency.exponentialRampToValueAtTime(40, t + 0.12);
+    env(g, t, 0.003, 0.5 * v, 0.22);
+    o.connect(g); g.connect(ambSubG);
+    o.start(t); o.stop(t + 0.35);
+  }
+
+  function scheduleStepAmb(s, t) {
+    const i = Math.min(1, intensity + (danger ? 0.3 : 0));
+    if (bar % 2 === 0 && s === 0) {
+      ambChord(t);
+      if (rand() < shimmerProb) shimmer(t + rnd(1, 3));
+    }
+    // arpegio en corcheas; con la intensidad entran también semicorcheas
+    if (s % 2 === 0 && rand() < arpDensity + i * 0.3) arpPluck(t, 1);
+    if (s % 2 === 1 && i > 0.6 && rand() < i - 0.5) arpPluck(t, 0.6);
+    // en jaque: pulso grave insistente en contratiempo
+    if (danger && s % 8 === 4) tone(ambBus, 'sawtooth', hz(deg(0, -1)), t, 0.008, 0.22, 0.08);
+    if (i > 0.55 && (s === 0 || s === 8)) heartbeat(t, 0.5 + i * 0.5);
+  }
+
   function scheduleStep(s, t) {
+    if (style === 'ambient') return scheduleStepAmb(s, t);
     // en jaque la pista sube un escalón de intensidad y entra un pulso tenso
     const i = Math.min(1, intensity + (danger ? 0.35 : 0));
     if (danger && s % 4 === 2) tone(padBus, 'sawtooth', hz(deg(0) - 12), t, 0.005, 0.13, 0.10);
@@ -202,15 +328,19 @@ window.RSMusic = (function () {
   function tick() {
     intensity += (target - intensity) * 0.06;
     const eff = Math.min(1, intensity + (danger ? 0.35 : 0));
-    const bpm = baseBpm + eff * 26;
+    const amb = style === 'ambient';
+    // el ambient apenas acelera: la urgencia la ponen densidad y latido
+    const bpm = baseBpm + eff * (amb ? 12 : 26);
     const spb = 60 / bpm / 4;   // duración de semicorchea
-    lpf.frequency.setTargetAtTime(750 + eff * 2900, ctx.currentTime, 0.4);
+    if (amb) ambLpf.frequency.setTargetAtTime(950 + eff * 1700, ctx.currentTime, 0.6);
+    else lpf.frequency.setTargetAtTime(750 + eff * 2900, ctx.currentTime, 0.4);
     while (nextT < ctx.currentTime + 0.15) {
       scheduleStep(step, nextT + (step % 2 ? spb * swing : 0));
       step = (step + 1) % 16;
       if (step === 0) {
         bar++;
-        if (bar % 8 === 0 && rand() < 0.4) prog = pick(PROGS);   // variación
+        if (amb) { if (bar % 16 === 0 && rand() < 0.3) prog = pick(AMB_PROGS); }
+        else if (bar % 8 === 0 && rand() < 0.4) prog = pick(PROGS);   // variación
       }
       nextT += spb;
     }
@@ -244,11 +374,19 @@ window.RSMusic = (function () {
     isRunning() { return running; },
     // semilla de la próxima pista: llamar ANTES de start. null vuelve al azar
     setSeed(s) { songSeed = s == null ? null : (s >>> 0); },
+    // 'lofi' o 'ambient'; si suena, la pista se regenera al vuelo en el estilo nuevo
+    setStyle(s) {
+      const v = s === 'ambient' ? 'ambient' : 'lofi';
+      if (v === style) return;
+      style = v;
+      if (running) newTrack();
+    },
     // parámetros de la pista sonando, útil para depurar canciones de rivales
     trackInfo() {
-      return { seed: songSeed, key, bpm: baseBpm, swing, prog: prog.slice(),
-               scale: SCALES.indexOf(scaleNow), lead: leadType, bassMode,
-               melodyBias, delay: delayT };
+      return { style, seed: songSeed, key, bpm: baseBpm, swing, prog: prog.slice(),
+               scale: (style === 'ambient' ? AMB_SCALES : SCALES).indexOf(scaleNow),
+               lead: leadType, bassMode, melodyBias, delay: delayT,
+               arpMode, arpDensity, shimmerProb };
     },
   };
 })();

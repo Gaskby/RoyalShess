@@ -77,15 +77,9 @@
     <div class="sub" id="overlaySub">ajedrez en tiempo real</div>
 
     <div id="screenMenu">
+      <button class="btn gearbtn" id="btnSettings" title="Ajustes">⚙</button>
       <button class="resumebtn" id="btnResume" style="display:none" data-i18n="menu.resume">▶ Volver a la partida</button>
       <input id="nameInput" class="code-input name-input" type="text" maxlength="14" data-i18n-ph="menu.name.ph" placeholder="TU NOMBRE (OPCIONAL)" autocomplete="off" spellcheck="false">
-      <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span data-i18n="menu.drag">Arrastrar piezas para mover</span></label>
-      <div class="theme-row">
-        <span class="theme-label" data-i18n="menu.theme">Tema</span>
-        <button class="btn tbtn" id="themeNeon" data-i18n="menu.theme.neon">Neón</button>
-        <button class="btn tbtn" id="themeClassic" data-i18n="menu.theme.classic">Clásico</button>
-        <button class="btn tbtn" id="themeCRT">🔒 CRT</button>
-      </div>
       <div class="menu-btns">
         <button class="playbtn" id="btnQueue" disabled data-i18n="menu.search">Buscar partida</button>
         <button class="btn big" id="btnFriend" disabled data-i18n="menu.friend">Jugar con un amigo</button>
@@ -95,6 +89,24 @@
         <button class="btn big" id="btnHelp" data-i18n="menu.help">Cómo jugar</button>
       </div>
       <div class="small-note" data-i18n-html="menu.note"></div>
+    </div>
+
+    <div id="screenSettings" style="display:none">
+      <div class="theme-row">
+        <span class="theme-label" data-i18n="menu.theme">Tema</span>
+        <button class="btn tbtn" id="themeNeon" data-i18n="menu.theme.neon">Neón</button>
+        <button class="btn tbtn" id="themeClassic" data-i18n="menu.theme.classic">Clásico</button>
+        <button class="btn tbtn" id="themeCRT">🔒 CRT</button>
+      </div>
+      <div class="theme-row">
+        <span class="theme-label" data-i18n="settings.music">Música</span>
+        <button class="btn tbtn" id="musicLofi" data-i18n="settings.music.lofi">Lo-fi</button>
+        <button class="btn tbtn" id="musicAmbient" data-i18n="settings.music.ambient">Ambient</button>
+      </div>
+      <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span data-i18n="menu.drag">Arrastrar piezas para mover</span></label>
+      <div class="menu-btns">
+        <button class="btn" id="btnSettingsBack" data-i18n="friend.back">Volver</button>
+      </div>
     </div>
 
     <div id="screenFriend" style="display:none">

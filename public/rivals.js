@@ -264,8 +264,8 @@
         en: 'Pragmatic, seemingly relaxed and psychologically unbreakable. He does not need to crush you early: his genius is squeezing wins out of boring positions until you collapse from mental exhaustion.',
       },
       quote: {
-        es: 'No necesite atacarte. Solo espere tu ultimo error. La paciencia tambien gana partidas: exprime la posicion hasta que el rival se rinda solo.',
-        en: 'I did not need to attack you. I just waited for your last mistake. Patience wins games too: squeeze the position until your opponent breaks.',
+        es: 'los patrones siempre siguen incluso en el caos. no te dejes engañar por las maquinas',
+        en: 'Patterns always remain, even in chaos. Dont be fooled by machines.',
       },
       gloat: {
         es: "Solo tuve que esperar. Tu ultimo error llego puntual, como siempre.",

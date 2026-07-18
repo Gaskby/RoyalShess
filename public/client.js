@@ -28,6 +28,10 @@ if (!myToken){
   localStorage.setItem('rs-token', myToken);
 }
 let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de fondo
+// estilo musical: 'lofi' o 'ambient' (tipo Duet); se elige en ajustes y persiste.
+// ?music=ambient lo fuerza en esta sesión (útil para probar)
+let musicStyle = localStorage.getItem('rs-mstyle') === 'ambient' ? 'ambient' : 'lofi';
+if (new URLSearchParams(location.search).get('music') === 'ambient') musicStyle = 'ambient';
 let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chesscom'
 // escalera de leyendas: rivales vencidos hasta ahora y contra cual peleas
 const RV = window.RSRivals;
@@ -414,6 +418,7 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
   $('screenMenu').style.display    = name==='menu'    ? '' : 'none';
+  $('screenSettings').style.display= name==='settings'? '' : 'none';
   $('screenFriend').style.display  = name==='friend'  ? '' : 'none';
   $('screenWaiting').style.display = name==='waiting' ? '' : 'none';
   $('screenSearch').style.display  = name==='search'  ? '' : 'none';
@@ -421,7 +426,7 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   $('screenLadder').style.display  = name==='ladder'  ? '' : 'none';
   $('screenBoard').style.display   = name==='board'   ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder' };
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', settings:'sub.settings' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
   // el botón volver a la partida solo aparece si hay una partida en curso
@@ -513,6 +518,7 @@ function updateAmbience(){
     // cada rival de la escalera tiene su propia canción: misma semilla, misma pista
     const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
     window.RSMusic.setSeed(rival && rival.songSeed != null ? rival.songSeed : null);
+    window.RSMusic.setStyle(musicStyle);
     if (musicOn) window.RSMusic.start(audioCtx); else window.RSMusic.stop();
     const p = state.matchMs ? Math.max(0, Math.min(1, 1 - state.timeLeft / state.matchMs)) : 0;
     const inten = state.phase === 'live' ? Math.pow(p, 1.35) : 0;
@@ -796,7 +802,7 @@ $('btnMenu2').addEventListener('click', () => { currentLadder = null; send({t:'l
 // Escape: desde cualquier subpantalla se regresa al menú principal
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board') showScreen('menu');
+  if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
   else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
   else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
 });
@@ -1208,6 +1214,21 @@ $('themeCRT').addEventListener('click', () => {
   setTheme('crt');
 });
 applyTheme();
+
+// pantalla de ajustes: tema, estilo de música y arrastre viven ahí
+$('btnSettings').addEventListener('click', () => showScreen('settings'));
+$('btnSettingsBack').addEventListener('click', () => showScreen('menu'));
+
+// estilo de música: persiste y, si está sonando, cambia al vuelo
+function applyMusicStyle(){
+  $('musicLofi').classList.toggle('on', musicStyle !== 'ambient');
+  $('musicAmbient').classList.toggle('on', musicStyle === 'ambient');
+  window.RSMusic.setStyle(musicStyle);
+}
+function setMusicStyle(s){ musicStyle = s; localStorage.setItem('rs-mstyle', s); applyMusicStyle(); }
+$('musicLofi').addEventListener('click', () => setMusicStyle('lofi'));
+$('musicAmbient').addEventListener('click', () => setMusicStyle('ambient'));
+applyMusicStyle();
 
 // opciones del menú: nombre + arrastre persisten en localStorage
 nameInput.value = myName;

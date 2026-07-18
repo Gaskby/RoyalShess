@@ -232,7 +232,9 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 
 .overlay{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(4,4,10,.82); backdrop-filter:blur(6px); }
 .overlay.hidden{ display:none; }
-.panelbig{ text-align:center; max-width:440px; padding:34px 30px; }
+.panelbig{ text-align:center; max-width:440px; padding:34px 30px; position:relative; }
+.gearbtn{ position:absolute; top:12px; right:12px; font-size:16px; padding:6px 10px; line-height:1; }
+.gearbtn:hover{ transform:rotate(30deg); }
 .panelbig .title{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(24px,6vw,40px); white-space:nowrap; background:linear-gradient(90deg,var(--white-acc),#c9a6ff 55%,var(--black-acc)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 20px rgba(90,140,255,.3)); }
 .panelbig .sub{ color:var(--ink-dim); letter-spacing:.2em; text-transform:uppercase; font-size:12px; margin-top:6px; }
 .result{ font-family:'Chakra Petch'; font-weight:700; font-size:clamp(26px,6vw,40px); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;
