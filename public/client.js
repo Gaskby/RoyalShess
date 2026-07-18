@@ -43,6 +43,9 @@ let ladderLoop = Math.max(0, parseInt(localStorage.getItem('rs-ladder-loop') || 
 // desbloquea el tema TERMINAL CRT y la corona sobre tu nombre
 let nightmareDone = localStorage.getItem('rs-nightmare-done') === '1';
 let currentLadder = null;
+// reto de escalera lanzado estando en partida: el 'lobby' que responde al leave
+// llega despues y no debe borrar el rival que acabamos de elegir
+let pendingLadder = null;
 // un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
 const isPossessed = (r) => ladderLoop > 0 && !r.secret;
 // aplica o quita el efecto poseido a un retrato. Cada uno parpadea a su aire:
@@ -445,7 +448,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=null; hideBanner(); stopTaunts(); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -499,7 +502,7 @@ function onState(msg){
   } else if (state.phase === 'live'){
     if (prevPhase !== 'live'){
       showScreen(null); sfx('go');
-      if (currentLadder != null) scheduleTaunt(true);   // el rival abre la boca pronto
+      if (currentLadder != null) introTaunt();   // el rival te recibe con su frase
     }
     countdownEl.style.display = 'none';
   } else if (state.phase === 'over'){
@@ -1133,7 +1136,9 @@ function buildLadder(){
   }
 }
 function startLadderFight(idx){
-  ensureAudio(); sendName(); leaveIfInGame();
+  ensureAudio(); sendName();
+  // el lobby que responde al leave llega despues: que no borre este rival
+  if (inGame()){ send({t:'leave'}); pendingLadder = idx; }
   currentLadder = idx;
   send({ t:'ladder', idx, loop: ladderLoop });
 }
@@ -1150,14 +1155,14 @@ function startNightmare(){
 
 // frases del rival durante la partida, solo en la escalera. Editables en rivals.js
 let tauntTimer = null, tauntHide = null;
-function showTaunt(){
+function showTaunt(txt){   // txt fuerza una frase concreta la intro; sin el, taunt al azar
   if (currentLadder == null || !state || state.phase !== 'live') return;
   const r = RV.RIVALS[currentLadder];
   const list = (r.taunts && (r.taunts[I18N.getLang()] || r.taunts.es)) || [];
-  if (!list.length) return;
+  if (txt == null && !list.length) return;
   $('tauntImg').src = r.img || RV.DEFAULT_IMG;
   possessFx($('tauntImg'), isPossessed(r));
-  $('tauntTxt').textContent = list[Math.floor(Math.random() * list.length)];
+  $('tauntTxt').textContent = txt != null ? txt : list[Math.floor(Math.random() * list.length)];
   const el = $('taunt');
   el.classList.add('show');
   positionTaunt();
@@ -1180,6 +1185,18 @@ window.addEventListener('resize', positionTaunt);
 function scheduleTaunt(first){
   clearTimeout(tauntTimer);
   tauntTimer = setTimeout(() => { showTaunt(); scheduleTaunt(false); }, first ? 6000 : 16000 + Math.random() * 14000);
+}
+// al arrancar la partida el rival te recibe con una frase de intro estilo Duet
+// (campo intro de rivals.js) en su burbuja; despues siguen los taunts normales
+function introTaunt(){
+  const r = RV.RIVALS[currentLadder];
+  const list = r && r.intro && (r.intro[I18N.getLang()] || r.intro.es);
+  if (!list || !list.length){ scheduleTaunt(true); return; }
+  clearTimeout(tauntTimer);
+  tauntTimer = setTimeout(() => {
+    showTaunt(list[Math.floor(Math.random() * list.length)]);
+    scheduleTaunt(false);
+  }, 800);
 }
 function stopTaunts(){
   clearTimeout(tauntTimer); tauntTimer = null;

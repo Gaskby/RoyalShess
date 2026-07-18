@@ -10,6 +10,9 @@
      gloat   frase que te dice cuando el te gana a ti, con es y en
      taunts  frases que suelta mientras juega, con es y en. Lista de textos.
              se elige una al azar cada cierto tiempo y cuando te come una pieza
+     intro   frases cripticas estilo Duet con las que el rival te recibe en su
+             burbuja justo al empezar la partida, con es y en. Lista de textos;
+             se elige una al azar. Sin este campo empieza con un taunt normal
      img     ruta de su imagen, por ejemplo /magnus.png puesta en public.
              si lo dejas en null usa la imagen predeterminada de abajo
      secret  true lo vuelve jefe oculto: no aparece en la torre hasta que
@@ -91,6 +94,10 @@
         es: ['El orden es una ilusion. Deja que arda el tablero.', 'Ese sacrificio ya lo vi hace tres jugadas.', 'En la complicacion tu te pierdes y yo respiro.'],
         en: ['Order is an illusion. Let the board burn.', 'I saw that sacrifice three moves ago.', 'In the chaos you get lost and I breathe.'],
       },
+      intro: {
+        es: ['Los patrones siempre surgen. Incluso en el caos.', 'Vas a buscar orden. No lo vas a encontrar.', 'El fuego no se controla. Se alimenta.'],
+        en: ['Patterns always emerge. Even in chaos.', 'You will look for order. You will not find it.', 'Fire is not controlled. It is fed.'],
+      },
       img: '/Imagenes/Alekhine.png',
       songSeed: 156,   // La menor, 83 bpm, swing altisimo y novenas: frenetica y torcida como sus complicaciones
       // kamikaze: sacrifica material por ataque y vive rondando a tu rey
@@ -116,6 +123,10 @@
       taunts: {
         es: ['No juego contra tus piezas, juego contra tu paciencia.', 'Cada jugada mia es una pregunta incomoda.', 'El que sobrevive al caos gana. Y yo llevo decadas sobreviviendo.'],
         en: ['I do not play your pieces, I play your patience.', 'Every move of mine is an uncomfortable question.', 'Whoever survives the chaos wins. I have survived for decades.'],
+      },
+      intro: {
+        es: ['Tu rival no son las piezas.', 'La primera duda es la que cuenta.', 'Alguien esta estudiando tu paciencia.'],
+        en: ['Your opponent is not the pieces.', 'The first doubt is the one that counts.', 'Someone is studying your patience.'],
       },
       img: '/Imagenes/lasker.png',
       songSeed: 1,   // Sib armonica, 75 bpm, el swing mas torcido: incomoda, nunca se asienta
@@ -143,6 +154,10 @@
         es: ['Respira mientras puedas. Pronto no tendras casillas.', 'No hay prisa. Te ire apretando poco a poco.', 'Sientes como se cierran tus opciones?'],
         en: ['Breathe while you can. Soon you will have no squares.', 'No hurry. I will squeeze you little by little.', 'Can you feel your options closing?'],
       },
+      intro: {
+        es: ['No vas a notar el momento en que perdiste.', 'Cuenta tus casillas mientras las tengas.', 'La puerta se esta cerrando. Despacio.'],
+        en: ['You will not notice the moment you lost.', 'Count your squares while you have them.', 'The door is closing. Slowly.'],
+      },
       img: '/Imagenes/karpov.png',
       songSeed: 13,   // La menor, 67 bpm, sin swing y casi sin melodia: lenta, aprieta sin soltar
       // boa constrictor: te quita jugadas legales, evita cambios, no arriesga
@@ -168,6 +183,10 @@
       taunts: {
         es: ['Esto me sale sin pensar.', 'Llevame al final y veras lo que es tecnica.', 'No estudio aperturas; no las necesito contra ti.'],
         en: ['This comes to me without thinking.', 'Take me to the endgame and you will see real technique.', 'I do not study openings; I do not need them against you.'],
+      },
+      intro: {
+        es: ['Esto va a fluir. Para uno de los dos.', 'La elegancia no se aprende.', 'El final ya esta escrito. Solo falta que llegues a el.'],
+        en: ['This will flow. For one of us.', 'Elegance cannot be learned.', 'The endgame is already written. You just have to reach it.'],
       },
       img: '/Imagenes/capablanca.png',
       songSeed: 87,   // Fa menor, 73 bpm, swing suave: calida y fluida, sin esfuerzo aparente
@@ -195,6 +214,10 @@
         es: ['Voy a refutar cada una de tus jugadas.', 'No quiero ganar. Quiero que entiendas por que pierdes.', 'La verdad del tablero no esta de tu lado.'],
         en: ['I will refute every move you make.', 'I do not want to win. I want you to understand why you lose.', 'The truth of the board is not on your side.'],
       },
+      intro: {
+        es: ['Cada posicion tiene una verdad. No es la tuya.', 'La precision no perdona.', 'Aqui no se gana. Se demuestra.'],
+        en: ['Every position has one truth. It is not yours.', 'Precision does not forgive.', 'Here you do not win. You prove.'],
+      },
       img: '/Imagenes/bobby fisher.png',
       songSeed: 31,   // Sib dorico, 79 bpm, swing minimo: limpia, recta y letal como su calculo
       // claridad letal: preciso, presiona a tu rey y ve mas alla del horizonte
@@ -220,6 +243,10 @@
       taunts: {
         es: ['Ya vi el mate en el techo. Solo falta ejecutarlo.', 'Las piezas me hablan. A ti te dicen algo?', 'No calculo. Simplemente lo se.'],
         en: ['I already saw the mate on the ceiling. Just have to run it.', 'The pieces talk to me. Do they tell you anything?', 'I do not calculate. I just know.'],
+      },
+      intro: {
+        es: ['Esta partida ya ocurrio en el techo.', 'Las piezas saben algo que tu no.', 'Cierra los ojos. Sigue ahi.'],
+        en: ['This game already happened on the ceiling.', 'The pieces know something you do not.', 'Close your eyes. It is still there.'],
       },
       img: '/Imagenes/GambitQueen.png',
       songSeed: 38,   // Sib armonica, 67 bpm, swing sonador: flotante como el tablero del techo
@@ -247,6 +274,10 @@
         es: ['Esto no es una partida, es una guerra. Y vas perdiendo.', 'Mi preparacion te va a sepultar.', 'Cada jugada mia es un golpe. Aguantas otro?'],
         en: ['This is not a game, it is a war. And you are losing.', 'My preparation will bury you.', 'Every move of mine is a blow. Can you take another?'],
       },
+      intro: {
+        es: ['Esto empezo mucho antes de tu primera jugada.', 'Una guerra no se declara. Se prepara.', 'Cuando pare el viento, ya habra terminado.'],
+        en: ['This began long before your first move.', 'A war is not declared. It is prepared.', 'When the wind stops, it will be over.'],
+      },
       img: '/Imagenes/gary.png',
       songSeed: 74,   // Fa frigio, 84 bpm y la melodia mas densa: la tormenta que no para de golpear
       // preparacion aterradora: sale con un guion de desarrollo y luego ataca
@@ -265,7 +296,7 @@
       },
       quote: {
         es: 'los patrones siempre siguen incluso en el caos. no te dejes engañar por las maquinas',
-        en: 'Patterns always remain, even in chaos. Dont be fooled by machines.',
+        en: 'Patterns always emerge. Even in chaos. Dont be fooled by machines.',
       },
       gloat: {
         es: "Solo tuve que esperar. Tu ultimo error llego puntual, como siempre.",
@@ -274,6 +305,10 @@
       taunts: {
         es: ['No necesito atacar. Solo espero tu error.', 'Puedo hacer esto todo el dia. Y tu?', 'Tranquilo. Ya vas a colapsar solo.'],
         en: ['I do not need to attack. I just wait for your mistake.', 'I can do this all day. Can you?', 'Relax. You will collapse on your own soon.'],
+      },
+      intro: {
+        es: ['Tu error ya existe. Solo falta que lo juegues.', 'Yo no gano partidas. Las espero.', 'Puedes jugar perfecto un rato. Nadie puede siempre.'],
+        en: ['Your mistake already exists. You just have to play it.', 'I do not win games. I wait for them.', 'You can play perfectly for a while. No one can forever.'],
       },
       img: '/Imagenes/magnus.png',
       songSeed: 34,   // Sib menor, 68 bpm, swing sereno: paciente y sin prisa, como su asfixia
@@ -302,6 +337,10 @@
       taunts: {
         es: ['Analizando... tu derrota es cuestion de tiempo.', 'No siento. No dudo. No me canso.', 'He calculado 200 millones de posiciones. En todas pierdes.', 'ERROR HUMANO DETECTADO.'],
         en: ['Analyzing... your defeat is a matter of time.', 'I do not feel. I do not doubt. I do not tire.', 'I have calculated 200 million positions. You lose in all of them.', 'HUMAN ERROR DETECTED.'],
+      },
+      intro: {
+        es: ['INICIANDO. EL RESULTADO YA EXISTE.', 'Esta partida ya fue calculada.', 'NO HAY CAOS. SOLO PROFUNDIDAD INSUFICIENTE.'],
+        en: ['BOOTING. THE RESULT ALREADY EXISTS.', 'This game has already been calculated.', 'THERE IS NO CHAOS. ONLY INSUFFICIENT DEPTH.'],
       },
       img: DEEPBLUE_IMG,
       songSeed: 75,   // Sol dorico, 82 bpm, swing 0.06 (el minimo), melodia densa y eco seco: un metronomo de maquina
