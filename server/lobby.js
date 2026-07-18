@@ -5,7 +5,7 @@
 const { Game } = require('./game.js');
 const stats = require('./stats.js');
 const CONFIG = require('../public/config.js');
-const { RIVALS } = require('../public/rivals.js');
+const { RIVALS, ladderAt } = require('../public/rivals.js');
 
 const RECONNECT_MS = (CONFIG.server.reconnectSeconds || 20) * 1000;
 const PIECE_TYPES = ['p', 'n', 'b', 'r', 'q', 'k'];
@@ -195,7 +195,8 @@ class Lobby {
     this._detach(client);
     if (client.roomId != null) return;
     this._removeFromQueue(client);
-    const rival = RIVALS[idx];
+    // la cima de la torre cambia por vuelta: Deep Blue, Deep Green, Deep Red
+    const rival = ladderAt(idx, loop);
     const room = this._makeRoom(true, { ai: nightmareAI(rival.ai, loop) });
     room.rivalName = (loop ? '☠ ' : '') + rival.name;
     room.clients.push(client);

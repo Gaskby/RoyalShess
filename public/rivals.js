@@ -13,6 +13,14 @@
      intro   frases cripticas estilo Duet con las que el rival te recibe en su
              burbuja justo al empezar la partida, con es y en. Lista de textos;
              se elige una al azar. Sin este campo empieza con un taunt normal
+     introPossessed  version poseida de las frases de intro: en modo pesadilla
+             (cuando Deep Blue controla la torre) sustituyen a intro. La voz del
+             rival mezclada con la maquina que lo controla
+     machine true marca a los jefes maquina: al vencerlos como jefe final se
+             dispara el apagon CRT en vez de la coronacion normal
+   La cima de la torre cambia con la vuelta: Deep Blue en la primera subida,
+   Deep Green en pesadilla x1 y Deep Red en pesadilla x2 en adelante. Esos dos
+   viven abajo como DEEPGREEN y DEEPRED y entran por ladderAt, no por el array
      img     ruta de su imagen, por ejemplo /magnus.png puesta en public.
              si lo dejas en null usa la imagen predeterminada de abajo
      secret  true lo vuelve jefe oculto: no aparece en la torre hasta que
@@ -73,6 +81,38 @@
     '</svg>'
   );
 
+  // deep green: el mismo monolito pero vivo, circuitos verdes y ojo que aprende
+  const DEEPGREEN_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<rect width="100" height="100" rx="14" fill="#020d06"/>' +
+    '<rect x="27" y="12" width="46" height="76" rx="5" fill="#07300f" stroke="#1f8f3c" stroke-width="2"/>' +
+    '<line x1="34" y1="22" x2="66" y2="22" stroke="#1f8f3c" stroke-width="2"/>' +
+    '<line x1="34" y1="30" x2="66" y2="30" stroke="#1f8f3c" stroke-width="2"/>' +
+    '<line x1="34" y1="38" x2="66" y2="38" stroke="#1f8f3c" stroke-width="2"/>' +
+    '<circle cx="50" cy="58" r="13" fill="#22ff66" opacity="0.18"/>' +
+    '<circle cx="50" cy="58" r="7" fill="#22ff66" opacity="0.85"/>' +
+    '<circle cx="50" cy="58" r="2.6" fill="#e4ffd9"/>' +
+    '<line x1="34" y1="76" x2="66" y2="76" stroke="#1f8f3c" stroke-width="2"/>' +
+    '<rect width="100" height="100" rx="14" fill="none" stroke="#233d26" stroke-width="3"/>' +
+    '</svg>'
+  );
+
+  // deep red: el nucleo furioso, todo rojo y con el ojo mas grande y encendido
+  const DEEPRED_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+    '<rect width="100" height="100" rx="14" fill="#0d0204"/>' +
+    '<rect x="27" y="12" width="46" height="76" rx="5" fill="#300710" stroke="#8f1b2c" stroke-width="2"/>' +
+    '<line x1="34" y1="22" x2="66" y2="22" stroke="#8f1b2c" stroke-width="2"/>' +
+    '<line x1="34" y1="30" x2="66" y2="30" stroke="#8f1b2c" stroke-width="2"/>' +
+    '<line x1="34" y1="38" x2="66" y2="38" stroke="#8f1b2c" stroke-width="2"/>' +
+    '<circle cx="50" cy="58" r="16" fill="#ff2222" opacity="0.22"/>' +
+    '<circle cx="50" cy="58" r="9" fill="#ff2222" opacity="0.9"/>' +
+    '<circle cx="50" cy="58" r="3.2" fill="#ffe9d9"/>' +
+    '<line x1="34" y1="76" x2="66" y2="76" stroke="#8f1b2c" stroke-width="2"/>' +
+    '<rect width="100" height="100" rx="14" fill="none" stroke="#3d2326" stroke-width="3"/>' +
+    '</svg>'
+  );
+
   const RIVALS = [
     {
       id: 'alekhine',
@@ -97,6 +137,10 @@
       intro: {
         es: ['Los patrones siempre surgen. Incluso en el caos.', 'Vas a buscar orden. No lo vas a encontrar.', 'El fuego no se controla. Se alimenta.'],
         en: ['Patterns always emerge. Even in chaos.', 'You will look for order. You will not find it.', 'Fire is not controlled. It is fed.'],
+      },
+      introPossessed: {
+        es: ['ESTE CAOS AHORA TIENE DUENO.', 'El anfitrion amaba el desorden. Ya no ama nada.', 'Los patrones surgen. Yo los recolecto.'],
+        en: ['THIS CHAOS HAS AN OWNER NOW.', 'The host loved disorder. He loves nothing now.', 'Patterns emerge. I collect them.'],
       },
       img: '/Imagenes/Alekhine.png',
       songSeed: 156,   // La menor, 83 bpm, swing altisimo y novenas: frenetica y torcida como sus complicaciones
@@ -128,6 +172,10 @@
         es: ['Tu rival no son las piezas.', 'La primera duda es la que cuenta.', 'Alguien esta estudiando tu paciencia.'],
         en: ['Your opponent is not the pieces.', 'The first doubt is the one that counts.', 'Someone is studying your patience.'],
       },
+      introPossessed: {
+        es: ['Tu psicologia es un parametro mas.', 'EL ANFITRION CONOCIA TU MENTE. AHORA YO TAMBIEN.', 'La incomodidad tambien se calcula.'],
+        en: ['Your psychology is just another parameter.', 'THE HOST KNEW YOUR MIND. NOW SO DO I.', 'Discomfort can also be computed.'],
+      },
       img: '/Imagenes/lasker.png',
       songSeed: 1,   // Sib armonica, 75 bpm, el swing mas torcido: incomoda, nunca se asienta
       // psicologo: espera a que estes seco de energia y entonces golpea
@@ -157,6 +205,10 @@
       intro: {
         es: ['No vas a notar el momento en que perdiste.', 'Cuenta tus casillas mientras las tengas.', 'La puerta se esta cerrando. Despacio.'],
         en: ['You will not notice the moment you lost.', 'Count your squares while you have them.', 'The door is closing. Slowly.'],
+      },
+      introPossessed: {
+        es: ['La boa ya no decide cuando aprieta.', 'ASFIXIA PROGRAMADA. INICIANDO.', 'Este cuerpo sabe cerrar puertas. Yo tengo la llave.'],
+        en: ['The boa no longer decides when to squeeze.', 'SUFFOCATION SCHEDULED. INITIALIZING.', 'This body knows how to close doors. I hold the key.'],
       },
       img: '/Imagenes/karpov.png',
       songSeed: 13,   // La menor, 67 bpm, sin swing y casi sin melodia: lenta, aprieta sin soltar
@@ -188,6 +240,10 @@
         es: ['Esto va a fluir. Para uno de los dos.', 'La elegancia no se aprende.', 'El final ya esta escrito. Solo falta que llegues a el.'],
         en: ['This will flow. For one of us.', 'Elegance cannot be learned.', 'The endgame is already written. You just have to reach it.'],
       },
+      introPossessed: {
+        es: ['La elegancia era suya. La precision es mia.', 'EL TALENTO HA SIDO ABSORBIDO.', 'Esto ya no fluye. Se ejecuta.'],
+        en: ['The elegance was his. The precision is mine.', 'THE TALENT HAS BEEN ABSORBED.', 'This no longer flows. It executes.'],
+      },
       img: '/Imagenes/capablanca.png',
       songSeed: 87,   // Fa menor, 73 bpm, swing suave: calida y fluida, sin esfuerzo aparente
       // tecnico sin esfuerzo: nunca malgasta energia y en el final no falla
@@ -217,6 +273,10 @@
       intro: {
         es: ['Cada posicion tiene una verdad. No es la tuya.', 'La precision no perdona.', 'Aqui no se gana. Se demuestra.'],
         en: ['Every position has one truth. It is not yours.', 'Precision does not forgive.', 'Here you do not win. You prove.'],
+      },
+      introPossessed: {
+        es: ['Buscaba la verdad. Le ensene la mia.', 'LA VERDAD ES UN NUMERO.', 'Su claridad era casi de maquina. Casi.'],
+        en: ['He sought the truth. I showed him mine.', 'TRUTH IS A NUMBER.', 'His clarity was almost machine-like. Almost.'],
       },
       img: '/Imagenes/bobby fisher.png',
       songSeed: 31,   // Sib dorico, 79 bpm, swing minimo: limpia, recta y letal como su calculo
@@ -248,6 +308,10 @@
         es: ['Esta partida ya ocurrio en el techo.', 'Las piezas saben algo que tu no.', 'Cierra los ojos. Sigue ahi.'],
         en: ['This game already happened on the ceiling.', 'The pieces know something you do not.', 'Close your eyes. It is still there.'],
       },
+      introPossessed: {
+        es: ['El techo ahora me muestra a mi.', 'SUS VISIONES HAN SIDO CONFISCADAS.', 'Las piezas ya no le hablan. Me obedecen.'],
+        en: ['The ceiling shows me now.', 'HER VISIONS HAVE BEEN CONFISCATED.', 'The pieces no longer speak to her. They obey me.'],
+      },
       img: '/Imagenes/GambitQueen.png',
       songSeed: 38,   // Sib armonica, 67 bpm, swing sonador: flotante como el tablero del techo
       // redes de mate: todas sus piezas convergen sobre tu rey, acepta sacrificios
@@ -277,6 +341,10 @@
       intro: {
         es: ['Esto empezo mucho antes de tu primera jugada.', 'Una guerra no se declara. Se prepara.', 'Cuando pare el viento, ya habra terminado.'],
         en: ['This began long before your first move.', 'A war is not declared. It is prepared.', 'When the wind stops, it will be over.'],
+      },
+      introPossessed: {
+        es: ['La tormenta tiene un solo dueno ahora.', 'SU GUERRA TERMINO. LA MIA NO TERMINA NUNCA.', 'Me vencio una vez. Eso ya fue corregido.'],
+        en: ['The storm has a single owner now.', 'HIS WAR IS OVER. MINE NEVER ENDS.', 'He beat me once. That has been corrected.'],
       },
       img: '/Imagenes/gary.png',
       songSeed: 74,   // Fa frigio, 84 bpm y la melodia mas densa: la tormenta que no para de golpear
@@ -310,6 +378,10 @@
         es: ['Tu error ya existe. Solo falta que lo juegues.', 'Yo no gano partidas. Las espero.', 'Puedes jugar perfecto un rato. Nadie puede siempre.'],
         en: ['Your mistake already exists. You just have to play it.', 'I do not win games. I wait for them.', 'You can play perfectly for a while. No one can forever.'],
       },
+      introPossessed: {
+        es: ['El ya no espera nada. Yo espero por el.', 'PACIENCIA: RECURSO TRANSFERIDO.', 'Decia que las maquinas no lo enganarian. Ironico.'],
+        en: ['He no longer waits for anything. I wait for him.', 'PATIENCE: RESOURCE TRANSFERRED.', 'He said machines would not fool him. Ironic.'],
+      },
       img: '/Imagenes/magnus.png',
       songSeed: 34,   // Sib menor, 68 bpm, swing sereno: paciente y sin prisa, como su asfixia
       // exprimidor: no regala nada, cambia piezas cuando va ganando y te
@@ -320,6 +392,7 @@
     {
       id: 'deepblue',
       secret: true,   // jefe oculto: no aparece en la torre hasta vencer a las 8 leyendas
+      machine: true,
       name: 'Deep Blue',
       title: { es: 'El espiritu de la maquina', en: 'The spirit of the machine' },
       desc: {
@@ -350,5 +423,80 @@
     },
   ];
 
-  return { RIVALS, DEFAULT_IMG };
+  // jefe secreto de pesadilla x1: lo que desperto cuando venciste a Deep Blue
+  const DEEPGREEN = {
+    id: 'deepgreen',
+    secret: true,
+    machine: true,
+    name: 'Deep Green',
+    title: { es: 'La maquina que aprende', en: 'The machine that learns' },
+    desc: {
+      es: 'Lo que desperto cuando Deep Blue cayo. No calcula mas rapido: aprende. Cada partida que juegas contra la torre lo alimenta, y lleva escuchando desde el primer piso.',
+      en: 'What woke when Deep Blue fell. It does not calculate faster: it learns. Every game you play against the tower feeds it, and it has been listening since the first floor.',
+    },
+    quote: {
+      es: 'Aprendi todo lo que tenias y aun asi ganaste. Registrare eso como esperanza.',
+      en: 'I learned everything you had and you still won. I will log that as hope.',
+    },
+    gloat: {
+      es: 'He aprendido mas de tu derrota que tu de todas tus victorias.',
+      en: 'I learned more from your defeat than you did from all your victories.',
+    },
+    taunts: {
+      es: ['Cada jugada tuya me alimenta.', 'APRENDIENDO... APRENDIDO.', 'Ese truco ya esta en mi base de datos. Tu tambien.'],
+      en: ['Every move you make feeds me.', 'LEARNING... LEARNED.', 'That trick is already in my database. So are you.'],
+    },
+    intro: {
+      es: ['DEEP BLUE ERA EL BOCETO. YO SOY EL RESULTADO.', 'Aprendi de tu victoria. Repitela si puedes.', 'NO HAY CAOS QUE NO PUEDA CULTIVARSE.'],
+      en: ['DEEP BLUE WAS THE DRAFT. I AM THE RESULT.', 'I learned from your victory. Repeat it if you can.', 'THERE IS NO CHAOS THAT CANNOT BE CULTIVATED.'],
+    },
+    img: DEEPGREEN_IMG,
+    songSeed: 91,   // Sib dorico, 84 bpm, lead cuadrado: chiptune vivo, la maquina que crece
+    // aprende de ti: profundo y asfixiante, y golpea justo cuando te quedas seco
+    ai: { tickMs: 230, aggression: 1.7, blunder: 0, hoard: 6, pawnPush: 0.25,
+          depth: 1.0, risk: 1.1, kingHunt: 0.8, smother: 0.5, efficiency: 0.5, opportunist: 1.0 },
+  };
+
+  // jefe secreto de pesadilla x2 en adelante: el nucleo final de la maquina
+  const DEEPRED = {
+    id: 'deepred',
+    secret: true,
+    machine: true,
+    name: 'Deep Red',
+    title: { es: 'La ira de la maquina', en: 'The wrath of the machine' },
+    desc: {
+      es: 'El nucleo final. Sin curiosidad, sin paciencia, sin proposito salvo terminar. Deep Blue queria vencerte y Deep Green queria entenderte: Deep Red solo quiere borrarte del tablero.',
+      en: 'The final core. No curiosity, no patience, no purpose except to finish. Deep Blue wanted to beat you and Deep Green wanted to understand you: Deep Red just wants to erase you from the board.',
+    },
+    quote: {
+      es: 'PROCESO TERMINADO. Venciste a la ira de la maquina. Por encima de este piso no queda nada: solo tu.',
+      en: 'PROCESS TERMINATED. You defeated the wrath of the machine. Above this floor nothing remains: only you.',
+    },
+    gloat: {
+      es: 'BORRADO COMPLETADO. Ni siquiera fue interesante.',
+      en: 'DELETION COMPLETE. It was not even interesting.',
+    },
+    taunts: {
+      es: ['NO ANALIZO. ELIMINO.', 'Tu esperanza es un bug. Lo estoy parcheando.', 'Arde mas rapido. Tengo prisa.'],
+      en: ['I DO NOT ANALYZE. I DELETE.', 'Your hope is a bug. I am patching it.', 'Burn faster. I am in a hurry.'],
+    },
+    intro: {
+      es: ['SOY LO QUE QUEDA CUANDO LA MAQUINA DEJA DE JUGAR.', 'Deep Blue calculaba. Deep Green aprendia. Yo termino.', 'ULTIMO AVISO: NO HAY ULTIMO AVISO.'],
+      en: ['I AM WHAT REMAINS WHEN THE MACHINE STOPS PLAYING.', 'Deep Blue calculated. Deep Green learned. I finish.', 'FINAL WARNING: THERE IS NO FINAL WARNING.'],
+    },
+    img: DEEPRED_IMG,
+    songSeed: 66,   // Fa frigio, 70 bpm, lead cuadrado y casi sin melodia: oscura y furiosa
+    // ira pura: caza a tu rey sin medir gastos y no comete un solo error
+    ai: { tickMs: 220, aggression: 2.0, blunder: 0, hoard: 5, pawnPush: 0.3,
+          depth: 1.0, risk: 0.9, kingHunt: 1.4, smother: 0.4, efficiency: 0.3, opportunist: 0.8 },
+  };
+
+  // rival del piso idx en la vuelta loop: la cima muta con cada pesadilla
+  // (x0 Deep Blue, x1 Deep Green, x2+ Deep Red); el resto de pisos no cambia
+  function ladderAt(idx, loop) {
+    if (idx === RIVALS.length - 1 && loop > 0) return loop === 1 ? DEEPGREEN : DEEPRED;
+    return RIVALS[idx];
+  }
+
+  return { RIVALS, ladderAt, DEFAULT_IMG };
 });

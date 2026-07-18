@@ -46,6 +46,9 @@ let currentLadder = null;
 // reto de escalera lanzado estando en partida: el 'lobby' que responde al leave
 // llega despues y no debe borrar el rival que acabamos de elegir
 let pendingLadder = null;
+// rival del piso idx en la vuelta actual: la cima de la torre cambia por vuelta
+// (Deep Blue, Deep Green, Deep Red); siempre usar esto en vez de RV.RIVALS[idx]
+const rivalAt = (idx) => RV.ladderAt(idx, ladderLoop);
 // un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
 const isPossessed = (r) => ladderLoop > 0 && !r.secret;
 // aplica o quita el efecto poseido a un retrato. Cada uno parpadea a su aire:
@@ -306,7 +309,7 @@ function updateHUD(){
   }
 
   // foto del rival junto a su nombre, solo en la escalera de leyendas
-  const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
+  const rival = (currentLadder != null && state.vsCPU) ? rivalAt(currentLadder) : null;
   for (const side of ['w','b']){
     const face = $(side === 'w' ? 'faceW' : 'faceB');
     if (rival && side !== you){
@@ -519,7 +522,7 @@ function updateAmbience(){
   if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); return; }
   if (state.phase === 'countdown' || state.phase === 'live'){
     // cada rival de la escalera tiene su propia canción: misma semilla, misma pista
-    const rival = (currentLadder != null && state.vsCPU) ? RV.RIVALS[currentLadder] : null;
+    const rival = (currentLadder != null && state.vsCPU) ? rivalAt(currentLadder) : null;
     window.RSMusic.setSeed(rival && rival.songSeed != null ? rival.songSeed : null);
     window.RSMusic.setStyle(musicStyle);
     if (musicOn) window.RSMusic.start(audioCtx); else window.RSMusic.stop();
@@ -575,7 +578,7 @@ function showResult(){
   let wasPossessed = false; // vencerlo en pesadilla: exorcismo
   let finalBoss = null;     // vencer al ultimo de la torre: apagon CRT + coronacion
   if (currentLadder != null && !draw){
-    const r = RV.RIVALS[currentLadder];
+    const r = rivalAt(currentLadder);
     const lang = I18N.getLang();
     resetPortraitFx();   // limpia esquirlas y grietas de una partida anterior
     $('rqImg').src = r.img || RV.DEFAULT_IMG;
@@ -591,7 +594,7 @@ function showResult(){
         localStorage.setItem('rs-ladder', String(ladderProg));
       }
       rqText = r.quote[lang] || r.quote.es;
-      const next = RV.RIVALS[currentLadder + 1];
+      const next = rivalAt(currentLadder + 1);
       bn.style.display = next ? '' : 'none';
       if (!next){
         finalBoss = r;
@@ -620,7 +623,7 @@ function showResult(){
   // apagon CRT y la coronacion antes de que entre el panel
   let panelDelay = won ? 950 : 550;
   if (finalBoss){
-    if (finalBoss.id === 'deepblue'){
+    if (finalBoss.machine){
       setTimeout(crtShutdown, 800);      // la maquina se apaga (pantalla negra)
       setTimeout(crownDrop, 2200);       // la corona cae sobre tu nombre en el negro
       panelDelay = 4300;
@@ -1091,7 +1094,7 @@ function buildLadder(){
   }
   for (let i = rivals.length - 1; i >= 0; i--){
     if (!shown(i)) continue;
-    const r = rivals[i];
+    const r = rivalAt(i);   // la cima muta con la vuelta: Deep Blue/Green/Red
     const beaten = i < ladderProg, isNext = i === ladderProg, locked = i > ladderProg;
     const boss = i === topIdx;
     const row = document.createElement('div');
@@ -1157,7 +1160,7 @@ function startNightmare(){
 let tauntTimer = null, tauntHide = null;
 function showTaunt(txt){   // txt fuerza una frase concreta la intro; sin el, taunt al azar
   if (currentLadder == null || !state || state.phase !== 'live') return;
-  const r = RV.RIVALS[currentLadder];
+  const r = rivalAt(currentLadder);
   const list = (r.taunts && (r.taunts[I18N.getLang()] || r.taunts.es)) || [];
   if (txt == null && !list.length) return;
   $('tauntImg').src = r.img || RV.DEFAULT_IMG;
@@ -1187,10 +1190,12 @@ function scheduleTaunt(first){
   tauntTimer = setTimeout(() => { showTaunt(); scheduleTaunt(false); }, first ? 6000 : 16000 + Math.random() * 14000);
 }
 // al arrancar la partida el rival te recibe con una frase de intro estilo Duet
-// (campo intro de rivals.js) en su burbuja; despues siguen los taunts normales
+// (campo intro de rivals.js) en su burbuja; despues siguen los taunts normales.
+// En pesadilla los poseidos hablan con la voz de Deep Blue (introPossessed)
 function introTaunt(){
-  const r = RV.RIVALS[currentLadder];
-  const list = r && r.intro && (r.intro[I18N.getLang()] || r.intro.es);
+  const r = rivalAt(currentLadder);
+  const src = r && ((isPossessed(r) && r.introPossessed) || r.intro);
+  const list = src && (src[I18N.getLang()] || src.es);
   if (!list || !list.length){ scheduleTaunt(true); return; }
   clearTimeout(tauntTimer);
   tauntTimer = setTimeout(() => {
