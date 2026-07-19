@@ -33,6 +33,15 @@
   let scene = null, shapes = [];
   let themePal = null;   // paleta forzada por el tema del cliente
 
+  // corrupcion de pesadilla: la escena sigue siendo la normal, pero las formas
+  // se glitchean a ratos con el color del deep al que te enfrentas y vuelven en si
+  const CORRUPT_HUES = { blue: 224, green: 135, red: 355 };
+  let corrupt = null;
+
+  function setCorruption(c) {
+    corrupt = CORRUPT_HUES[c] != null ? c : null;
+  }
+
   function setTheme(name) {
     // tema clasico usa verdes apagados acordes al tablero;
     // el CRT usa fosforo verde saturado de monitor viejo
@@ -50,13 +59,13 @@
     }
     scene = {
       hue: themePal ? pick(themePal.hues) + rnd(-8, 8) : pick(HUES) + rnd(-12, 12),
-      spread: rnd(16, 46),            
+      spread: rnd(16, 46),
       sat: themePal ? rnd(themePal.sat[0], themePal.sat[1]) : rnd(40, 62),
-      flow: rnd(0, Math.PI * 2),        
-      drift: rnd(0.03, 0.12),           
-      speed: rnd(9, 24),               
+      flow: rnd(0, Math.PI * 2),
+      drift: rnd(0.03, 0.12),
+      speed: rnd(9, 24),
       glows: Math.random() < 0.5 ? 2 : 3,
-      wire: rnd(0.25, 0.8),             
+      wire: rnd(0.25, 0.8),
       vig: rnd(0.22, 0.4),   // viñeta suave: fuerte se veía como fondo cortado
     };
     shapes = [];
@@ -167,11 +176,27 @@
       if (s.x < -0.15) s.x = 1.15; else if (s.x > 1.15) s.x = -0.15;
       if (s.y < -0.15) s.y = 1.15; else if (s.y > 1.15) s.y = -0.15;
 
+      // pesadilla: de vez en cuando la maquina toma una forma un instante.
+      // tiembla, parpadea y se enciende con el color del deep; luego vuelve en si
+      if (corrupt) {
+        if (!s.glitch && Math.random() < dt * (0.05 + intensity * 0.09)) s.glitch = rnd(0.15, 0.55);
+        if (s.glitch) s.glitch = Math.max(0, s.glitch - dt);
+      }
+      const gl = corrupt && s.glitch > 0;
+      if (gl && Math.random() < 0.3) continue;   // parpadeo: algunos frames no existe
+
       g.save();
       g.translate(s.x * W, s.y * H);
-      g.rotate(s.r);
-      const col = (l, a) => `hsla(${hue + s.h} 80% ${l}% / ${a})`;
-      const alpha = s.a * (1 + intensity * 0.7);
+      if (gl) g.translate(rnd(-7, 7), rnd(-7, 7));   // temblor
+      g.rotate(s.r + (gl ? rnd(-0.25, 0.25) : 0));
+      const col = gl
+        ? (l, a) => `hsla(${CORRUPT_HUES[corrupt] + rnd(-6, 6)} 95% ${l}% / ${a})`
+        : (l, a) => `hsla(${hue + s.h} 80% ${l}% / ${a})`;
+      let alpha = s.a * (1 + intensity * 0.7);
+      if (gl) {   // el glitch se enciende de verdad: opacidad minima y halo
+        alpha = Math.max(0.3, alpha * 3);
+        g.shadowColor = col(60, 1); g.shadowBlur = 12;
+      }
       if (s.k === 'ring') {
         g.beginPath(); g.arc(0, 0, s.s, 0, Math.PI * 2);
         g.strokeStyle = col(66, alpha); g.lineWidth = 1.5; g.stroke();
@@ -203,5 +228,8 @@
     newScene,
     burst,
     setTheme,
+    // 'blue' | 'green' | 'red' | null: en pesadilla las formas se glitchean a
+    // ratos con el color del deep al que te enfrentas
+    setCorruption,
   };
 })();

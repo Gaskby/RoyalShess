@@ -49,6 +49,15 @@ let pendingLadder = null;
 // rival del piso idx en la vuelta actual: la cima de la torre cambia por vuelta
 // (Deep Blue, Deep Green, Deep Red); siempre usar esto en vez de RV.RIVALS[idx]
 const rivalAt = (idx) => RV.ladderAt(idx, ladderLoop);
+// color del glitch del fondo en pesadilla: el deep al que te enfrentas. Contra
+// el jefe de la cima, su color; contra los poseidos, el del que controla la
+// torre esta vuelta (x1 Deep Blue, x2 Deep Green caido, x3+ Deep Red)
+function corruptionColor(){
+  const r = rivalAt(currentLadder);
+  if (r && r.id === 'deepgreen') return 'green';
+  if (r && r.id === 'deepred') return 'red';
+  return ladderLoop === 1 ? 'blue' : ladderLoop === 2 ? 'green' : 'red';
+}
 // un rival esta poseido en pesadilla, salvo el propio jefe secreto que posee a los demas
 const isPossessed = (r) => ladderLoop > 0 && !r.secret;
 // aplica o quita el efecto poseido a un retrato. Cada uno parpadea a su aire:
@@ -498,7 +507,11 @@ function onState(msg){
   // gestión de fase
   if (state.phase === 'countdown'){
     // solo cierra pantallas al ENTRAR en la fase: así el menú puede quedarse abierto
-    if (prevPhase !== 'countdown'){ showScreen(null); window.RSBG.newScene(); pieceFx.clear(); }
+    if (prevPhase !== 'countdown'){
+      // el fondo se corrompe solo en peleas de escalera en pesadilla
+      window.RSBG.setCorruption(currentLadder != null && ladderLoop > 0 ? corruptionColor() : null);
+      showScreen(null); window.RSBG.newScene(); pieceFx.clear();
+    }
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
     cdNum.textContent = secs > 0 ? secs : tr('game.go');
@@ -519,7 +532,7 @@ function onState(msg){
 
 // música y fondo reaccionan a la fase, al reloj 0 - 1 al agotarse y al jaque
 function updateAmbience(){
-  if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); return; }
+  if (!state){ window.RSMusic.stop(); window.RSMusic.setDanger(false); window.RSBG.setIntensity(0); window.RSBG.setCorruption(null); return; }
   if (state.phase === 'countdown' || state.phase === 'live'){
     // cada rival de la escalera tiene su propia canción: misma semilla, misma pista
     const rival = (currentLadder != null && state.vsCPU) ? rivalAt(currentLadder) : null;
