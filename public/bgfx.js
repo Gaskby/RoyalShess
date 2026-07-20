@@ -89,6 +89,15 @@
 
   let intensity = 0, target = 0, tPrev = performance.now(), tAcc = rnd(0, 900);
 
+  // subida de la torre: el tablero no se mueve, cae el mundo. Las formas bajan
+  // con velocidad proporcional a su profundidad (paralaje) y unas estelas
+  // verticales venden la aceleracion. Envolvente seno: arranca, cruza, frena
+  let ascent = null;   // { t, dur } en segundos
+  const streaks = [];
+  function ascend(durMs) {
+    ascent = { t: 0, dur: Math.max(0.3, (durMs || 1800) / 1000) };
+  }
+
   function poly(ctx2, k, s) {
     ctx2.beginPath();
     for (let i = 0; i < k; i++) {
@@ -142,6 +151,15 @@
 
     intensity += (target - intensity) * Math.min(1, dt * 2);
     tAcc += dt * (0.5 + intensity * 2);
+
+    // fase de la subida: 0 quieto, 1 velocidad punta a mitad de viaje
+    let asc = 0;
+    if (ascent) {
+      ascent.t += dt;
+      const p = ascent.t / ascent.dur;
+      if (p >= 1) ascent = null;
+      else asc = Math.sin(p * Math.PI);
+    }
     const hue = scene.hue + Math.sin(tAcc * 0.11) * 10 + intensity * 46;  
     const spd = 1 + intensity * 2.2;
     const flow = scene.flow + Math.sin(tAcc * scene.drift) * 0.8;         
@@ -172,6 +190,7 @@
       s.wob += dt * 0.6;
       s.x += (fx * scene.speed * s.depth * spd + Math.cos(s.wob) * s.wobA) * dt / W;
       s.y += (fy * scene.speed * s.depth * spd + Math.sin(s.wob * 0.7) * s.wobA) * dt / H;
+      s.y += asc * 1.1 * s.depth * dt;   // subida: las cercanas caen mas rapido
       s.r += s.vr * spd * dt;
       if (s.x < -0.15) s.x = 1.15; else if (s.x > 1.15) s.x = -0.15;
       if (s.y < -0.15) s.y = 1.15; else if (s.y > 1.15) s.y = -0.15;
@@ -212,6 +231,23 @@
       g.restore();
     }
 
+    // estelas de velocidad durante la subida: lineas que cruzan hacia abajo
+    if (asc > 0.12 && Math.random() < dt * 34 * asc) {
+      streaks.push({ x: Math.random(), y: -0.12, len: rnd(0.07, 0.2), v: rnd(1.4, 2.6), a: rnd(0.1, 0.26) });
+    }
+    for (let i = streaks.length - 1; i >= 0; i--) {
+      const st = streaks[i];
+      st.y += st.v * (0.35 + asc) * dt;
+      if (!ascent) st.a -= dt * 0.8;   // fin del viaje: las que queden se apagan
+      if (st.y - st.len > 1.15 || st.a <= 0) { streaks.splice(i, 1); continue; }
+      g.strokeStyle = `hsla(${hue} 85% 72% / ${st.a})`;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(st.x * W, st.y * H);
+      g.lineTo(st.x * W, (st.y - st.len) * H);
+      g.stroke();
+    }
+
     // viñeta para que la UI respire encima: empieza lejos y termina más allá
     // del borde para que nunca se vea un corte en pantallas anchas
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.5, W / 2, H / 2, Math.max(W, H) * 1.05);
@@ -228,6 +264,8 @@
     newScene,
     burst,
     setTheme,
+    // ilusion de subir la torre: el fondo cae con paralaje durante durMs
+    ascend,
     // 'blue' | 'green' | 'red' | null: en pesadilla las formas se glitchean a
     // ratos con el color del deep al que te enfrentas
     setCorruption,

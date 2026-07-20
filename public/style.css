@@ -265,6 +265,18 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
   10%,90%{ transform:translateX(-2px); } 20%,80%{ transform:translateX(4px); }
   30%,50%,70%{ transform:translateX(-8px); } 40%,60%{ transform:translateX(8px); }
 }
+
+/* subida de la torre: el tablero NO se desplaza; el tiron de arranque lo
+   hunde un pelo (fuerza g), viaja encogido y al frenar flota y asienta */
+.board-wrap.ascend{ animation:boardascend 1.8s cubic-bezier(.3,.6,.4,1); }
+@keyframes boardascend{
+  0%{ transform:translateY(0) scale(1); }
+  7%{ transform:translateY(5px) scale(.982); }
+  16%{ transform:translateY(3px) scale(.986); }
+  72%{ transform:translateY(3px) scale(.986); }
+  88%{ transform:translateY(-4px) scale(1.005); }
+  100%{ transform:translateY(0) scale(1); }
+}
 .playbtn{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.16em; text-transform:uppercase; font-size:18px; color:#04121a; background:linear-gradient(90deg,var(--energy-a),var(--white-acc)); border:0; border-radius:12px; padding:14px 40px; margin-top:20px; cursor:pointer; box-shadow:0 0 30px rgba(51,230,255,.4); transition:transform .1s,box-shadow .15s; }
 
 /* volver a la partida en curso el menú ya no abandona */

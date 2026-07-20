@@ -510,7 +510,11 @@ function onState(msg){
     if (prevPhase !== 'countdown'){
       // el fondo se corrompe solo en peleas de escalera en pesadilla
       window.RSBG.setCorruption(currentLadder != null && ladderLoop > 0 ? corruptionColor() : null);
-      showScreen(null); window.RSBG.newScene(); pieceFx.clear();
+      showScreen(null); pieceFx.clear();
+      // si venimos de subir la torre, la escena nueva ya entro a mitad de
+      // viaje: repetir el corte aqui haria brusca la llegada
+      if (!skipNextScene) window.RSBG.newScene();
+      skipNextScene = false;
     }
     const secs = Math.ceil(state.countdownLeft/1000);
     countdownEl.style.display = 'flex';
@@ -752,6 +756,66 @@ function sfx(kind){
   if(kind==='win') o.frequency.exponentialRampToValueAtTime(f*2,t+d);
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
   o.start(t); o.stop(t+d+0.02);
+}
+
+// sonido de la subida de la torre: whoosh de ruido filtrado + riser tonal.
+// Cambia con el modo: limpio en la primera vuelta, y en pesadilla suena a la
+// maquina que controla la torre (blue grave, green ondulante, red aspero)
+function ascendSfx(color){
+  if (!sfxOn || !audioCtx) return;
+  const t = audioCtx.currentTime, dur = ASCEND_MS / 1000;
+  // whoosh: el aire del ascensor, un pasabanda que abre al acelerar
+  const nb = audioCtx.createBuffer(1, Math.ceil(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+  const ch = nb.getChannelData(0);
+  for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = nb;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.Q.value = color ? 3 : 1.2;
+  bp.frequency.setValueAtTime(140, t);
+  bp.frequency.exponentialRampToValueAtTime(color === 'red' ? 950 : color ? 640 : 1500, t + dur * 0.8);
+  const ng = audioCtx.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(color ? 0.15 : 0.11, t + dur * 0.35);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp); bp.connect(ng); ng.connect(audioCtx.destination);
+  src.start(t); src.stop(t + dur);
+  // riser: tono que sube con el viaje; timbre y afinacion segun el modo
+  const riser = (type, f0, f1, vol, detune) => {
+    const o = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+    o.type = type; o.detune.value = detune || 0;
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.85);
+    g2.gain.setValueAtTime(0.0001, t);
+    g2.gain.exponentialRampToValueAtTime(vol, t + dur * 0.3);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g2); g2.connect(audioCtx.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+    return o;
+  };
+  if (!color){
+    riser('triangle', 160, 640, 0.045);
+  } else if (color === 'blue'){
+    riser('square', 55, 165, 0.035);          // zumbido grave de maquina
+    riser('square', 55, 165, 0.035, 12);      // par desafinado: batido lento
+  } else if (color === 'green'){
+    const o = riser('sawtooth', 70, 240, 0.04);
+    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+    lfo.frequency.value = 6.5; lg.gain.value = 14;   // ondulacion enferma
+    lfo.connect(lg); lg.connect(o.frequency);
+    lfo.start(t); lfo.stop(t + dur);
+  } else {
+    riser('sawtooth', 90, 300, 0.04);         // aspero y furioso
+    riser('sawtooth', 90, 300, 0.04, -25);
+  }
+  // llegada al piso: campanita de ascensor limpia, o golpe sordo en pesadilla
+  const o2 = audioCtx.createOscillator(), g3 = audioCtx.createGain();
+  o2.type = 'sine';
+  o2.frequency.setValueAtTime(color ? 62 : 990, t + dur * 0.92);
+  g3.gain.setValueAtTime(0.0001, t);
+  g3.gain.setValueAtTime(color ? 0.16 : 0.07, t + dur * 0.92);
+  g3.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.92 + 0.45);
+  o2.connect(g3); g3.connect(audioCtx.destination);
+  o2.start(t + dur * 0.9); o2.stop(t + dur * 0.92 + 0.5);
 }
 
 // Toast + leyenda
@@ -1151,6 +1215,41 @@ function buildLadder(){
     list.appendChild(row);
   }
 }
+// subida al siguiente piso: el tablero no se mueve de verdad; la ilusion la
+// hacen el fondo cayendo con paralaje (RSBG.ascend), el encogimiento del
+// tablero y el whoosh segun el modo. Al terminar arranca la pelea de verdad
+const ASCEND_MS = 1800;   // el viaje completo dura menos de 2 segundos
+let ascending = false;
+// color del sonido de subida: null en vuelta normal; en pesadilla, el deep
+// que espera en el piso destino (o el que controla la torre esta vuelta)
+function ascentColor(destIdx){
+  if (ladderLoop === 0) return null;
+  const r = rivalAt(destIdx);
+  if (r && r.id === 'deepgreen') return 'green';
+  if (r && r.id === 'deepred') return 'red';
+  return ladderLoop === 1 ? 'blue' : ladderLoop === 2 ? 'green' : 'red';
+}
+let skipNextScene = false;   // la escena ya cambio durante la subida: no cortar dos veces
+function ascendTower(destIdx){
+  if (ascending) return;
+  ascending = true;
+  ensureAudio();
+  stopTaunts();
+  showScreen(null);                     // que se vea el viaje: tablero + fondo
+  window.RSBG.ascend(ASCEND_MS);
+  boardWrap.classList.add('ascend');
+  ascendSfx(ascentColor(destIdx));
+  // el piso nuevo aparece a velocidad punta: el corte queda tapado por el
+  // movimiento y las estelas, y al frenar la escena nueva ya esta ahi
+  setTimeout(() => { skipNextScene = true; window.RSBG.newScene(); }, ASCEND_MS * 0.45);
+  // la pelea se pide ANTES de terminar de frenar: la cuenta atras entra
+  // mientras el tablero se asienta y no queda un hueco muerto entre ambas
+  setTimeout(() => startLadderFight(destIdx), ASCEND_MS - 500);
+  setTimeout(() => {
+    boardWrap.classList.remove('ascend');
+    ascending = false;
+  }, ASCEND_MS);
+}
 function startLadderFight(idx){
   ensureAudio(); sendName();
   // el lobby que responde al leave llega despues: que no borre este rival
@@ -1223,7 +1322,7 @@ function stopTaunts(){
 }
 $('btnLadder').addEventListener('click', () => { ladderOpen = ladderProg; buildLadder(); showScreen('ladder'); });
 $('btnLadderBack').addEventListener('click', () => showScreen('menu'));
-$('btnNext').addEventListener('click', () => startLadderFight(currentLadder + 1));
+$('btnNext').addEventListener('click', () => ascendTower(currentLadder + 1));
 
 // revancha: misma sala, mismos ajustes; en PvP esperan a que acepten los dos
 btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'}); });
