@@ -16,7 +16,12 @@ const MSG_PER_SEC = CONFIG.server.msgPerSec || 25;
 const MSG_BURST = Math.max(12, MSG_PER_SEC * 2);
 
 const app = express();
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// En produccion servimos dist/ (cliente ofuscado) si existe; si no, public/ (fuente).
+const fs = require('fs');
+const DIST_DIR = path.join(__dirname, '..', 'dist');
+const STATIC_DIR = fs.existsSync(DIST_DIR) ? DIST_DIR : path.join(__dirname, '..', 'public');
+console.log(`  Sirviendo cliente desde: ${path.basename(STATIC_DIR)}/`);
+app.use(express.static(STATIC_DIR));
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
