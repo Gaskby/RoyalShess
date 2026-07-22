@@ -7,6 +7,7 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 const { Lobby } = require('./lobby.js');
 const stats = require('./stats.js');
+const visits = require('./visits.js');
 const CONFIG = require('../public/config.js');
 
 const PORT = process.env.PORT || CONFIG.server.port;
@@ -22,6 +23,12 @@ const wss = new WebSocketServer({ server });
 const lobby = new Lobby();
 
 app.get('/health', (_req, res) => res.json({ ok: true, ...lobby.stats() }));
+
+// registro de visitas privado; con clave mala responde 404 como si no existiera
+app.get('/admin/visitas', (req, res) => {
+  if (req.query.key !== visits.adminKey()) return res.status(404).send('Not found');
+  res.send(visits.pageHTML());
+});
 
 let clientSeq = 1;
 
@@ -60,7 +67,7 @@ wss.on('connection', (ws) => {
       case 'name':
         client.name = cleanName(m.name);
         client.token = cleanToken(m.token);
-        if (client.token) { stats.touch(client.token, client.name); lobby.tryReconnect(client); }
+        if (client.token) { stats.touch(client.token, client.name); visits.record(client.token, client.name); lobby.tryReconnect(client); }
         break;
       case 'top':
         client.send({ t: 'top', rows: stats.top(20), me: stats.me(client.token) });
@@ -97,5 +104,6 @@ setInterval(() => {
 }, 30000);
 
 server.listen(PORT, () => {
-  console.log(`\n  RoyalShess escuchando en http://localhost:${PORT}\n`);
+  console.log(`\n  RoyalShess escuchando en http://localhost:${PORT}`);
+  console.log(`  Registro de visitas: http://localhost:${PORT}/admin/visitas?key=${visits.adminKey()}\n`);
 });
