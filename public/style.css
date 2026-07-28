@@ -680,3 +680,52 @@ body.theme-chesscom .cfg-grid{ background:var(--panel-2); }
 .code-label{ font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--ink-dim); }
 .code-value{ font-family:'Chakra Petch'; font-weight:700; font-size:40px; letter-spacing:.18em; color:var(--white-acc);
   text-shadow:0 0 22px rgba(51,230,255,.45); }
+
+/* tutorial de bienvenida del menú: foco dorado sobre cada botón + burbuja.
+   El oscurecido lo hace el box-shadow gigante del foco: la ventana queda
+   limpia sobre el elemento señalado y el resto se apaga. El backdrop es un
+   cazaclics transparente: durante el tutorial solo se toca el propio tutorial */
+.tour-backdrop{ position:fixed; inset:0; z-index:80; }
+.tour-hilite{
+  position:fixed; z-index:81; pointer-events:none; border-radius:12px;
+  border:2px solid var(--gold);
+  box-shadow:0 0 0 9999px rgba(4,4,10,.62), 0 0 18px rgba(255,207,74,.55);
+  transition:left .3s cubic-bezier(.3,.9,.3,1.1), top .3s cubic-bezier(.3,.9,.3,1.1),
+             width .3s cubic-bezier(.3,.9,.3,1.1), height .3s cubic-bezier(.3,.9,.3,1.1);
+}
+.tour-hilite.full{ border-color:transparent; }   /* paso sin objetivo: todo a oscuras */
+.tour-tip{
+  position:fixed; z-index:82; width:min(86vw,330px); text-align:left;
+  background:var(--panel); border:1px solid var(--gold); border-radius:14px;
+  padding:14px 16px; font-size:13.5px; line-height:1.5; color:var(--ink);
+  box-shadow:0 0 28px rgba(255,207,74,.25), 0 14px 40px rgba(0,0,0,.5);
+  transition:left .3s cubic-bezier(.3,.9,.3,1.1), top .3s cubic-bezier(.3,.9,.3,1.1);
+  animation:fadeup .25s both;
+}
+.tour-tip .tour-txt b{ color:var(--gold); }
+.tour-step{
+  font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--gold); margin-bottom:6px;
+}
+.tour-foot{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+.tour-dots{ display:flex; gap:4px; flex:1; }
+.tour-dots i{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+.tour-dots i.on{ background:var(--gold); box-shadow:0 0 6px rgba(255,207,74,.7); }
+.tour-skip{
+  font-family:'Chakra Petch'; font-weight:600; font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--ink-dim); background:transparent;
+  border:1px solid var(--line); border-radius:8px; padding:6px 10px; cursor:pointer;
+  transition:color .15s, border-color .15s;
+}
+.tour-skip:hover{ color:var(--ink); border-color:#3a3f64; }
+.tour-next{
+  font-family:'Chakra Petch'; font-weight:700; font-size:12px; letter-spacing:.12em;
+  text-transform:uppercase; color:#241a02; background:linear-gradient(90deg,var(--gold),#ffe28a);
+  border:0; border-radius:8px; padding:7px 14px; cursor:pointer;
+  box-shadow:0 0 14px rgba(255,207,74,.35); transition:transform .1s, box-shadow .15s;
+}
+.tour-next:hover{ box-shadow:0 0 24px rgba(255,207,74,.55); }
+.tour-next:active{ transform:scale(.97); }
+@media (max-width:640px){
+  .tour-tip{ font-size:12.5px; padding:12px 14px; }
+}

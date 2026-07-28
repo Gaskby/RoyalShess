@@ -4,9 +4,20 @@ const E = window.RSEngine;
 // glyph which respects the CSS color instead of the default black emoji.
 const VS = '\uFE0E';
 const GLYPH = { p:'\u265F'+VS, n:'\u265E'+VS, b:'\u265D'+VS, r:'\u265C'+VS, q:'\u265B'+VS, k:'\u265A'+VS };
-// idioma: todos los textos viven en i18n.js; trclave devuelve el texto actual
+// idioma: todos los textos viven en i18n.js; trclave devuelve el texto actual.
+// El elegido a mano (rs-lang) manda; si no hay, se detecta el del navegador
+// para que el tutorial de bienvenida hable en un idioma que entiendas.
+// Solo se guarda al elegir con los botones: si el navegador cambia, se adapta
 const I18N = window.RSI18N;
-I18N.setLang(localStorage.getItem('rs-lang') || 'es');
+function detectLang(){
+  const cands = navigator.languages || [navigator.language || ''];
+  for (const l of cands){
+    const code = String(l).slice(0, 2).toLowerCase();
+    if (I18N.LANGS.includes(code)) return code;
+  }
+  return I18N.LANGS[0];
+}
+I18N.setLang(localStorage.getItem('rs-lang') || detectLang());
 const tr = (k) => I18N.t(k);
 const pieceName = (k) => tr('piece.' + k);
 
@@ -430,6 +441,7 @@ function onPointerCancel(){
 // Pantallas del overlay
 function showScreen(name){   // menu | friend | waiting | search | help | board | result | nullen juego
   if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
+  if (name !== 'menu') endTour();    // el tutorial de bienvenida vive solo en el menú
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
   $('screenMenu').style.display    = name==='menu'    ? '' : 'none';
@@ -885,6 +897,7 @@ $('btnMenu2').addEventListener('click', () => { currentLadder = null; send({t:'l
 // Escape: desde cualquier subpantalla se regresa al menú principal
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  if (tourEls){ endTour(); return; }   // el tutorial de bienvenida también se cierra con Escape
   if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
   else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
   else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
@@ -1097,6 +1110,100 @@ async function playDemo(n){
     await dSleep(1500);
   }
 }
+
+// === tutorial de bienvenida: la primera visita recorre el menú principal ===
+// señalando qué es cada cosa con un foco dorado y una burbuja. Los textos
+// viven en i18n.js (tour.). Se guarda en rs-tour para no repetirse;
+// ?tour=1 lo fuerza en esta sesión (útil para volver a verlo o probarlo)
+const TOUR_STEPS = [
+  { key:'tour.welcome' },                 // sin objetivo: presentación a oscuras
+  { id:'nameInput',   key:'tour.name' },
+  { id:'btnQueue',    key:'tour.search' },
+  { id:'btnFriend',   key:'tour.friend' },
+  { id:'btnLadder',   key:'tour.ladder' },
+  { id:'btnBoard',    key:'tour.board' },
+  { id:'btnHelp',     key:'tour.help' },
+  { id:'btnSettings', key:'tour.settings' },
+  { id:'langRow',     key:'tour.lang' },
+];
+let tourStep = -1, tourEls = null;
+
+function startTour(){
+  if (tourEls || inGame()) return;
+  if (curScreen && curScreen !== 'menu') return;   // solo sobre el menú
+  const bk = document.createElement('div'); bk.className = 'tour-backdrop';
+  const hi = document.createElement('div'); hi.className = 'tour-hilite';
+  const tip = document.createElement('div'); tip.className = 'tour-tip';
+  bk.addEventListener('click', tourNext);   // tocar fuera también avanza
+  document.body.append(bk, hi, tip);
+  tourEls = { bk, hi, tip };
+  tourStep = -1;
+  tourNext();
+}
+function endTour(){
+  if (!tourEls) return;
+  localStorage.setItem('rs-tour', '1');
+  for (const el of Object.values(tourEls)) el.remove();
+  tourEls = null; tourStep = -1;
+}
+function tourNext(){
+  tourStep++;
+  if (tourStep >= TOUR_STEPS.length){ endTour(); return; }
+  renderTourStep();
+}
+function renderTourStep(){
+  if (!tourEls) return;
+  const { hi, tip } = tourEls;
+  const s = TOUR_STEPS[tourStep];
+  const target = s.id ? $(s.id) : null;
+  // foco sobre el objetivo; sin objetivo, ventana de tamaño cero: todo oscuro
+  if (target){
+    const r = target.getBoundingClientRect();
+    hi.classList.remove('full');
+    hi.style.left = (r.left - 6) + 'px';
+    hi.style.top = (r.top - 6) + 'px';
+    hi.style.width = (r.width + 12) + 'px';
+    hi.style.height = (r.height + 12) + 'px';
+  } else {
+    hi.classList.add('full');
+    hi.style.left = '50vw'; hi.style.top = '40vh';
+    hi.style.width = '0px'; hi.style.height = '0px';
+  }
+  let dots = '';
+  for (let i = 0; i < TOUR_STEPS.length; i++) dots += `<i class="${i === tourStep ? 'on' : ''}"></i>`;
+  const last = tourStep === TOUR_STEPS.length - 1;
+  tip.innerHTML =
+    `<div class="tour-step">${escHtml(tr('tour.title'))} · ${tourStep + 1}/${TOUR_STEPS.length}</div>` +
+    `<div class="tour-txt">${tr(s.key)}</div>` +   // texto de i18n: los <b> son intencionales
+    `<div class="tour-foot"><div class="tour-dots">${dots}</div>` +
+    `<button class="tour-skip">${escHtml(tr('tour.skip'))}</button>` +
+    `<button class="tour-next">${escHtml(tr(last ? 'tour.done' : 'tour.next'))}</button></div>`;
+  tip.querySelector('.tour-skip').addEventListener('click', endTour);
+  tip.querySelector('.tour-next').addEventListener('click', tourNext);
+  // la burbuja re-entra en cada paso
+  tip.style.animation = 'none'; void tip.offsetWidth; tip.style.animation = '';
+  positionTourTip(target);
+}
+// la burbuja va bajo el objetivo; si no cabe, encima; siempre dentro de pantalla
+function positionTourTip(target){
+  const tip = tourEls.tip;
+  const vw = innerWidth, vh = innerHeight;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left, top;
+  if (target){
+    const r = target.getBoundingClientRect();
+    left = r.left + r.width / 2 - tw / 2;
+    top = r.bottom + 14;
+    if (top + th > vh - 8) top = r.top - th - 14;
+    if (top < 8) top = Math.min(vh - th - 8, r.bottom + 14);
+  } else {
+    left = vw / 2 - tw / 2;
+    top = vh / 2 - th / 2;
+  }
+  tip.style.left = Math.max(8, Math.min(left, vw - tw - 8)) + 'px';
+  tip.style.top = Math.max(8, top) + 'px';
+}
+window.addEventListener('resize', () => { if (tourEls) renderTourStep(); });
 
 // clasificación: pide el top al servidor y lo pinta al llegar
 const escHtml = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1383,3 +1490,8 @@ window.addEventListener('pointercancel', onPointerCancel);
 buildGrid(); lastYou = you;
 applyLang();   // traduce todo y construye leyenda, ajustes de piezas y tutorial
 connect();
+// tutorial de bienvenida: solo si nunca lo viste; ?tour=1 lo repite.
+// El pequeño retraso deja que el menú asiente antes de encender el foco
+if (!localStorage.getItem('rs-tour') || new URLSearchParams(location.search).get('tour') === '1'){
+  setTimeout(startTour, 900);
+}

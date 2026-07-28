@@ -182,6 +182,48 @@
                 en: 'Free recapture: if a defended piece of yours is taken, capturing the attacker on that square costs nothing (gold mark).' },
     'tut.11': { es: 'Enroque disponible si el rey y la torre no se han movido; cuesta como un movimiento normal del rey.',
                 en: 'Castling is available if the king and rook have not moved; it costs a normal king move.' },
+
+    // tutorial de bienvenida: recorre el menú principal la primera visita
+    'tour.title': { es: 'Tutorial',   en: 'Tutorial' },
+    'tour.skip':  { es: 'Saltar',     en: 'Skip' },
+    'tour.next':  { es: 'Siguiente',  en: 'Next' },
+    'tour.done':  { es: '¡A jugar!',  en: "Let's play!" },
+    'tour.welcome': {
+      es: '¡Bienvenido a <b>RoyalShess</b>! Aquí el ajedrez es en tiempo real: no hay turnos, mueves cuando tu energía te lo permite. Te enseño el menú en un momento.',
+      en: 'Welcome to <b>RoyalShess</b>! Chess here is real-time: no turns, you move whenever your energy allows it. Let me show you around the menu.',
+    },
+    'tour.name': {
+      es: 'Escribe aquí tu nombre para que tu rival sepa quién le está ganando. Es opcional y se guarda para la próxima vez.',
+      en: 'Type your name here so your opponent knows who is beating them. Optional, and it is saved for next time.',
+    },
+    'tour.search': {
+      es: 'Partida online contra un rival al azar. Son las únicas partidas que puntúan en la clasificación.',
+      en: 'Online match against a random opponent. These are the only games rated on the leaderboard.',
+    },
+    'tour.friend': {
+      es: 'Crea una sala privada con código o únete a la de tu amigo. Quien crea la sala elige duración, energía y hasta el coste de cada pieza.',
+      en: "Create a private room with a code or join your friend's. The room creator picks duration, energy and even each piece's cost.",
+    },
+    'tour.ladder': {
+      es: 'La torre de las leyendas: derrota a los grandes maestros uno a uno, desde abajo hasta la cima. Algo te espera arriba…',
+      en: 'The tower of legends: defeat the grandmasters one by one, from the bottom to the top. Something awaits up there…',
+    },
+    'tour.board': {
+      es: 'La clasificación global: Elo, victorias y derrotas de todos los jugadores.',
+      en: 'The global leaderboard: Elo, wins and losses for every player.',
+    },
+    'tour.help': {
+      es: 'Todas las reglas explicadas con demos animadas. Si es tu primera partida, empieza por aquí.',
+      en: 'Every rule explained with animated demos. If this is your first match, start here.',
+    },
+    'tour.settings': {
+      es: 'Ajustes: tema visual, estilo de música y arrastre de piezas.',
+      en: 'Settings: visual theme, music style and piece dragging.',
+    },
+    'tour.lang': {
+      es: 'Cambia el idioma del juego cuando quieras desde aquí.',
+      en: 'Switch the game language any time from here.',
+    },
   };
 
   let lang = LANGS[0];
