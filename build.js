@@ -39,6 +39,19 @@ function rmrf(p) {
   if (fs.existsSync(p)) fs.rmSync(p, { recursive: true, force: true });
 }
 
+// Lo que NO se ofusca:
+//   vendor/   codigo de terceros (morphicons). Ofuscarlo no protege nada
+//             nuestro y encima es ESM, que el ofuscador no digiere bien.
+//   morph.js  nuestro, pero tambien ESM: el `import` del principio no puede
+//             pasar por el aplanado de flujo sin romperse. Son 30 lineas de
+//             pegamento, no hay nada que esconder ahi.
+const VENDOR = 'vendor';
+const SKIP = new Set(['morph.js']);
+
+function plain(rel, name) {
+  return rel.split(path.sep)[0] === VENDOR || SKIP.has(name);
+}
+
 function walk(dir, base = dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
@@ -48,7 +61,7 @@ function walk(dir, base = dir) {
     } else {
       const outPath = path.join(OUT, rel);
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
-      if (entry.name.endsWith('.js')) {
+      if (entry.name.endsWith('.js') && !plain(rel, entry.name)) {
         const code = fs.readFileSync(abs, 'utf8');
         const result = JavaScriptObfuscator.obfuscate(code, OBFUSCATE_OPTIONS).getObfuscatedCode();
         fs.writeFileSync(outPath, result);

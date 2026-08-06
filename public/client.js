@@ -346,8 +346,13 @@ function updateHUD(){
   // emotes: solo si los activaste en ajustes, contra personas, y desde la
   // cuenta atrás hasta el resultado (así se puede dar el «buena partida»
   // de buen perdedor con la sala aún abierta)
-  $('emoteRow').classList.toggle('show', emotesOn && !state.vsCPU &&
-    (state.phase==='countdown' || state.phase==='live' || state.phase==='over'));
+  const canEmote = emotesOn && !state.vsCPU &&
+    (state.phase==='countdown' || state.phase==='live' || state.phase==='over');
+  $('emoteDock').classList.toggle('show', canEmote);
+  if (!canEmote) closeEmoteTray();
+  // el disco de los emotes de la bandeja lleva TU color: los ves como los va
+  // a ver el rival cuando se los mandes
+  $('emoteDock').style.setProperty('--e-disc', you === 'w' ? 'var(--white-acc)' : 'var(--black-acc)');
 
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -487,7 +492,7 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); clearEmotes(); $('emoteRow').classList.remove('show'); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); clearEmotes(); closeEmoteTray(); $('emoteDock').classList.remove('show'); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'emote'){ if (emotesOn) showEmoteBurst(msg.from, msg.i); return; }
     if (msg.t === 'replay-data'){ storeReplay(msg); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
@@ -919,6 +924,7 @@ $('btnMenu2').addEventListener('click', () => { currentLadder = null; send({t:'l
 // Escape: desde cualquier subpantalla se regresa al menú principal
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
+  if (emoteTrayOpen()){ closeEmoteTray(); return; }   // primero se guardan los emotes
   if (tourEls){ endTour(); return; }   // el tutorial de bienvenida también se cierra con Escape
   if (curScreen === 'replays') showScreen('settings');   // cuelga de ajustes
   else if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
@@ -944,8 +950,50 @@ btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGa
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
-$('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; this.textContent=sfxOn?'🔊 SFX':'🔇 SFX'; ensureAudio(); });
-function musicBtnText(){ $('musicBtn').textContent = (musicOn ? '🎵 ' : '🔇 ') + tr('top.music'); }
+// --- iconos: un solo sitio por donde pasan todos los cambios -------------
+// Los botones llevan un <path> con su geometría. setIcon lo cambia: si
+// morph.js ya cargó, la forma se TRANSFORMA (play estirándose a pause); si
+// todavía no, se reescribe el `d` y listo. Nunca se queda sin dibujo
+function setIcon(host, name){
+  if (window.RSMorph) return RSMorph.to(host, name);
+  const path = host && host.querySelector('path[data-icon]');
+  if (!path || !RSIcons.D[name]) return;
+  path.dataset.icon = name;
+  path.setAttribute('d', RSIcons.D[name]);
+}
+// icono + palabra: la palabra la retraduce applyLang sin tocar el icono
+function iconBtn(host, name, text){
+  host.innerHTML = RSIcons.label(name, text);   // label() ya escapa el texto
+}
+function iconBtnText(host, text){
+  const s = host.querySelector('.ico-txt');
+  if (s) s.textContent = text;
+}
+
+// pintado inicial: se hace UNA vez, antes del primer applyLang. A partir de
+// aquí los botones solo cambian de forma (setIcon) o de palabra (iconBtnText)
+iconBtn($('soundBtn'), sfxOn ? 'sound' : 'mute', 'SFX');
+iconBtn($('musicBtn'), musicOn ? 'music' : 'mute', '');
+iconBtn(menuBtn, 'menu', '');
+iconBtn($('btnResume'), 'play', '');
+iconBtn($('btnSettings'), 'settings', '');
+// botonera del reproductor: sin palabra, solo icono y su texto de ayuda
+const RP_BTN_KEYS = [
+  ['rpRestart', 'replay.ctrl.restart'], ['rpPrev', 'replay.ctrl.prev'],
+  ['rpPlay',    'replay.ctrl.play'],    ['rpNext', 'replay.ctrl.next'],
+  ['rpSpeed',   'replay.ctrl.speed'],
+];
+iconBtn($('rpRestart'), 'skipBack', '');
+iconBtn($('rpPrev'),    'prev', '');
+iconBtn($('rpPlay'),    'play', '');
+iconBtn($('rpNext'),    'next', '');
+iconBtn($('rpSpeed'),   'speed', '×1');
+
+$('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; setIcon(this, sfxOn?'sound':'mute'); ensureAudio(); });
+function musicBtnText(){
+  setIcon($('musicBtn'), musicOn ? 'music' : 'mute');
+  iconBtnText($('musicBtn'), tr('top.music'));
+}
 $('musicBtn').addEventListener('click', function(){
   musicOn = !musicOn;
   localStorage.setItem('rs-music', musicOn ? '1' : '0');
@@ -970,7 +1018,17 @@ function applyLang(){
     b.title = tr(e.key);
     b.setAttribute('aria-label', tr(e.key));
   });
-  menuBtn.textContent = '☰ ' + tr('top.menu');
+  emoteKey.title = tr('emote.open');
+  emoteKey.setAttribute('aria-label', tr('emote.open'));
+  // los iconos ya están pintados: al cambiar de idioma solo se retraduce la
+  // palabra de al lado y el texto que sale al pasar el ratón
+  iconBtnText(menuBtn, tr('top.menu'));
+  iconBtnText($('btnResume'), tr('menu.resume'));
+  RP_BTN_KEYS.forEach(([id, key]) => {
+    const b = $(id);
+    b.title = tr(key);
+    b.setAttribute('aria-label', tr(key));
+  });
   statusTxt.textContent = tr(lastStatusKey);
   enableMenu(menuEnabled);
   buildLegend();
@@ -1283,14 +1341,41 @@ EM.EMOTES.forEach((e, i) => {
   b.addEventListener('click', () => sendEmote(i));
   $('emoteRow').appendChild(b);
 });
+
+// --- la bandeja: cerrada por defecto ------------------------------------
+// Seis caras colgando bajo el tablero toda la partida eran ruido y ocupaban
+// sitio. Ahora hay UNA tecla y las caras se despliegan al pulsarla, como en
+// los juegos de móvil. Se cierra sola al mandar una, al tocar fuera o con Esc
+const emoteKey = $('emoteKey');
+emoteKey.innerHTML = RSIcons.svg('smile');
+function emoteTrayOpen(){ return $('emoteDock').classList.contains('open'); }
+function closeEmoteTray(){
+  if (!emoteTrayOpen()) return;
+  $('emoteDock').classList.remove('open');
+  emoteKey.setAttribute('aria-expanded', 'false');
+  setIcon(emoteKey, 'smile');
+}
+function toggleEmoteTray(){
+  if (emoteTrayOpen()) return closeEmoteTray();
+  $('emoteDock').classList.add('open');
+  emoteKey.setAttribute('aria-expanded', 'true');
+  setIcon(emoteKey, 'close');   // la carita se convierte en aspa
+}
+emoteKey.addEventListener('click', (e) => { e.stopPropagation(); ensureAudio(); toggleEmoteTray(); });
+// tocar fuera cierra, pero no si el clic fue dentro de la propia bandeja
+document.addEventListener('click', (e) => {
+  if (emoteTrayOpen() && !$('emoteDock').contains(e.target)) closeEmoteTray();
+});
+
 function sendEmote(i){
   if (!emotesOn || emoteCool || !state || state.vsCPU) return;
   ensureAudio();
   send({ t:'emote', i });
-  // enfriamiento local a juego con el del servidor: la fila respira apagada
+  closeEmoteTray();             // mandas y se guarda: no tapa el tablero
+  // enfriamiento local a juego con el del servidor: la tecla se apaga
   emoteCool = true;
-  $('emoteRow').classList.add('cool');
-  setTimeout(() => { emoteCool = false; $('emoteRow').classList.remove('cool'); }, 1300);
+  $('emoteDock').classList.add('cool');
+  setTimeout(() => { emoteCool = false; $('emoteDock').classList.remove('cool'); }, 1300);
 }
 // el emote SALE DEL REY de quien lo manda, como si lo dijera la pieza:
 // una burbuja sobre su casilla. Si no hay rey (partida terminada por captura)
@@ -1309,7 +1394,7 @@ function showEmoteBurst(color, i){
   a.innerHTML = '<div class="emote-bubble">' + EM.svg(i) + '</div>';
   placeEmote(a, king);
   layer.appendChild(a);
-  setTimeout(() => a.remove(), 2600);
+  setTimeout(() => a.remove(), 2000);   // a juego con emoteBubble (1.9s)
 }
 // coloca el ancla sobre la casilla del rey. Si el rey está en la fila de
 // arriba no cabe la burbuja encima, así que se le da la vuelta y va debajo.
@@ -1318,7 +1403,7 @@ function placeEmote(a, king){
   const d = toDisplay(king.r, king.c);
   const below = d.dr === 0;
   a.classList.toggle('below', below);
-  a.style.left = Math.min(92, Math.max(8, (d.dc + 0.5) * 12.5)) + '%';
+  a.style.left = Math.min(94, Math.max(6, (d.dc + 0.5) * 12.5)) + '%';
   a.style.top  = (below ? d.dr + 1 : d.dr) * 12.5 + '%';
 }
 // si el rey se mueve mientras su burbuja está en pantalla, la burbuja lo sigue
@@ -1359,25 +1444,45 @@ function tone(t0, freq, dur, type, vol, bendTo){
   o.start(t0); o.stop(t0 + dur + 0.02);
   return o;
 }
+// una palmada no es una nota: es ruido. Ruido blanco corto, filtrado en banda
+// y con caída inmediata. Sin esto el aplauso suena a timbre, no a burla
+function clap(t0, vol){
+  const len = Math.floor(audioCtx.sampleRate * 0.06);
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1500; bp.Q.value = 1.1;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + 0.07);
+}
 const EMOTE_SFX = {
-  // saludo: dos notas que suben, cortas y amables
-  hola:    (t) => { tone(t, 620, .1, 'triangle', .038); tone(t + .1, 880, .13, 'triangle', .034); },
-  // risa: cuatro golpecitos que bajan, un "je je je je" burlón
-  risa:    (t) => { [0, .08, .16, .24].forEach((d, k) => tone(t + d, 760 - k * 70, .07, 'square', .02)); },
-  // asombro: un "uuup" que sube de golpe
-  asombro: (t) => { tone(t, 340, .26, 'sine', .042, 940); },
-  // fuego: chispazo brillante de dos tramos
-  fuego:   (t) => { tone(t, 520, .09, 'sawtooth', .022, 1040); tone(t + .08, 1100, .18, 'triangle', .032, 1650); },
-  // llanto: un "buaaa" que cae temblando (el LFO es el temblor del berrinche)
-  llanto:  (t) => {
+  // señalar: cuatro golpecitos que bajan, un "je je je je" en tu cara
+  senala:  (t) => { [0, .08, .16, .24].forEach((d, k) => tone(t + d, 760 - k * 70, .07, 'square', .02)); },
+  // aplauso: DOS palmadas separadas y secas. El silencio entre ellas es el
+  // sarcasmo; tres seguidas ya sonarían a ovación de verdad
+  aplauso: (t) => { clap(t, .042); clap(t + .42, .038); },
+  // bostezo: un suspiro que sube poco y cae largo
+  bostezo: (t) => { tone(t, 300, .2, 'sine', .03, 470); tone(t + .19, 460, .42, 'sine', .034, 175); },
+  // llora más: un "buaaa" que cae temblando (el LFO es el temblor del berrinche)
+  llora:   (t) => {
     const o = tone(t, 560, .42, 'sine', .04, 190);
     const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
     lfo.frequency.value = 11; lg.gain.value = 26;
     lfo.connect(lg); lg.connect(o.frequency);
     lfo.start(t); lfo.stop(t + .42);
   },
-  // gg: dos notas limpias que resuelven hacia arriba
-  gg:      (t) => { tone(t, 587, .13, 'sine', .034); tone(t + .12, 784, .2, 'sine', .03); },
+  // adiós: dos notas que bajan, el "hasta lue-go" de toda la vida
+  adios:   (t) => { tone(t, 784, .13, 'triangle', .036); tone(t + .13, 523, .22, 'triangle', .032); },
+  // coronación: fanfarria de tres notas subiendo y un brillo arriba
+  corona:  (t) => {
+    [523, 659, 880].forEach((f, k) => tone(t + k * .1, f, .13, 'triangle', .032));
+    tone(t + .3, 1319, .26, 'sine', .026);
+  },
 };
 function emoteSfx(id){
   if (!sfxOn || !audioCtx || !EMOTE_SFX[id]) return;
@@ -1528,7 +1633,11 @@ function rpHud(){
   $('rpClock').textContent = done ? tr('replay.end') : `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   $('rpCount').textContent = rp.idx + '/' + rp.rep.moves.length;
   $('rpFill').style.width = (100 * Math.min(1, rp.t / dur)).toFixed(2) + '%';
-  $('rpPlay').textContent = rp.playing ? '⏸' : (done ? '↻' : '▶');
+  // el botón grande cuenta el estado con la forma: el triángulo se abre en
+  // dos barras al reproducir y se enrosca en flecha circular al terminar.
+  // setIcon corta solo si ya está en ese icono, así que llamarlo por
+  // fotograma no cuesta nada
+  setIcon($('rpPlay'), rp.playing ? 'pause' : (done ? 'replay' : 'play'));
 }
 function rpTick(ts){
   if (!rp || !rp.playing) return;
@@ -1566,7 +1675,7 @@ function openReplay(rep, from){
   rp = { rep, board:null, els:new Map(), t:0, idx:0, playing:false, speed:RP_SPEEDS[0], spdIdx:0, raf:0, last:0 };
   $('rpHead').innerHTML =
     `<b class="w">${escHtml(repName(rep,'w'))}</b><span>vs</span><b class="b">${escHtml(repName(rep,'b'))}</b>`;
-  $('rpSpeed').textContent = '×' + RP_SPEEDS[0];
+  iconBtnText($('rpSpeed'), '×' + RP_SPEEDS[0]);
   rpRebuild();
   showScreen('replay');
   rpSetPlaying(true);   // la cinta arranca sola
@@ -1620,7 +1729,7 @@ $('rpSpeed').addEventListener('click', () => {
   if (!rp) return;
   rp.spdIdx = (rp.spdIdx + 1) % RP_SPEEDS.length;
   rp.speed = RP_SPEEDS[rp.spdIdx];
-  $('rpSpeed').textContent = '×' + rp.speed;
+  iconBtnText($('rpSpeed'), '×' + rp.speed);
 });
 $('rpProgress').addEventListener('click', (e) => {
   if (!rp) return;
@@ -1835,7 +1944,7 @@ function applyTheme(){
   const crt = $('themeCRT');
   crt.classList.toggle('on', theme === 'crt');
   crt.classList.toggle('locked', !nightmareDone);
-  crt.textContent = (nightmareDone ? '' : '🔒 ') + 'CRT';
+  crt.innerHTML = (nightmareDone ? '' : RSIcons.svg('lock')) + 'CRT';
   if (window.RSBG && window.RSBG.setTheme) window.RSBG.setTheme(theme);
 }
 function setTheme(t){ theme = t; localStorage.setItem('rs-theme', t); applyTheme(); }
