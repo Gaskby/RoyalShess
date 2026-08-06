@@ -9,6 +9,10 @@ const { RIVALS, ladderAt } = require('../public/rivals.js');
 
 const RECONNECT_MS = (CONFIG.server.reconnectSeconds || 20) * 1000;
 const PIECE_TYPES = ['p', 'n', 'b', 'r', 'q', 'k'];
+// emotes rapidos: el cliente manda solo el INDICE; la lista de emojis vive en
+// el cliente. Aqui solo validamos rango y frecuencia (anti-spam)
+const EMOTE_COUNT = 6;
+const EMOTE_GAP_MS = 1200;
 
 function normalizeCode(x) { return String(x || '').trim().toUpperCase().slice(0, 12); }
 
@@ -107,6 +111,7 @@ class Lobby {
   _beginMatch(room) {
     room.rematch = new Set();
     room.scored = false;
+    room.replaySent = false;
     if (room.awaitTimers) for (const k in room.awaitTimers) clearTimeout(room.awaitTimers[k]);
     room.awaiting = null; room.awaitTimers = {}; room.paused = false; room.pausedAt = 0;
     const colors = Math.random() < 0.5 ? ['w', 'b'] : ['b', 'w'];
@@ -139,6 +144,7 @@ class Lobby {
     const room = client.roomId != null ? this.rooms.get(client.roomId) : null;
     if (!room || room.game.phase !== 'over') return;
     if (room.game.vsCPU) {
+      room.replaySent = false;
       room.game.beginCountdown(Date.now());
       this._broadcast(room, Date.now());
       return;
@@ -335,8 +341,46 @@ class Lobby {
     return names;
   }
 
+  // al caer el telon, cada cliente recibe la cinta completa UNA sola vez
+  // para poder guardarla y reproducirla. El estado a 15Hz nunca la incluye
+  _sendReplay(room) {
+    if (room.replaySent || room.game.phase !== 'over') return;
+    room.replaySent = true;
+    const g = room.game;
+    if (!g.moves.length) return;   // partida sin jugadas: nada que repetir
+    // los nombres del momento, pero si alguien abandonó ya no está en la sala:
+    // se recupera de la foto de identidades que _beginMatch tomó al empezar
+    const names = this._names(room);
+    if (room.players) for (const color of ['w', 'b']) {
+      if (!names[color] && room.players[color]) names[color] = room.players[color].name || null;
+    }
+    const rep = {
+      t: 'replay-data',
+      moves: g.moves,
+      names,
+      winner: g.winner,
+      reason: g.reason,
+      matchMs: g.matchMs,
+    };
+    room.clients.forEach(c => { if (c.color) this._send(c, { ...rep, you: c.color }); });
+  }
+
+  // emote rapido: solo el indice viaja; se reparte a TODOS en la sala con el
+  // color de quien lo manda. Sin chat libre: nada que moderar
+  emote(client, i) {
+    const room = client.roomId != null ? this.rooms.get(client.roomId) : null;
+    if (!room || !client.color || room.game.vsCPU) return;
+    i = Math.floor(+i);
+    if (!Number.isFinite(i) || i < 0 || i >= EMOTE_COUNT) return;
+    const now = Date.now();
+    if (client._lastEmote && now - client._lastEmote < EMOTE_GAP_MS) return;
+    client._lastEmote = now;
+    room.clients.forEach(c => this._send(c, { t: 'emote', i, from: client.color }));
+  }
+
   _broadcast(room, now) {
     this._maybeScore(room);
+    this._sendReplay(room);
     const names = this._names(room);
     room.clients.forEach(c => {
       if (!c.color) return;

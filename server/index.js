@@ -83,6 +83,7 @@ wss.on('connection', (ws) => {
       case 'create': lobby.createPrivate(client, m.code, m.opts); break;
       case 'join':   lobby.joinPrivate(client, m.code); break;
       case 'rematch': lobby.rematch(client); break;
+      case 'emote':  lobby.emote(client, m.i); break;
       case 'cancel': lobby.cancel(client); break;
       case 'leave':  lobby.leave(client); break;
       case 'move':

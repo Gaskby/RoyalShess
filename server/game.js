@@ -52,6 +52,9 @@ class Game {
     this.aiPrev = null;   // ultima jugada de la CPU, para no deshacerla en bucle
     this.bookIdx = 0;     // proxima jugada del libro de aperturas del rival
     this.lastMove = null;
+    // cinta de la partida para repeticiones: [fr,fc,tr,tc,ms desde el arranque].
+    // Solo coordenadas: el tablero se reconstruye aplicandolas en orden
+    this.moves = [];
     this.phase = 'lobby';        // 'lobby' | 'countdown' | 'live' | 'over'
     this.winner = null;   // w | b | draw | null
     this.reason = null;   // king | time | abandon | null
@@ -272,6 +275,7 @@ class Game {
     }
 
     this.lastMove = { fr, fc, tr, tc };
+    this.moves.push([fr, fc, tr, tc, Math.max(0, Math.round(now - this.startTime))]);
     this._updateChecks(now);   // el reloj de gracia arranca en el instante del jaque
     if (capturedKing) this._end(color, 'king');
     return { ok: true, captured: !!target, capturedKing, cost, toll: lineToll, free: freeRecap };

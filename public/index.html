@@ -41,12 +41,14 @@
       <div class="board-wrap" id="boardWrap">
         <div class="grid" id="grid"></div>
         <div class="pieces" id="pieces"></div>
+        <div class="emotes" id="emoteLayer"></div>
         <div class="countdown" id="countdown"><span id="cdNum">3</span></div>
       </div>
 
     </div>
 
     <div class="side-bottom" id="sideBottom">
+      <div class="emote-row" id="emoteRow"></div>
       <div class="pcard" id="cardW">
         <div class="phead">
           <div class="pname"><span class="dot"></span> <img class="rival-face" id="faceW" style="display:none" alt=""> <span data-i18n="card.white">Blancas</span> <span class="tag" id="tagW"></span></div>
@@ -105,7 +107,10 @@
         <button class="btn tbtn" id="musicAmbient" data-i18n="settings.music.ambient">Ambient</button>
       </div>
       <label class="opt-row"><input type="checkbox" id="dragToggle" checked><span data-i18n="menu.drag">Arrastrar piezas para mover</span></label>
+      <label class="opt-row"><input type="checkbox" id="emoteToggle"><span data-i18n="settings.emotes">Emotes en partida</span></label>
+      <div class="small-note opt-note" data-i18n="settings.emotes.note"></div>
       <div class="menu-btns">
+        <button class="btn big" id="btnReplays" data-i18n="menu.replays">Repeticiones</button>
         <button class="btn" id="btnSettingsBack" data-i18n="friend.back">Volver</button>
       </div>
     </div>
@@ -198,6 +203,38 @@
       </div>
     </div>
 
+    <div id="screenReplays" style="display:none">
+      <div class="replay-list" id="replayList"></div>
+      <div class="small-note" data-i18n="replay.note"></div>
+      <div class="menu-btns">
+        <button class="btn" id="btnReplaysBack" data-i18n="friend.back">Volver</button>
+      </div>
+    </div>
+
+    <div id="screenReplay" style="display:none">
+      <div class="rp-head" id="rpHead"></div>
+      <div class="rp-board" id="rpBoard">
+        <div id="rpSqs"></div>
+        <div id="rpMarks"></div>
+        <div id="rpPieces"></div>
+      </div>
+      <div class="rp-bar">
+        <span class="rp-clock" id="rpClock">0:00</span>
+        <div class="rp-progress" id="rpProgress"><i id="rpFill"></i></div>
+        <span class="rp-count" id="rpCount">0/0</span>
+      </div>
+      <div class="rp-ctrls">
+        <button class="btn" id="rpRestart" title="⏮">⏮</button>
+        <button class="btn" id="rpPrev" title="◀">◀</button>
+        <button class="btn rp-play" id="rpPlay">▶</button>
+        <button class="btn" id="rpNext" title="▶">▶▏</button>
+        <button class="btn" id="rpSpeed">×1</button>
+      </div>
+      <div class="menu-btns">
+        <button class="btn" id="btnReplayBack" data-i18n="friend.back">Volver</button>
+      </div>
+    </div>
+
     <div id="screenResult" style="display:none">
       <div class="result" id="resultTxt"></div>
       <div class="rival-quote" id="rivalQuote" style="display:none">
@@ -210,6 +247,7 @@
       <div class="menu-btns">
         <button class="playbtn" id="btnNext" style="display:none" data-i18n="ladder.next">Siguiente rival</button>
         <button class="playbtn" id="btnRematch" data-i18n="result.rematch">Revancha</button>
+        <button class="btn big" id="btnWatch" style="display:none" data-i18n="replay.watch">Ver repetición</button>
         <button class="btn big" id="btnAgain" data-i18n="result.again">Buscar otra</button>
         <button class="btn big" id="btnCPU2" disabled style="display:none" data-i18n="result.cpu">vs CPU</button>
         <button class="btn big" id="btnMenu2" data-i18n="result.menu">Menú principal</button>
@@ -220,6 +258,7 @@
 
 <script src="/config.js"></script>
 <script src="/rivals.js"></script>
+<script src="/emotes.js"></script>
 <script src="/i18n.js"></script>
 <script src="/engine.js"></script>
 <script src="/bgfx.js"></script>

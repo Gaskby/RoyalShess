@@ -65,6 +65,7 @@ royalshess/
 │  └─ game.js       Estado autoritativo: energía, reloj, fases, IA, victoria
 └─ public/
    ├─ config.js     HOJA DE CONFIGURACIÓN (edita aquí)
+   ├─ emotes.js     Las 6 caras de los emotes, dibujadas en SVG (editable)
    ├─ engine.js     Motor de reglas puro (compartido servidor + cliente)
    ├─ index.html    Interfaz
    ├─ style.css     Estética tipo TETR.IO
@@ -78,6 +79,29 @@ Si un jugador se desconecta a media partida, el rival gana por abandono.
 ## Protocolo WebSocket
 Cliente → servidor: `queue` (rival al azar), `cpu` (vs máquina),
 `create {code}` / `join {code}` (salas privadas), `cancel`, `leave`,
-`move {from:[r,c], to:[r,c]}`.
+`move {from:[r,c], to:[r,c]}`, `emote {i}` (emote rápido, solo PvP),
+`rematch`.
 Servidor → cliente: `welcome`/`lobby`, `queued`, `created {code}`,
-`state {...}`, `reject {reason}`.
+`state {...}`, `reject {reason}`, `emote {i, from}`,
+`replay-data {moves, names, winner, reason, matchMs, you}` (una vez al terminar).
+
+## Repeticiones y emotes
+- **Repeticiones:** al terminar cada partida el servidor manda la cinta
+  (coordenadas + tiempos). El cliente guarda las últimas 10 en `localStorage`
+  y las reproduce desde **Menú → Repeticiones** o con **Ver repetición** en el
+  resultado (velocidad ×1/×2/×4, paso a paso y barra para saltar).
+- **Emotes:** 6 caras del juego bajo el tablero, en partidas online contra
+  personas. Sin chat libre: nada que moderar. El servidor limita la
+  frecuencia (1 cada 1.2 s) y solo recibe el índice, nunca texto.
+  El emote **sale del rey** de quien lo manda, en una burbuja sobre su
+  casilla que lo sigue si se mueve (si el rey está en la fila de arriba, la
+  burbuja se voltea y va debajo). Cada uno tiene su **sonido** corto y
+  bajito: el tope es 0.042 de ganancia, por debajo de los efectos del juego.
+  Las caras se dibujan en SVG en **`public/emotes.js`** (editable): comparten
+  la misma cabeza y cambian cejas, ojos, boca y añadidos (lágrimas, llama,
+  manos). Se repintan solas con el tema, incluido el CRT monocromo.
+  Están **animadas** (los movimientos viven en `style.css`, busca «animación
+  de los emotes»): se mueven al recibir un emote y al pasar el ratón por un
+  botón, y están quietas el resto del tiempo para no distraer. Por eso toda
+  animación empieza y acaba en la posición neutra: ese fotograma 0 es la
+  cara parada del botón.

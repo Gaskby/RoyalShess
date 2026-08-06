@@ -28,6 +28,9 @@ let selected = null;   // r,c en coords de tablero
 let drag = null;   // arrastre en curso r,c,id,el,lifted,sx,sy
 let justDragged = false;   // evita que el click posterior a un arrastre reseleccione
 let dragEnabled = localStorage.getItem('rs-drag') !== '0';  // opción del menú
+// emotes: APAGADOS de base y hay que activarlos en ajustes. Apagados no se
+// mandan (la fila ni aparece) ni se reciben: los que lleguen se descartan
+let emotesOn = localStorage.getItem('rs-emotes') === '1';
 let myName = localStorage.getItem('rs-name') || '';
 // identidad ligera: token aleatorio generado una vez y guardado en localStorage.
 // Las estadísticas del servidor viven atadas a este token, no al nombre.
@@ -225,6 +228,7 @@ function render(){
       }
     }
   }
+  trackEmotes();   // las burbujas siguen a su rey si se ha movido
   updateHUD();
 }
 // carriles de las torres: SOLO la dirección donde la torre tenga más de N casillas
@@ -339,6 +343,12 @@ function updateHUD(){
     } else face.style.display = 'none';
   }
   
+  // emotes: solo si los activaste en ajustes, contra personas, y desde la
+  // cuenta atrás hasta el resultado (así se puede dar el «buena partida»
+  // de buen perdedor con la sala aún abierta)
+  $('emoteRow').classList.toggle('show', emotesOn && !state.vsCPU &&
+    (state.phase==='countdown' || state.phase==='live' || state.phase==='over'));
+
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   clockEl.classList.toggle('low', s<=30 && state.phase==='live');
@@ -439,11 +449,14 @@ function onPointerCancel(){
 }
 
 // Pantallas del overlay
-function showScreen(name){   // menu | friend | waiting | search | help | board | result | nullen juego
+function showScreen(name){   // menu | friend | waiting | search | help | board | replays | replay | result | nullen juego
   if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
+  if (name !== 'replay') stopReplay();   // al salir del reproductor se detiene la cinta
   if (name !== 'menu') endTour();    // el tutorial de bienvenida vive solo en el menú
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
+  // el reproductor necesita un panel más ancho para que el tablero luzca
+  document.querySelector('.panelbig').classList.toggle('wide', name==='replay');
   $('screenMenu').style.display    = name==='menu'    ? '' : 'none';
   $('screenSettings').style.display= name==='settings'? '' : 'none';
   $('screenFriend').style.display  = name==='friend'  ? '' : 'none';
@@ -452,8 +465,10 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   $('screenHelp').style.display    = name==='help'    ? '' : 'none';
   $('screenLadder').style.display  = name==='ladder'  ? '' : 'none';
   $('screenBoard').style.display   = name==='board'   ? '' : 'none';
+  $('screenReplays').style.display = name==='replays' ? '' : 'none';
+  $('screenReplay').style.display  = name==='replay'  ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', settings:'sub.settings' };
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', settings:'sub.settings', replays:'sub.replays', replay:'sub.replay' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
   // el botón volver a la partida solo aparece si hay una partida en curso
@@ -472,7 +487,9 @@ function connect(){
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
-    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); clearEmotes(); $('emoteRow').classList.remove('show'); showScreen('menu'); updateAmbience(); return; }
+    if (msg.t === 'emote'){ if (emotesOn) showEmoteBurst(msg.from, msg.i); return; }
+    if (msg.t === 'replay-data'){ storeReplay(msg); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -520,6 +537,9 @@ function onState(msg){
   if (state.phase === 'countdown'){
     // solo cierra pantallas al ENTRAR en la fase: así el menú puede quedarse abierto
     if (prevPhase !== 'countdown'){
+      // partida nueva: la cinta de la anterior deja de ser "esta partida"
+      lastReplay = null;
+      clearEmotes();
       // el fondo se corrompe solo en peleas de escalera en pesadilla
       window.RSBG.setCorruption(currentLadder != null && ladderLoop > 0 ? corruptionColor() : null);
       showScreen(null); pieceFx.clear();
@@ -598,6 +618,8 @@ function showResult(){
     : state.reason==='abandon' ? tr('reason.abandon') : tr('reason.king');
   btnRematch.disabled = false;
   btnRematch.textContent = tr('result.rematch');
+  // la cinta de ESTA partida llegó justo antes del estado final
+  $('btnWatch').style.display = lastReplay ? '' : 'none';
   stopTaunts();
   // escalera: al vencer avanza el progreso y el rival te deja su consejo.
   // si te gana el, te suelta su frase de victoria
@@ -898,7 +920,9 @@ $('btnMenu2').addEventListener('click', () => { currentLadder = null; send({t:'l
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (tourEls){ endTour(); return; }   // el tutorial de bienvenida también se cierra con Escape
-  if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
+  if (curScreen === 'replays') showScreen('settings');   // cuelga de ajustes
+  else if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
+  else if (curScreen === 'replay') rpBack();
   else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
   else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
 });
@@ -939,6 +963,13 @@ function applyLang(){
   document.querySelectorAll('#cfgRegen option').forEach(o => { o.textContent = tr('friend.regenOpt').replace('{n}', o.value); });
   document.querySelectorAll('#langRow .tbtn').forEach(b => b.classList.toggle('on', b.dataset.lang === I18N.getLang()));
   musicBtnText();
+  // etiqueta de cada emote: título al pasar el ratón y texto para lectores
+  document.querySelectorAll('#emoteRow button').forEach(b => {
+    const e = EM.EMOTES[+b.dataset.emote];
+    if (!e) return;
+    b.title = tr(e.key);
+    b.setAttribute('aria-label', tr(e.key));
+  });
   menuBtn.textContent = '☰ ' + tr('top.menu');
   statusTxt.textContent = tr(lastStatusKey);
   enableMenu(menuEnabled);
@@ -1238,6 +1269,366 @@ $('btnBoard').addEventListener('click', () => {
 });
 $('btnBoardBack').addEventListener('click', () => showScreen('menu'));
 
+// === emotes rápidos: 6 caras del juego, cero chat libre y cero moderación ===
+// Las caras se dibujan en SVG y viven en emotes.js (editable). El servidor
+// solo recibe el índice, valida rango y frecuencia, y lo reparte a la sala
+// con el color de quien lo mandó. Aquí estalla sobre su tarjeta.
+const EM = window.RSEmotes;
+let emoteCool = false;
+EM.EMOTES.forEach((e, i) => {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.emote = i;          // applyLang re-traduce su etiqueta al cambiar idioma
+  b.innerHTML = EM.svg(i);
+  b.addEventListener('click', () => sendEmote(i));
+  $('emoteRow').appendChild(b);
+});
+function sendEmote(i){
+  if (!emotesOn || emoteCool || !state || state.vsCPU) return;
+  ensureAudio();
+  send({ t:'emote', i });
+  // enfriamiento local a juego con el del servidor: la fila respira apagada
+  emoteCool = true;
+  $('emoteRow').classList.add('cool');
+  setTimeout(() => { emoteCool = false; $('emoteRow').classList.remove('cool'); }, 1300);
+}
+// el emote SALE DEL REY de quien lo manda, como si lo dijera la pieza:
+// una burbuja sobre su casilla. Si no hay rey (partida terminada por captura)
+// cae de vuelta a la tarjeta del jugador, que siempre está ahí
+function showEmoteBurst(color, i){
+  const e = EM.EMOTES[i];
+  if (!e) return;
+  emoteSfx(e.id);
+  const layer = $('emoteLayer');
+  const king = (state && state.board) ? E.findKing(state.board, color) : null;
+  if (!layer || !king){ cardEmote(color, i); return; }
+  layer.querySelectorAll('[data-side="' + color + '"]').forEach(x => x.remove());   // uno por bando
+  const a = document.createElement('div');
+  a.className = 'emote-anchor ' + color;
+  a.dataset.side = color;
+  a.innerHTML = '<div class="emote-bubble">' + EM.svg(i) + '</div>';
+  placeEmote(a, king);
+  layer.appendChild(a);
+  setTimeout(() => a.remove(), 2600);
+}
+// coloca el ancla sobre la casilla del rey. Si el rey está en la fila de
+// arriba no cabe la burbuja encima, así que se le da la vuelta y va debajo.
+// El left se recorta para que la burbuja no se salga por los lados
+function placeEmote(a, king){
+  const d = toDisplay(king.r, king.c);
+  const below = d.dr === 0;
+  a.classList.toggle('below', below);
+  a.style.left = Math.min(92, Math.max(8, (d.dc + 0.5) * 12.5)) + '%';
+  a.style.top  = (below ? d.dr + 1 : d.dr) * 12.5 + '%';
+}
+// si el rey se mueve mientras su burbuja está en pantalla, la burbuja lo sigue
+function trackEmotes(){
+  const layer = $('emoteLayer');
+  if (!layer || !layer.children.length || !state || !state.board) return;
+  for (const a of layer.children){
+    const king = E.findKing(state.board, a.dataset.side);
+    if (king) placeEmote(a, king);
+  }
+}
+function clearEmotes(){ const l = $('emoteLayer'); if (l) l.innerHTML = ''; }
+// respaldo: el emote sobre la tarjeta del jugador, como antes
+function cardEmote(color, i){
+  const card = $(color === 'w' ? 'cardW' : 'cardB');
+  if (!card) return;
+  card.querySelectorAll('.emote-burst').forEach(x => x.remove());
+  const b = document.createElement('span');
+  b.className = 'emote-burst';
+  b.innerHTML = EM.svg(i);
+  card.appendChild(b);
+  setTimeout(() => b.remove(), 2300);
+}
+
+// --- sonidos de los emotes ---------------------------------------------
+// Cortos y BAJITOS a propósito: el tope aquí es 0.042, por debajo de los
+// efectos del juego (0.06 a 0.1), para que acompañen sin tapar la partida.
+// Cada uno tiene su propia voz, a juego con la cara.
+function tone(t0, freq, dur, type, vol, bendTo){
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (bendTo) o.frequency.exponentialRampToValueAtTime(bendTo, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + Math.min(0.02, dur * 0.3));
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t0); o.stop(t0 + dur + 0.02);
+  return o;
+}
+const EMOTE_SFX = {
+  // saludo: dos notas que suben, cortas y amables
+  hola:    (t) => { tone(t, 620, .1, 'triangle', .038); tone(t + .1, 880, .13, 'triangle', .034); },
+  // risa: cuatro golpecitos que bajan, un "je je je je" burlón
+  risa:    (t) => { [0, .08, .16, .24].forEach((d, k) => tone(t + d, 760 - k * 70, .07, 'square', .02)); },
+  // asombro: un "uuup" que sube de golpe
+  asombro: (t) => { tone(t, 340, .26, 'sine', .042, 940); },
+  // fuego: chispazo brillante de dos tramos
+  fuego:   (t) => { tone(t, 520, .09, 'sawtooth', .022, 1040); tone(t + .08, 1100, .18, 'triangle', .032, 1650); },
+  // llanto: un "buaaa" que cae temblando (el LFO es el temblor del berrinche)
+  llanto:  (t) => {
+    const o = tone(t, 560, .42, 'sine', .04, 190);
+    const lfo = audioCtx.createOscillator(), lg = audioCtx.createGain();
+    lfo.frequency.value = 11; lg.gain.value = 26;
+    lfo.connect(lg); lg.connect(o.frequency);
+    lfo.start(t); lfo.stop(t + .42);
+  },
+  // gg: dos notas limpias que resuelven hacia arriba
+  gg:      (t) => { tone(t, 587, .13, 'sine', .034); tone(t + .12, 784, .2, 'sine', .03); },
+};
+function emoteSfx(id){
+  if (!sfxOn || !audioCtx || !EMOTE_SFX[id]) return;
+  EMOTE_SFX[id](audioCtx.currentTime);
+}
+
+// === repeticiones: cintas de partida guardadas en este navegador ===
+// El servidor manda la cinta completa una vez al terminar (replay-data):
+// solo coordenadas + tiempos. El tablero se reconstruye aplicándolas en orden.
+const REPLAY_KEY = 'rs-replays';
+const REPLAY_MAX = 10;
+let lastReplay = null;   // cinta de la última partida jugada en esta sesión
+function loadReplays(){
+  try { const l = JSON.parse(localStorage.getItem(REPLAY_KEY)); return Array.isArray(l) ? l : []; }
+  catch(_e){ return []; }
+}
+function storeReplay(msg){
+  lastReplay = { d: Date.now(), you: msg.you, names: msg.names || {}, winner: msg.winner,
+                 reason: msg.reason, matchMs: msg.matchMs, moves: msg.moves || [] };
+  if (!lastReplay.moves.length){ lastReplay = null; return; }
+  try {
+    const list = loadReplays();
+    list.unshift(lastReplay);
+    localStorage.setItem(REPLAY_KEY, JSON.stringify(list.slice(0, REPLAY_MAX)));
+  } catch(_e){ /* almacenamiento lleno o bloqueado: la cinta vive solo en memoria */ }
+}
+const repName = (rep, side) => (rep.names && rep.names[side]) || tr(side === 'w' ? 'card.white' : 'card.black');
+const movesTxt = (n) => n === 1 ? tr('replay.moves1') : tr('replay.moves').replace('{n}', n);
+function renderReplayList(){
+  const list = $('replayList');
+  list.innerHTML = '';
+  const reps = loadReplays();
+  if (!reps.length){
+    list.innerHTML = `<div class="help-item">${escHtml(tr('replay.empty'))}</div>`;
+    return;
+  }
+  for (const rep of reps){
+    const res = rep.winner === 'draw' ? 'draw' : (rep.winner === rep.you ? 'win' : 'lose');
+    const when = new Date(rep.d);
+    const whenTxt = when.toLocaleDateString(undefined, { day:'2-digit', month:'2-digit' }) +
+      ' · ' + when.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+    const row = document.createElement('div');
+    row.className = 'replay-row';
+    row.innerHTML =
+      `<span class="rr-res ${res}">${escHtml(tr('replay.' + res))}</span>` +
+      `<span class="rr-names"><b>${escHtml(repName(rep,'w'))}</b> vs <b>${escHtml(repName(rep,'b'))}</b></span>` +
+      `<span class="rr-meta">${escHtml(whenTxt)}<br>${escHtml(movesTxt(rep.moves.length))}</span>`;
+    row.addEventListener('click', () => openReplay(rep, 'replays'));
+    list.appendChild(row);
+  }
+}
+
+// --- reproductor: tablero propio dentro del panel, aislado del juego real ---
+const RP_SPEEDS = [1, 2, 4];
+let rp = null;           // { rep, board, els, t, idx, playing, speed, spdIdx, raf, last }
+let rpFrom = 'replays';  // desde dónde se abrió, para que Volver regrese ahí
+const rpDisp = (r, c) => (rp && rp.rep.you === 'b') ? { dr:7-r, dc:7-c } : { dr:r, dc:c };
+function rpInit(){
+  const sqs = $('rpSqs');
+  if (sqs.childElementCount) return;
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
+    const d = document.createElement('div');
+    d.className = 'dsq ' + ((r+c)%2 ? 'd' : 'l');
+    d.style.left = c*12.5 + '%'; d.style.top = r*12.5 + '%';
+    sqs.appendChild(d);
+  }
+}
+// duración de la cinta: si acabó por tiempo, el reloj completo; si no,
+// la última jugada más un respiro para ver cómo quedó el tablero
+function rpDuration(){
+  const mvs = rp.rep.moves;
+  const last = mvs.length ? mvs[mvs.length-1][4] : 0;
+  return rp.rep.reason === 'time' ? (rp.rep.matchMs || last + 1200) : last + 1200;
+}
+// avanza UNA jugada sobre el tablero puro (sin DOM): mueve, corona y enroca.
+// Las capturas son implícitas: la pieza destino simplemente desaparece
+function rpStep(b, mv){
+  const [fr, fc, tr, tc] = mv;
+  const p = b[fr][fc];
+  if (!p) return null;
+  const victim = b[tr][tc] || null;
+  b[tr][tc] = p; b[fr][fc] = null;
+  if (p.type === 'p' && (tr === 0 || tr === 7)) p.type = 'q';
+  let rook = null, rookC = 0;
+  if (p.type === 'k' && Math.abs(tc - fc) === 2){
+    const rfc = tc > fc ? 7 : 0; rookC = tc > fc ? 5 : 3;
+    rook = b[fr][rfc];
+    if (rook){ b[fr][rookC] = rook; b[fr][rfc] = null; }
+  }
+  return { p, victim, rook, rookR: fr, rookC };
+}
+function rpPlace(piece, r, c){
+  let el = rp.els.get(piece.id);
+  if (!el){
+    el = document.createElement('div');
+    el.className = 'rp-piece ' + piece.color;
+    $('rpPieces').appendChild(el);
+    rp.els.set(piece.id, el);
+  }
+  el.textContent = GLYPH[piece.type];
+  const d = rpDisp(r, c);
+  el.style.transform = `translate(${d.dc*100}%, ${d.dr*100}%)`;
+}
+function rpMarks(mv){
+  const wrap = $('rpMarks');
+  wrap.innerHTML = '';
+  if (!mv) return;
+  for (const [r, c] of [[mv[0], mv[1]], [mv[2], mv[3]]]){
+    const d = rpDisp(r, c);
+    const m = document.createElement('div');
+    m.className = 'rp-mark';
+    m.style.left = d.dc*12.5 + '%'; m.style.top = d.dr*12.5 + '%';
+    wrap.appendChild(m);
+  }
+}
+// aplica la siguiente jugada CON animación: deslizamiento, captura y sonido
+function rpApplyMove(mv){
+  const res = rpStep(rp.board, mv);
+  if (!res) return;
+  if (res.victim){
+    const ve = rp.els.get(res.victim.id);
+    if (ve){ rp.els.delete(res.victim.id); ve.classList.add('dead'); setTimeout(() => ve.remove(), 220); }
+  }
+  rpPlace(res.p, mv[2], mv[3]);
+  if (res.rook) rpPlace(res.rook, res.rookR, res.rookC);
+  rpMarks(mv);
+  sfx(res.victim ? 'cap' : 'move');
+}
+// reconstruye el tablero desde cero hasta rp.idx (para saltos y retrocesos)
+function rpRebuild(){
+  rp.board = E.newBoard().board;
+  const mvs = rp.rep.moves;
+  for (let i = 0; i < rp.idx; i++) rpStep(rp.board, mvs[i]);
+  $('rpPieces').innerHTML = '';
+  rp.els = new Map();
+  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
+    const p = rp.board[r][c];
+    if (p) rpPlace(p, r, c);
+  }
+  rpMarks(rp.idx > 0 ? mvs[rp.idx-1] : null);
+}
+function rpHud(){
+  if (!rp) return;
+  const dur = rpDuration();
+  const done = rp.t >= dur;
+  const remain = Math.max(0, (rp.rep.matchMs || dur) - rp.t);
+  const s = Math.ceil(remain/1000);
+  $('rpClock').textContent = done ? tr('replay.end') : `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  $('rpCount').textContent = rp.idx + '/' + rp.rep.moves.length;
+  $('rpFill').style.width = (100 * Math.min(1, rp.t / dur)).toFixed(2) + '%';
+  $('rpPlay').textContent = rp.playing ? '⏸' : (done ? '↻' : '▶');
+}
+function rpTick(ts){
+  if (!rp || !rp.playing) return;
+  const dt = ts - (rp.last || ts);
+  rp.last = ts;
+  rp.t += dt * rp.speed;
+  const mvs = rp.rep.moves;
+  while (rp.idx < mvs.length && mvs[rp.idx][4] <= rp.t){ rpApplyMove(mvs[rp.idx]); rp.idx++; }
+  if (rp.t >= rpDuration()){ rp.t = rpDuration(); rp.playing = false; rpHud(); return; }
+  rpHud();
+  rp.raf = requestAnimationFrame(rpTick);
+}
+function rpSetPlaying(on){
+  if (!rp) return;
+  cancelAnimationFrame(rp.raf);   // SIEMPRE: nunca dos bucles a la vez
+  rp.playing = on;
+  if (on){ rp.last = 0; rp.raf = requestAnimationFrame(rpTick); }
+  rpHud();
+}
+function rpSeekTime(t){
+  if (!rp) return;
+  rp.t = Math.max(0, Math.min(rpDuration(), t));
+  const mvs = rp.rep.moves;
+  let idx = 0;
+  while (idx < mvs.length && mvs[idx][4] <= rp.t) idx++;
+  rp.idx = idx;
+  rpRebuild();
+  rpHud();
+}
+function openReplay(rep, from){
+  if (!rep || !rep.moves || !rep.moves.length) return;
+  ensureAudio();
+  rpFrom = from || 'result';
+  rpInit();
+  rp = { rep, board:null, els:new Map(), t:0, idx:0, playing:false, speed:RP_SPEEDS[0], spdIdx:0, raf:0, last:0 };
+  $('rpHead').innerHTML =
+    `<b class="w">${escHtml(repName(rep,'w'))}</b><span>vs</span><b class="b">${escHtml(repName(rep,'b'))}</b>`;
+  $('rpSpeed').textContent = '×' + RP_SPEEDS[0];
+  rpRebuild();
+  showScreen('replay');
+  rpSetPlaying(true);   // la cinta arranca sola
+}
+function stopReplay(){
+  if (!rp) return;
+  cancelAnimationFrame(rp.raf);
+  rp = null;
+  $('rpPieces').innerHTML = '';
+  $('rpMarks').innerHTML = '';
+}
+// Volver desde el reproductor: a la lista o al resultado, según de dónde vino
+function rpBack(){
+  if (rpFrom === 'result' && state && state.phase === 'over') showScreen('result');
+  else if (rpFrom === 'replays'){ renderReplayList(); showScreen('replays'); }
+  else showScreen('menu');
+}
+// las repeticiones cuelgan de ajustes, así que volver lleva ahí, no al menú
+$('btnReplays').addEventListener('click', () => { renderReplayList(); showScreen('replays'); });
+$('btnReplaysBack').addEventListener('click', () => showScreen('settings'));
+$('btnWatch').addEventListener('click', () => openReplay(lastReplay, 'result'));
+$('btnReplayBack').addEventListener('click', rpBack);
+$('rpPlay').addEventListener('click', () => {
+  if (!rp) return;
+  ensureAudio();
+  if (!rp.playing && rp.t >= rpDuration()) rpSeekTime(0);   // ↻ vuelve a empezar
+  rpSetPlaying(!rp.playing);
+});
+$('rpRestart').addEventListener('click', () => {
+  if (!rp) return;
+  const was = rp.playing;
+  rpSetPlaying(false);
+  rpSeekTime(0);
+  rpSetPlaying(was);
+});
+$('rpPrev').addEventListener('click', () => {
+  if (!rp) return;
+  rpSetPlaying(false);
+  rp.idx = Math.max(0, rp.idx - 1);
+  rp.t = rp.idx > 0 ? rp.rep.moves[rp.idx-1][4] : 0;
+  rpRebuild(); rpHud();
+});
+$('rpNext').addEventListener('click', () => {
+  if (!rp) return;
+  rpSetPlaying(false);
+  const mvs = rp.rep.moves;
+  if (rp.idx < mvs.length){ rpApplyMove(mvs[rp.idx]); rp.idx++; rp.t = mvs[rp.idx-1][4]; }
+  rpHud();
+});
+$('rpSpeed').addEventListener('click', () => {
+  if (!rp) return;
+  rp.spdIdx = (rp.spdIdx + 1) % RP_SPEEDS.length;
+  rp.speed = RP_SPEEDS[rp.spdIdx];
+  $('rpSpeed').textContent = '×' + rp.speed;
+});
+$('rpProgress').addEventListener('click', (e) => {
+  if (!rp) return;
+  const r = $('rpProgress').getBoundingClientRect();
+  rpSetPlaying(false);
+  rpSeekTime(((e.clientX - r.left) / r.width) * rpDuration());
+});
+
 // escalera de leyendas: torre con el jefe arriba, peleas desde abajo
 let ladderOpen = null;   // fila expandida
 // silueta para los rivales aún bloqueados: no ves quién es hasta que te toque
@@ -1478,6 +1869,16 @@ nameInput.addEventListener('change', sendName);
 dragToggle.addEventListener('change', () => {
   dragEnabled = dragToggle.checked;
   localStorage.setItem('rs-drag', dragEnabled ? '1' : '0');
+});
+// interruptor de emotes: al apagarlo se limpian los que estén en pantalla y
+// la fila desaparece al momento, sin esperar a la siguiente partida
+const emoteToggle = $('emoteToggle');
+emoteToggle.checked = emotesOn;
+emoteToggle.addEventListener('change', () => {
+  emotesOn = emoteToggle.checked;
+  localStorage.setItem('rs-emotes', emotesOn ? '1' : '0');
+  if (!emotesOn) clearEmotes();
+  if (state) updateHUD();
 });
 
 // arrastrar piezas listeners globales; el grid se reconstruye pero gridEl persiste

@@ -68,6 +68,9 @@
     'settings.music':        { es: 'Música',   en: 'Music' },
     'settings.music.lofi':   { es: 'Lo-fi',    en: 'Lo-fi' },
     'settings.music.ambient':{ es: 'Ambient',  en: 'Ambient' },
+    'settings.emotes':      { es: 'Emotes en partida', en: 'In-game emotes' },
+    'settings.emotes.note': { es: 'pruebalo si te para tiltiarte',
+                              en: 'just for salty players' },
     'menu.lang':    { es: 'Idioma',  en: 'Language' },
     'menu.search':  { es: 'Buscar partida',      en: 'Find match' },
     'menu.friend':  { es: 'Jugar con un amigo',  en: 'Play with a friend' },
@@ -158,6 +161,30 @@
     // juego
     'game.go': { es: '¡YA!', en: 'GO!' },
 
+    // emotes: el texto sale al pasar el ratón y lo leen los lectores de pantalla
+    'emote.hola':    { es: 'Buenas…',        en: 'Sup…' },
+    'emote.risa':    { es: 'Me parto',       en: "I'm dying" },
+    'emote.asombro': { es: '¿En serio?',     en: 'Seriously?' },
+    'emote.fuego':   { es: 'Estoy on fire',  en: "I'm on fire" },
+    'emote.llanto':  { es: 'Buaaa',          en: 'Boo hoo' },
+    'emote.gg':      { es: 'Buena partida',  en: 'Good game' },
+
+    // repeticiones
+    'menu.replays':  { es: 'Repeticiones',      en: 'Replays' },
+    'sub.replays':   { es: 'repeticiones',      en: 'replays' },
+    'sub.replay':    { es: 'repetición',        en: 'replay' },
+    'replay.watch':  { es: ' Ver repetición', en: ' Watch replay' },
+    'replay.empty':  { es: 'Aún no hay repeticiones. Juega una partida y su cinta se guarda aquí.',
+                       en: 'No replays yet. Play a match and its tape is saved here.' },
+    'replay.note':   { es: 'Se guardan tus últimas 10 partidas en este navegador.',
+                       en: 'Your last 10 matches are saved in this browser.' },
+    'replay.win':    { es: 'Victoria', en: 'Win' },
+    'replay.lose':   { es: 'Derrota',  en: 'Loss' },
+    'replay.draw':   { es: 'Empate',   en: 'Draw' },
+    'replay.moves':  { es: '{n} jugadas', en: '{n} moves' },
+    'replay.moves1': { es: '1 jugada',    en: '1 move' },
+    'replay.end':    { es: 'FIN', en: 'END' },
+
     // tutorial cómo jugar
     'tut.demoHint': { es: 'Toca una regla para ver el ejemplo ▶', en: 'Tap a rule to see an example ▶' },
     'tut.1':  { es: 'Sin turnos: mueve cuando tengas energía. Se regenera 1 cada {regen} s (x2 en el último minuto).',
@@ -217,8 +244,8 @@
       en: 'Every rule explained with animated demos. If this is your first match, start here.',
     },
     'tour.settings': {
-      es: 'Ajustes: tema visual, estilo de música y arrastre de piezas.',
-      en: 'Settings: visual theme, music style and piece dragging.',
+      es: 'Ajustes: tema visual, música, arrastre de piezas, los <b>emotes</b> (que vienen apagados) y tus <b>repeticiones</b> guardadas.',
+      en: 'Settings: visual theme, music, piece dragging, <b>emotes</b> (off by default) and your saved <b>replays</b>.',
     },
     'tour.lang': {
       es: 'Cambia el idioma del juego cuando quieras desde aquí.',
