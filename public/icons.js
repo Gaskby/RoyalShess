@@ -54,5 +54,28 @@
     return svg(name) + '<span class="ico-txt">' + esc + '</span>';
   }
 
-  return { D, svg, label };
+  // ---- manipular un boton YA pintado ------------------------------------
+  // Viven aqui y no en client.js porque los usan dos modulos (la barra del
+  // cliente y la botonera del reproductor): un ayudante que comparten dos
+  // sitios pertenece al modulo de iconos, no a uno de los dos consumidores.
+
+  // set() cambia la FORMA. Si morph.js ya cargo, la transforma con muelle;
+  // si todavia no, reescribe el `d` a pelo. Nunca deja el boton sin dibujo.
+  // Corta solo si ya esta en ese icono, asi que se puede llamar por fotograma
+  function set(host, name) {
+    if (typeof window !== 'undefined' && window.RSMorph) return window.RSMorph.to(host, name);
+    const path = host && host.querySelector && host.querySelector('path[data-icon]');
+    if (!path || !D[name]) return;
+    path.dataset.icon = name;
+    path.setAttribute('d', D[name]);
+  }
+  // btn() pinta el boton entero (icono + palabra); text() solo cambia la
+  // palabra, sin tocar el SVG, que es lo que hace falta al cambiar de idioma
+  function btn(host, name, text) { if (host) host.innerHTML = label(name, text); }
+  function text(host, txt) {
+    const s = host && host.querySelector('.ico-txt');
+    if (s) s.textContent = txt;
+  }
+
+  return { D, svg, label, set, btn, text };
 });

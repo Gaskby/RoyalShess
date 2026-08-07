@@ -456,7 +456,7 @@ function onPointerCancel(){
 // Pantallas del overlay
 function showScreen(name){   // menu | friend | waiting | search | help | board | replays | replay | result | nullen juego
   if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
-  if (name !== 'replay') stopReplay();   // al salir del reproductor se detiene la cinta
+  if (name !== 'replay') RSReplay.stop();   // al salir del reproductor se detiene la cinta
   if (name !== 'menu') endTour();    // el tutorial de bienvenida vive solo en el menú
   curScreen = name;
   overlay.classList.toggle('hidden', name===null);
@@ -494,7 +494,7 @@ function connect(){
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
     if (msg.t === 'welcome' || msg.t === 'lobby'){ state=null; selected=null; prevPhase=null; currentLadder=pendingLadder; pendingLadder=null; hideBanner(); stopTaunts(); clearEmotes(); closeEmoteTray(); $('emoteDock').classList.remove('show'); showScreen('menu'); updateAmbience(); return; }
     if (msg.t === 'emote'){ if (emotesOn) showEmoteBurst(msg.from, msg.i); return; }
-    if (msg.t === 'replay-data'){ storeReplay(msg); return; }
+    if (msg.t === 'replay-data'){ RSReplay.store(msg); return; }
     if (msg.t === 'queued'){ showScreen('search'); return; }
     if (msg.t === 'created'){ codeValue.textContent = msg.code; showScreen('waiting'); return; }
     if (msg.t === 'reject'){ handleReject(msg.reason); return; }
@@ -543,7 +543,7 @@ function onState(msg){
     // solo cierra pantallas al ENTRAR en la fase: así el menú puede quedarse abierto
     if (prevPhase !== 'countdown'){
       // partida nueva: la cinta de la anterior deja de ser "esta partida"
-      lastReplay = null;
+      RSReplay.clearLast();
       clearEmotes();
       // el fondo se corrompe solo en peleas de escalera en pesadilla
       window.RSBG.setCorruption(currentLadder != null && ladderLoop > 0 ? corruptionColor() : null);
@@ -624,7 +624,7 @@ function showResult(){
   btnRematch.disabled = false;
   btnRematch.textContent = tr('result.rematch');
   // la cinta de ESTA partida llegó justo antes del estado final
-  $('btnWatch').style.display = lastReplay ? '' : 'none';
+  $('btnWatch').style.display = RSReplay.hasLast() ? '' : 'none';
   stopTaunts();
   // escalera: al vencer avanza el progreso y el rival te deja su consejo.
   // si te gana el, te suelta su frase de victoria
@@ -928,7 +928,7 @@ document.addEventListener('keydown', (e) => {
   if (tourEls){ endTour(); return; }   // el tutorial de bienvenida también se cierra con Escape
   if (curScreen === 'replays') showScreen('settings');   // cuelga de ajustes
   else if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
-  else if (curScreen === 'replay') rpBack();
+  else if (curScreen === 'replay') RSReplay.back();
   else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
   else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
 });
@@ -950,44 +950,31 @@ btnJoin.addEventListener('click', () => { ensureAudio(); sendName(); leaveIfInGa
 btnCancelWait.addEventListener('click', () => send({t:'cancel'}));
 codeInput.addEventListener('input', () => { codeInput.value = codeInput.value.toUpperCase(); codeErr.textContent=''; });
 codeInput.addEventListener('keydown', (e) => { if (e.key==='Enter') btnJoin.click(); });
-// --- iconos: un solo sitio por donde pasan todos los cambios -------------
-// Los botones llevan un <path> con su geometría. setIcon lo cambia: si
-// morph.js ya cargó, la forma se TRANSFORMA (play estirándose a pause); si
-// todavía no, se reescribe el `d` y listo. Nunca se queda sin dibujo
-function setIcon(host, name){
-  if (window.RSMorph) return RSMorph.to(host, name);
-  const path = host && host.querySelector('path[data-icon]');
-  if (!path || !RSIcons.D[name]) return;
-  path.dataset.icon = name;
-  path.setAttribute('d', RSIcons.D[name]);
-}
-// icono + palabra: la palabra la retraduce applyLang sin tocar el icono
-function iconBtn(host, name, text){
-  host.innerHTML = RSIcons.label(name, text);   // label() ya escapa el texto
-}
-function iconBtnText(host, text){
-  const s = host.querySelector('.ico-txt');
-  if (s) s.textContent = text;
-}
+// --- iconos ---------------------------------------------------------------
+// Los ayudantes viven en icons.js porque los comparte el reproductor; aquí
+// solo se les pone un nombre corto para no reescribir todas las llamadas
+const setIcon = RSIcons.set, iconBtn = RSIcons.btn, iconBtnText = RSIcons.text;
 
 // pintado inicial: se hace UNA vez, antes del primer applyLang. A partir de
-// aquí los botones solo cambian de forma (setIcon) o de palabra (iconBtnText)
+// aquí los botones solo cambian de forma (setIcon) o de palabra (iconBtnText).
+// La botonera del reproductor se pinta sola, en RSReplay.init()
 iconBtn($('soundBtn'), sfxOn ? 'sound' : 'mute', 'SFX');
 iconBtn($('musicBtn'), musicOn ? 'music' : 'mute', '');
 iconBtn(menuBtn, 'menu', '');
 iconBtn($('btnResume'), 'play', '');
 iconBtn($('btnSettings'), 'settings', '');
-// botonera del reproductor: sin palabra, solo icono y su texto de ayuda
-const RP_BTN_KEYS = [
-  ['rpRestart', 'replay.ctrl.restart'], ['rpPrev', 'replay.ctrl.prev'],
-  ['rpPlay',    'replay.ctrl.play'],    ['rpNext', 'replay.ctrl.next'],
-  ['rpSpeed',   'replay.ctrl.speed'],
-];
-iconBtn($('rpRestart'), 'skipBack', '');
-iconBtn($('rpPrev'),    'prev', '');
-iconBtn($('rpPlay'),    'play', '');
-iconBtn($('rpNext'),    'next', '');
-iconBtn($('rpSpeed'),   'speed', '×1');
+
+// El reproductor de repeticiones es un módulo aparte (replay.js) y no toca
+// ninguna global de aquí: se le pasan las cuatro cosas que no puede saber
+// solo. `state` va envuelto en una función porque cambia en cada snapshot;
+// pasar el valor lo congelaría en el null del arranque
+RSReplay.init({
+  showScreen,
+  sfx,
+  ensureAudio,
+  glyph: GLYPH,
+  isMatchOver: () => !!(state && state.phase === 'over'),
+});
 
 $('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; setIcon(this, sfxOn?'sound':'mute'); ensureAudio(); });
 function musicBtnText(){
@@ -1024,11 +1011,7 @@ function applyLang(){
   // palabra de al lado y el texto que sale al pasar el ratón
   iconBtnText(menuBtn, tr('top.menu'));
   iconBtnText($('btnResume'), tr('menu.resume'));
-  RP_BTN_KEYS.forEach(([id, key]) => {
-    const b = $(id);
-    b.title = tr(key);
-    b.setAttribute('aria-label', tr(key));
-  });
+  RSReplay.retitle();   // los textos de ayuda de la botonera del reproductor
   statusTxt.textContent = tr(lastStatusKey);
   enableMenu(menuEnabled);
   buildLegend();
@@ -1488,255 +1471,6 @@ function emoteSfx(id){
   if (!sfxOn || !audioCtx || !EMOTE_SFX[id]) return;
   EMOTE_SFX[id](audioCtx.currentTime);
 }
-
-// === repeticiones: cintas de partida guardadas en este navegador ===
-// El servidor manda la cinta completa una vez al terminar (replay-data):
-// solo coordenadas + tiempos. El tablero se reconstruye aplicándolas en orden.
-const REPLAY_KEY = 'rs-replays';
-const REPLAY_MAX = 10;
-let lastReplay = null;   // cinta de la última partida jugada en esta sesión
-function loadReplays(){
-  try { const l = JSON.parse(localStorage.getItem(REPLAY_KEY)); return Array.isArray(l) ? l : []; }
-  catch(_e){ return []; }
-}
-function storeReplay(msg){
-  lastReplay = { d: Date.now(), you: msg.you, names: msg.names || {}, winner: msg.winner,
-                 reason: msg.reason, matchMs: msg.matchMs, moves: msg.moves || [] };
-  if (!lastReplay.moves.length){ lastReplay = null; return; }
-  try {
-    const list = loadReplays();
-    list.unshift(lastReplay);
-    localStorage.setItem(REPLAY_KEY, JSON.stringify(list.slice(0, REPLAY_MAX)));
-  } catch(_e){ /* almacenamiento lleno o bloqueado: la cinta vive solo en memoria */ }
-}
-const repName = (rep, side) => (rep.names && rep.names[side]) || tr(side === 'w' ? 'card.white' : 'card.black');
-const movesTxt = (n) => n === 1 ? tr('replay.moves1') : tr('replay.moves').replace('{n}', n);
-function renderReplayList(){
-  const list = $('replayList');
-  list.innerHTML = '';
-  const reps = loadReplays();
-  if (!reps.length){
-    list.innerHTML = `<div class="help-item">${escHtml(tr('replay.empty'))}</div>`;
-    return;
-  }
-  for (const rep of reps){
-    const res = rep.winner === 'draw' ? 'draw' : (rep.winner === rep.you ? 'win' : 'lose');
-    const when = new Date(rep.d);
-    const whenTxt = when.toLocaleDateString(undefined, { day:'2-digit', month:'2-digit' }) +
-      ' · ' + when.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-    const row = document.createElement('div');
-    row.className = 'replay-row';
-    row.innerHTML =
-      `<span class="rr-res ${res}">${escHtml(tr('replay.' + res))}</span>` +
-      `<span class="rr-names"><b>${escHtml(repName(rep,'w'))}</b> vs <b>${escHtml(repName(rep,'b'))}</b></span>` +
-      `<span class="rr-meta">${escHtml(whenTxt)}<br>${escHtml(movesTxt(rep.moves.length))}</span>`;
-    row.addEventListener('click', () => openReplay(rep, 'replays'));
-    list.appendChild(row);
-  }
-}
-
-// --- reproductor: tablero propio dentro del panel, aislado del juego real ---
-const RP_SPEEDS = [1, 2, 4];
-let rp = null;           // { rep, board, els, t, idx, playing, speed, spdIdx, raf, last }
-let rpFrom = 'replays';  // desde dónde se abrió, para que Volver regrese ahí
-const rpDisp = (r, c) => (rp && rp.rep.you === 'b') ? { dr:7-r, dc:7-c } : { dr:r, dc:c };
-function rpInit(){
-  const sqs = $('rpSqs');
-  if (sqs.childElementCount) return;
-  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
-    const d = document.createElement('div');
-    d.className = 'dsq ' + ((r+c)%2 ? 'd' : 'l');
-    d.style.left = c*12.5 + '%'; d.style.top = r*12.5 + '%';
-    sqs.appendChild(d);
-  }
-}
-// duración de la cinta: si acabó por tiempo, el reloj completo; si no,
-// la última jugada más un respiro para ver cómo quedó el tablero
-function rpDuration(){
-  const mvs = rp.rep.moves;
-  const last = mvs.length ? mvs[mvs.length-1][4] : 0;
-  return rp.rep.reason === 'time' ? (rp.rep.matchMs || last + 1200) : last + 1200;
-}
-// avanza UNA jugada sobre el tablero puro (sin DOM): mueve, corona y enroca.
-// Las capturas son implícitas: la pieza destino simplemente desaparece
-function rpStep(b, mv){
-  const [fr, fc, tr, tc] = mv;
-  const p = b[fr][fc];
-  if (!p) return null;
-  const victim = b[tr][tc] || null;
-  b[tr][tc] = p; b[fr][fc] = null;
-  if (p.type === 'p' && (tr === 0 || tr === 7)) p.type = 'q';
-  let rook = null, rookC = 0;
-  if (p.type === 'k' && Math.abs(tc - fc) === 2){
-    const rfc = tc > fc ? 7 : 0; rookC = tc > fc ? 5 : 3;
-    rook = b[fr][rfc];
-    if (rook){ b[fr][rookC] = rook; b[fr][rfc] = null; }
-  }
-  return { p, victim, rook, rookR: fr, rookC };
-}
-function rpPlace(piece, r, c){
-  let el = rp.els.get(piece.id);
-  if (!el){
-    el = document.createElement('div');
-    el.className = 'rp-piece ' + piece.color;
-    $('rpPieces').appendChild(el);
-    rp.els.set(piece.id, el);
-  }
-  el.textContent = GLYPH[piece.type];
-  const d = rpDisp(r, c);
-  el.style.transform = `translate(${d.dc*100}%, ${d.dr*100}%)`;
-}
-function rpMarks(mv){
-  const wrap = $('rpMarks');
-  wrap.innerHTML = '';
-  if (!mv) return;
-  for (const [r, c] of [[mv[0], mv[1]], [mv[2], mv[3]]]){
-    const d = rpDisp(r, c);
-    const m = document.createElement('div');
-    m.className = 'rp-mark';
-    m.style.left = d.dc*12.5 + '%'; m.style.top = d.dr*12.5 + '%';
-    wrap.appendChild(m);
-  }
-}
-// aplica la siguiente jugada CON animación: deslizamiento, captura y sonido
-function rpApplyMove(mv){
-  const res = rpStep(rp.board, mv);
-  if (!res) return;
-  if (res.victim){
-    const ve = rp.els.get(res.victim.id);
-    if (ve){ rp.els.delete(res.victim.id); ve.classList.add('dead'); setTimeout(() => ve.remove(), 220); }
-  }
-  rpPlace(res.p, mv[2], mv[3]);
-  if (res.rook) rpPlace(res.rook, res.rookR, res.rookC);
-  rpMarks(mv);
-  sfx(res.victim ? 'cap' : 'move');
-}
-// reconstruye el tablero desde cero hasta rp.idx (para saltos y retrocesos)
-function rpRebuild(){
-  rp.board = E.newBoard().board;
-  const mvs = rp.rep.moves;
-  for (let i = 0; i < rp.idx; i++) rpStep(rp.board, mvs[i]);
-  $('rpPieces').innerHTML = '';
-  rp.els = new Map();
-  for (let r=0; r<8; r++) for (let c=0; c<8; c++){
-    const p = rp.board[r][c];
-    if (p) rpPlace(p, r, c);
-  }
-  rpMarks(rp.idx > 0 ? mvs[rp.idx-1] : null);
-}
-function rpHud(){
-  if (!rp) return;
-  const dur = rpDuration();
-  const done = rp.t >= dur;
-  const remain = Math.max(0, (rp.rep.matchMs || dur) - rp.t);
-  const s = Math.ceil(remain/1000);
-  $('rpClock').textContent = done ? tr('replay.end') : `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
-  $('rpCount').textContent = rp.idx + '/' + rp.rep.moves.length;
-  $('rpFill').style.width = (100 * Math.min(1, rp.t / dur)).toFixed(2) + '%';
-  // el botón grande cuenta el estado con la forma: el triángulo se abre en
-  // dos barras al reproducir y se enrosca en flecha circular al terminar.
-  // setIcon corta solo si ya está en ese icono, así que llamarlo por
-  // fotograma no cuesta nada
-  setIcon($('rpPlay'), rp.playing ? 'pause' : (done ? 'replay' : 'play'));
-}
-function rpTick(ts){
-  if (!rp || !rp.playing) return;
-  const dt = ts - (rp.last || ts);
-  rp.last = ts;
-  rp.t += dt * rp.speed;
-  const mvs = rp.rep.moves;
-  while (rp.idx < mvs.length && mvs[rp.idx][4] <= rp.t){ rpApplyMove(mvs[rp.idx]); rp.idx++; }
-  if (rp.t >= rpDuration()){ rp.t = rpDuration(); rp.playing = false; rpHud(); return; }
-  rpHud();
-  rp.raf = requestAnimationFrame(rpTick);
-}
-function rpSetPlaying(on){
-  if (!rp) return;
-  cancelAnimationFrame(rp.raf);   // SIEMPRE: nunca dos bucles a la vez
-  rp.playing = on;
-  if (on){ rp.last = 0; rp.raf = requestAnimationFrame(rpTick); }
-  rpHud();
-}
-function rpSeekTime(t){
-  if (!rp) return;
-  rp.t = Math.max(0, Math.min(rpDuration(), t));
-  const mvs = rp.rep.moves;
-  let idx = 0;
-  while (idx < mvs.length && mvs[idx][4] <= rp.t) idx++;
-  rp.idx = idx;
-  rpRebuild();
-  rpHud();
-}
-function openReplay(rep, from){
-  if (!rep || !rep.moves || !rep.moves.length) return;
-  ensureAudio();
-  rpFrom = from || 'result';
-  rpInit();
-  rp = { rep, board:null, els:new Map(), t:0, idx:0, playing:false, speed:RP_SPEEDS[0], spdIdx:0, raf:0, last:0 };
-  $('rpHead').innerHTML =
-    `<b class="w">${escHtml(repName(rep,'w'))}</b><span>vs</span><b class="b">${escHtml(repName(rep,'b'))}</b>`;
-  iconBtnText($('rpSpeed'), '×' + RP_SPEEDS[0]);
-  rpRebuild();
-  showScreen('replay');
-  rpSetPlaying(true);   // la cinta arranca sola
-}
-function stopReplay(){
-  if (!rp) return;
-  cancelAnimationFrame(rp.raf);
-  rp = null;
-  $('rpPieces').innerHTML = '';
-  $('rpMarks').innerHTML = '';
-}
-// Volver desde el reproductor: a la lista o al resultado, según de dónde vino
-function rpBack(){
-  if (rpFrom === 'result' && state && state.phase === 'over') showScreen('result');
-  else if (rpFrom === 'replays'){ renderReplayList(); showScreen('replays'); }
-  else showScreen('menu');
-}
-// las repeticiones cuelgan de ajustes, así que volver lleva ahí, no al menú
-$('btnReplays').addEventListener('click', () => { renderReplayList(); showScreen('replays'); });
-$('btnReplaysBack').addEventListener('click', () => showScreen('settings'));
-$('btnWatch').addEventListener('click', () => openReplay(lastReplay, 'result'));
-$('btnReplayBack').addEventListener('click', rpBack);
-$('rpPlay').addEventListener('click', () => {
-  if (!rp) return;
-  ensureAudio();
-  if (!rp.playing && rp.t >= rpDuration()) rpSeekTime(0);   // ↻ vuelve a empezar
-  rpSetPlaying(!rp.playing);
-});
-$('rpRestart').addEventListener('click', () => {
-  if (!rp) return;
-  const was = rp.playing;
-  rpSetPlaying(false);
-  rpSeekTime(0);
-  rpSetPlaying(was);
-});
-$('rpPrev').addEventListener('click', () => {
-  if (!rp) return;
-  rpSetPlaying(false);
-  rp.idx = Math.max(0, rp.idx - 1);
-  rp.t = rp.idx > 0 ? rp.rep.moves[rp.idx-1][4] : 0;
-  rpRebuild(); rpHud();
-});
-$('rpNext').addEventListener('click', () => {
-  if (!rp) return;
-  rpSetPlaying(false);
-  const mvs = rp.rep.moves;
-  if (rp.idx < mvs.length){ rpApplyMove(mvs[rp.idx]); rp.idx++; rp.t = mvs[rp.idx-1][4]; }
-  rpHud();
-});
-$('rpSpeed').addEventListener('click', () => {
-  if (!rp) return;
-  rp.spdIdx = (rp.spdIdx + 1) % RP_SPEEDS.length;
-  rp.speed = RP_SPEEDS[rp.spdIdx];
-  iconBtnText($('rpSpeed'), '×' + rp.speed);
-});
-$('rpProgress').addEventListener('click', (e) => {
-  if (!rp) return;
-  const r = $('rpProgress').getBoundingClientRect();
-  rpSetPlaying(false);
-  rpSeekTime(((e.clientX - r.left) / r.width) * rpDuration());
-});
 
 // escalera de leyendas: torre con el jefe arriba, peleas desde abajo
 let ladderOpen = null;   // fila expandida
