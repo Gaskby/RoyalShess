@@ -4,3 +4,5 @@ dist/
 server/players.json
 server/visits.json
 server/admin-key.txt
+skills-lock.json
+.agents

@@ -2,6 +2,8 @@
 :root{
   --bg:#06060d; --bg-2:#0b0c16; --panel:#10111e; --panel-2:#161829; --line:#23263d;
   --ink:#e9ecff; --ink-dim:#8a90b8;
+  /* color del centro del degradado del título; cada tema pone el suyo */
+  --acc-mid:#c9a6ff;
   --white-acc:#33e6ff; --black-acc:#ff3b73;
   --energy-a:#6bffb0; --energy-b:#33e6ff; --danger:#ff2d4a; --gold:#ffcf4a;
   --sq-light:#1a1d2e; --sq-dark:#12141f; --sel:#ffd54a; --radius:14px;
@@ -55,6 +57,137 @@ body.theme-crt #cardB .efill{ background:linear-gradient(90deg,#1fa85c,#2fe07a);
 body.theme-crt .rbeam.w{ background:rgba(125,255,176,.5); box-shadow:0 0 6px rgba(125,255,176,.4); }
 body.theme-crt .rbeam.b{ background:rgba(20,120,60,.55); box-shadow:0 0 6px rgba(20,120,60,.45); }
 body.theme-crt .playbtn{ background:linear-gradient(90deg,#33ff88,#7dffb0); color:#03200f; box-shadow:0 0 24px rgba(51,255,136,.35); }
+
+/* ===== TEMAS NUEVOS =====================================================
+   Un tema es solo este bloque de variables mas los cuatro sitios que llevan
+   color a pelo (fondo del body, fondo del tablero, barras de energia y carriles
+   de torre). El catalogo y el candado de cada uno viven en achievements.js. */
+
+/* TEMA Madera: nogal y marfil, sin brillos, como un tablero de verdad */
+body.theme-madera{
+  --bg:#241a12; --bg-2:#1b130d; --panel:#2a1e15; --panel-2:#33251a; --line:#4a3524;
+  --ink:#f2e6d2; --ink-dim:#a68f74; --acc-mid:#d9a441;
+  --white-acc:#e8d5ab; --black-acc:#a8642f;
+  --energy-a:#c9a227; --energy-b:#e8d5ab; --danger:#b3402c; --gold:#d9a441;
+  --sq-light:#e8d3ae; --sq-dark:#9c6b3f; --sel:#e0b64a;
+  --piece-w:#fffaf0; --piece-w-glow:rgba(70,45,25,.55);
+  --piece-b:#2e1f14; --piece-b-glow:rgba(255,250,240,.25);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #3a2818 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, #2b1a0e 0%, transparent 55%),
+    var(--bg);
+}
+body.theme-madera .board-wrap{ background:linear-gradient(180deg,#33251a,#20160e); }
+body.theme-madera #cardW .efill{ background:linear-gradient(90deg,#c9a227,#e8d5ab); box-shadow:0 0 10px rgba(232,213,171,.35); }
+body.theme-madera #cardB .efill{ background:linear-gradient(90deg,#d1873f,#a8642f); box-shadow:0 0 10px rgba(168,100,47,.4); }
+body.theme-madera .rbeam.w{ background:rgba(232,213,171,.5); box-shadow:0 0 6px rgba(232,213,171,.4); }
+body.theme-madera .rbeam.b{ background:rgba(168,100,47,.55); box-shadow:0 0 6px rgba(168,100,47,.45); }
+body.theme-madera .playbtn{ background:linear-gradient(90deg,#c9a227,#e8d5ab); color:#241a12; box-shadow:0 0 24px rgba(201,162,39,.35); }
+
+/* TEMA Synthwave: magenta y cian sobre violeta */
+body.theme-synthwave{
+  --bg:#14082a; --bg-2:#1c0b35; --panel:#22103f; --panel-2:#2c1550; --line:#45247a;
+  --ink:#ffe9fb; --ink-dim:#a681c9; --acc-mid:#c76aff;
+  --white-acc:#21e6ff; --black-acc:#ff2d95;
+  --energy-a:#ff8a3d; --energy-b:#21e6ff; --danger:#ff2d55; --gold:#ffcf4a;
+  --sq-light:#3a1a63; --sq-dark:#23103f; --sel:#ffe14a;
+  --piece-w:#eafcff; --piece-w-glow:rgba(33,230,255,.9);
+  --piece-b:#ffd6ec; --piece-b-glow:rgba(255,45,149,.9);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #3d1170 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, #59114a 0%, transparent 55%),
+    var(--bg);
+}
+body.theme-synthwave .board-wrap{ background:linear-gradient(180deg,#25124a,#170a2e); }
+body.theme-synthwave #cardW .efill{ background:linear-gradient(90deg,#ff8a3d,#21e6ff); box-shadow:0 0 14px rgba(33,230,255,.5); }
+body.theme-synthwave #cardB .efill{ background:linear-gradient(90deg,#ff6a3d,#ff2d95); box-shadow:0 0 14px rgba(255,45,149,.5); }
+body.theme-synthwave .rbeam.w{ background:rgba(33,230,255,.4); box-shadow:0 0 9px rgba(33,230,255,.45); }
+body.theme-synthwave .rbeam.b{ background:rgba(255,45,149,.4); box-shadow:0 0 9px rgba(255,45,149,.45); }
+body.theme-synthwave .playbtn{ background:linear-gradient(90deg,#ff8a3d,#21e6ff); color:#14082a; box-shadow:0 0 30px rgba(255,45,149,.4); }
+
+/* TEMA Ártico: hielo y teal, CLARO. Se gana con el logro «Intocable» */
+body.theme-artico{
+  --bg:#eaf2f8; --bg-2:#dce8f2; --panel:#f7fbfe; --panel-2:#e6eff7; --line:#c2d5e4;
+  --ink:#14212e; --ink-dim:#6b8298; --acc-mid:#5f8fb0;
+  --white-acc:#0e7490; --black-acc:#3b5c86;
+  --energy-a:#2a9d8f; --energy-b:#0e7490; --danger:#c2401f; --gold:#b8862c;
+  --sq-light:#f4f9fd; --sq-dark:#a9c6dd; --sel:#59c6e0;
+  --piece-w:#ffffff; --piece-w-glow:rgba(20,33,46,.4);
+  --piece-b:#16303f; --piece-b-glow:rgba(20,33,46,.2);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #d3e6f4 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, #dceef5 0%, transparent 55%),
+    var(--bg);
+}
+body.theme-artico .board-wrap{ background:linear-gradient(180deg,#eef5fb,#dfeaf4); }
+body.theme-artico #cardW .efill{ background:linear-gradient(90deg,#5cc4b6,#0e7490); box-shadow:0 0 10px rgba(14,116,144,.3); }
+body.theme-artico #cardB .efill{ background:linear-gradient(90deg,#7f9dc0,#3b5c86); box-shadow:0 0 10px rgba(59,92,134,.3); }
+body.theme-artico .rbeam.w{ background:rgba(14,116,144,.5); box-shadow:0 0 6px rgba(14,116,144,.35); }
+body.theme-artico .rbeam.b{ background:rgba(59,92,134,.5); box-shadow:0 0 6px rgba(59,92,134,.35); }
+body.theme-artico .playbtn{ background:linear-gradient(90deg,#2a9d8f,#0e7490); color:#f7fbfe; box-shadow:0 0 24px rgba(14,116,144,.3); }
+
+/* TEMA Oro: negro y oro. Cae con el CRT al superar la pesadilla */
+body.theme-oro{
+  --bg:#0a0805; --bg-2:#100c06; --panel:#16110a; --panel-2:#1e170d; --line:#3a2e17;
+  --ink:#f6ecd2; --ink-dim:#9c8a63; --acc-mid:#e0b84a;
+  --white-acc:#ffd76a; --black-acc:#b07d2b;
+  --energy-a:#e0b84a; --energy-b:#ffd76a; --danger:#c0392b; --gold:#ffd76a;
+  --sq-light:#2a2113; --sq-dark:#16110a; --sel:#ffd76a;
+  --piece-w:#fff6dd; --piece-w-glow:rgba(255,215,106,.85);
+  --piece-b:#c9a24a; --piece-b-glow:rgba(0,0,0,.85);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #251c0c 0%, transparent 60%),
+    radial-gradient(900px 600px at 100% 110%, #1a1408 0%, transparent 55%),
+    var(--bg);
+}
+body.theme-oro .board-wrap{ background:linear-gradient(180deg,#1a140b,#0c0905); }
+body.theme-oro #cardW .efill{ background:linear-gradient(90deg,#e0b84a,#ffd76a); box-shadow:0 0 12px rgba(255,215,106,.45); }
+body.theme-oro #cardB .efill{ background:linear-gradient(90deg,#8c6a2a,#b07d2b); box-shadow:0 0 12px rgba(176,125,43,.4); }
+body.theme-oro .rbeam.w{ background:rgba(255,215,106,.45); box-shadow:0 0 7px rgba(255,215,106,.4); }
+body.theme-oro .rbeam.b{ background:rgba(140,106,42,.55); box-shadow:0 0 7px rgba(140,106,42,.45); }
+body.theme-oro .playbtn{ background:linear-gradient(90deg,#b07d2b,#ffd76a); color:#0a0805; box-shadow:0 0 26px rgba(255,215,106,.35); }
+
+/* --- correcciones del tema CLARO (Ártico) -----------------------------
+   El juego se dibujó para fondo oscuro, así que los pocos sitios con blancos
+   y negros a pelo hay que darles la vuelta o el panel queda ilegible.
+   Si algún día entra otro tema claro, se añade a estos selectores */
+/* el velo del menu va MAS OSCURO que la pagina y el panel pasa a ser una
+   tarjeta clara encima: sin esos dos tonos el menu es un campo plano donde
+   los botones no se distinguen del fondo */
+body.theme-artico .overlay{ background:rgba(176,197,214,.88); }
+body.theme-artico .panelbig{
+  background:var(--panel); border:1px solid var(--line); border-radius:20px;
+  box-shadow:0 26px 60px rgba(60,85,110,.20);
+}
+/* el campo de texto tenia el fondo casi negro a pelo: caja negra con letra oscura */
+body.theme-artico .code-input{ background:rgba(0,0,0,.05); }
+body.theme-artico .code-input:focus{
+  border-color:var(--white-acc); box-shadow:0 0 0 2px rgba(0,0,0,.06);
+}
+/* el hover de los botones apuntaba a un azul marino fijo */
+body.theme-artico .btn:hover{
+  border-color:var(--ink-dim); box-shadow:0 0 0 1px var(--ink-dim),0 6px 18px rgba(0,0,0,.12);
+}
+body.theme-artico .ebar{ background:rgba(0,0,0,.07); }
+body.theme-artico .ebar .ticks i{ border-right-color:rgba(0,0,0,.07); }
+body.theme-artico .sq .coord{ color:rgba(0,0,0,.3); }
+body.theme-artico .hint{ background:rgba(0,0,0,.26); }
+body.theme-artico .sq.lastmove{ background-image:linear-gradient(rgba(0,0,0,.06),rgba(0,0,0,.06)); }
+body.theme-artico .board-wrap{ box-shadow:0 24px 60px rgba(90,110,130,.25),0 0 0 1px rgba(0,0,0,.03); }
+body.theme-artico .clock{ box-shadow:0 0 18px rgba(0,0,0,.08) inset; }
+body.theme-artico .chip .g{ color:var(--ink); }
+body.theme-artico .piece.checker{
+  color:#8c1b12; text-shadow:0 0 14px rgba(192,57,43,.8),0 1px 2px rgba(0,0,0,.35);
+}
+body.theme-artico .toast{ color:#fff; }
+
+/* El tema guardado se aplica ANTES del primer pintado. Sin esto, las propiedades
+   que tienen `transition` (el color y el borde de los botones) arrancan una
+   transicion sin estado previo y se quedan CONGELADAS en el valor de :root: en
+   los temas claros los botones salian con texto casi blanco sobre fondo casi
+   blanco. client.js quita `booting` en el primer frame */
+body.booting *, body.booting *::before, body.booting *::after{ transition:none !important; }
+
 *{ box-sizing:border-box; margin:0; padding:0; }
 /* body SIN height fija: crece con el contenido para que su fondo degradado
    cubra toda la página si hay scroll ya tiene min-height:100dvh abajo */
@@ -83,7 +216,7 @@ body::before{
 .brand{ display:flex; align-items:baseline; gap:10px; }
 .brand h1{
   font-family:'Chakra Petch'; font-weight:700; letter-spacing:.16em; font-size:clamp(20px,3.4vw,30px); text-transform:uppercase;
-  background:linear-gradient(90deg,var(--white-acc),#c9a6ff 55%,var(--black-acc));
+  background:linear-gradient(90deg,var(--white-acc),var(--acc-mid) 55%,var(--black-acc));
   -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 14px rgba(90,140,255,.25));
 }
 .brand small{ color:var(--ink-dim); letter-spacing:.28em; font-size:11px; text-transform:uppercase; }
@@ -245,7 +378,7 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .gearbtn{ position:absolute; top:12px; right:12px; font-size:16px; padding:7px; line-height:1; }
 .gearbtn .ico{ width:18px; height:18px; }
 .gearbtn:hover{ transform:rotate(30deg); }
-.panelbig .title{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(24px,6vw,40px); white-space:nowrap; background:linear-gradient(90deg,var(--white-acc),#c9a6ff 55%,var(--black-acc)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 20px rgba(90,140,255,.3)); }
+.panelbig .title{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:clamp(24px,6vw,40px); white-space:nowrap; background:linear-gradient(90deg,var(--white-acc),var(--acc-mid) 55%,var(--black-acc)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 20px rgba(90,140,255,.3)); }
 .panelbig .sub{ color:var(--ink-dim); letter-spacing:.2em; text-transform:uppercase; font-size:12px; margin-top:6px; }
 .result{ font-family:'Chakra Petch'; font-weight:700; font-size:clamp(26px,6vw,40px); letter-spacing:.1em; text-transform:uppercase; margin-bottom:6px;
   animation:resultpop .5s cubic-bezier(.2,.9,.3,1.2); }   /* se reinicia sola: el panel pasa por display:none */
@@ -374,6 +507,76 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .theme-label{ font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-dim); }
 .tbtn.on{ border-color:var(--white-acc); color:var(--white-acc); box-shadow:0 0 12px rgba(120,220,255,.2); }
 .tbtn.locked{ opacity:.55; }
+
+/* rejilla de temas: con ocho ya no caben botones de texto, así que cada tema
+   es una muestra con sus dos colores de casilla y su acento. El tono de cada
+   uno se declara abajo (.sw.t-<id>) al lado del tema al que pertenece */
+.theme-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.theme-count{ font-family:'Chakra Petch'; font-weight:700; font-size:12px; color:var(--gold); margin-left:auto; }
+.theme-grid{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+.sw{ background:none; border:0; padding:0; cursor:pointer; color:inherit; font-family:inherit; }
+.sw-tile{
+  position:relative; display:block; height:52px; border-radius:10px; overflow:hidden;
+  border:1px solid var(--line); background-color:var(--a);
+  background-image:linear-gradient(var(--b) 0 0),linear-gradient(var(--b) 0 0);
+  background-size:50% 50%,50% 50%; background-position:0 0,100% 100%; background-repeat:no-repeat;
+  transition:border-color .15s, box-shadow .15s, transform .12s;
+}
+.sw:hover .sw-tile{ transform:translateY(-1px); }
+.sw.on .sw-tile{ border-color:var(--c); box-shadow:0 0 0 1px var(--c),0 0 14px rgba(255,255,255,.16); }
+.sw-g{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:24px; line-height:1; color:var(--pw); text-shadow:0 1px 3px rgba(0,0,0,.45);
+}
+.sw-bar{ position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--c); }
+.sw-lock{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(6,6,13,.6); color:#fff; }
+.sw-lock .ico{ width:17px; height:17px; }
+.sw-name{
+  display:block; margin-top:6px; font-family:'Chakra Petch'; font-weight:600; font-size:11px;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim);
+}
+.sw.on .sw-name{ color:var(--c); }
+.sw.locked{ opacity:.62; }
+.sw.t-neon{      --a:#1a1d2e; --b:#12141f; --c:#33e6ff; --pw:#eafffd; }
+.sw.t-chesscom{  --a:#ebecd0; --b:#739552; --c:#81b64c; --pw:#ffffff; }
+.sw.t-madera{    --a:#e8d3ae; --b:#9c6b3f; --c:#a8642f; --pw:#fffaf0; }
+.sw.t-synthwave{ --a:#3a1a63; --b:#23103f; --c:#ff2d95; --pw:#eafcff; }
+.sw.t-crt{       --a:#0a3a1e; --b:#04220f; --c:#33ff88; --pw:#c9ffe2; }
+.sw.t-artico{    --a:#f4f9fd; --b:#a9c6dd; --c:#0e7490; --pw:#ffffff; }
+.sw.t-oro{       --a:#2a2113; --b:#16110a; --c:#ffd76a; --pw:#fff6dd; }
+
+/* pantalla de logros: misma fila que la escalera, con icono en vez de retrato */
+.ach-tally{ font-family:'Chakra Petch'; font-weight:700; color:var(--gold); }
+.ach-list{
+  display:flex; flex-direction:column; gap:8px; max-height:min(52vh,420px); overflow:auto;
+  margin:4px 0 12px; text-align:left; padding-right:4px;
+}
+.arow{
+  display:grid; grid-template-columns:52px 1fr 24px; gap:12px; align-items:center;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:14px; padding:10px 12px;
+}
+/* los bloqueados se atenúan pero se leen: son la lista de lo que puedes ir a
+   buscar, no un secreto */
+.arow.locked{ opacity:.55; }
+.arow.got{ border-color:rgba(107,255,176,.4); }
+.aav{
+  width:52px; height:52px; border-radius:12px; border:1px solid var(--line); background:var(--panel);
+  display:flex; align-items:center; justify-content:center; color:var(--ink-dim);
+}
+.aav .ico{ width:26px; height:26px; }
+.arow.got .aav{ border-color:rgba(107,255,176,.5); color:var(--energy-a); box-shadow:0 0 14px rgba(107,255,176,.18); }
+.arow .an{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; letter-spacing:.04em; }
+.arow .ad{ font-size:11.5px; color:var(--ink-dim); line-height:1.4; margin-top:2px; }
+.arw{
+  display:inline-flex; align-items:center; gap:5px; margin-top:6px;
+  font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--gold); border:1px solid var(--gold);
+  border-radius:7px; padding:3px 7px;
+}
+.arw .ico{ width:12px; height:12px; }
+.ast{ display:flex; align-items:center; justify-content:center; color:var(--ink-dim); opacity:.6; }
+.ast .ico{ width:19px; height:19px; }
+.arow.got .ast{ color:var(--energy-a); opacity:1; }
 
 /* corona de campeon de pesadilla: flota sobre tu nombre en la tarjeta.
    La variante con <b> esconde unas iniciales dentro de la corona */

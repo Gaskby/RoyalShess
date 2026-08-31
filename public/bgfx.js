@@ -42,12 +42,23 @@
     corrupt = CORRUPT_HUES[c] != null ? c : null;
   }
 
+  /* Paleta del fondo por tema. Sin entrada aqui (neon) el fondo sortea sus
+     propios colores. Campos: hues/sat como siempre; `lum` es la luminosidad
+     del degradado de fondo (los temas CLAROS la suben y ademas necesitan
+     `shapeL` para oscurecer las formas y `vig` para que la viñeta no ennegrezca
+     los bordes). `glowL` es la de los resplandores. */
+  const THEME_PAL = {
+    chesscom:  { hues: [78, 95, 110],   sat: [16, 30] },
+    crt:       { hues: [135, 145, 155], sat: [55, 80] },
+    madera:    { hues: [24, 32, 40],    sat: [30, 48], lum: [8, 12] },
+    synthwave: { hues: [288, 315, 192], sat: [62, 85], lum: [8, 13], glowL: 62 },
+    oro:       { hues: [40, 45, 50],    sat: [42, 66], lum: [5, 8] },
+    artico:    { hues: [196, 205, 215], sat: [16, 32], lum: [93, 89],
+                 glowL: 55, shapeL: 38, vig: [90, 125, 155] },
+  };
+
   function setTheme(name) {
-    // tema clasico usa verdes apagados acordes al tablero;
-    // el CRT usa fosforo verde saturado de monitor viejo
-    themePal = name === 'chesscom' ? { hues: [78, 95, 110], sat: [16, 30] }
-             : name === 'crt'      ? { hues: [135, 145, 155], sat: [55, 80] }
-             : null;
+    themePal = THEME_PAL[name] || null;
     newScene();
   }
 
@@ -169,8 +180,10 @@
     const gx = Math.cos(scene.flow), gy = Math.sin(scene.flow);
     const gr = g.createLinearGradient(W / 2 - gx * W / 2, H / 2 - gy * H / 2,
                                       W / 2 + gx * W / 2, H / 2 + gy * H / 2);
-    gr.addColorStop(0, `hsl(${hue} ${scene.sat}% ${5 + intensity * 2.5}%)`);
-    gr.addColorStop(1, `hsl(${hue + scene.spread} ${scene.sat + 8}% ${8 + intensity * 3}%)`);
+    // luminosidad base del fondo: oscura por defecto, clara en ártico
+    const lum = (themePal && themePal.lum) || [5, 8];
+    gr.addColorStop(0, `hsl(${hue} ${scene.sat}% ${lum[0] + intensity * 2.5}%)`);
+    gr.addColorStop(1, `hsl(${hue + scene.spread} ${scene.sat + 8}% ${lum[1] + intensity * 3}%)`);
     g.fillStyle = gr; g.fillRect(0, 0, W, H);
 
     // resplandores suaves orbitando lento
@@ -180,7 +193,8 @@
       const cy = H * 0.5 + Math.sin(an * 0.8) * H * 0.30;
       const rad = Math.max(W, H) * 0.55;
       const rg = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      rg.addColorStop(0, `hsla(${hue + i * 38} 90% 60% / ${0.045 + intensity * 0.05})`);
+      const glowL = (themePal && themePal.glowL) || 60;
+      rg.addColorStop(0, `hsla(${hue + i * 38} 90% ${glowL}% / ${0.045 + intensity * 0.05})`);
       rg.addColorStop(1, 'transparent');
       g.fillStyle = rg; g.fillRect(0, 0, W, H);
     }
@@ -208,9 +222,11 @@
       g.translate(s.x * W, s.y * H);
       if (gl) g.translate(rnd(-7, 7), rnd(-7, 7));   // temblor
       g.rotate(s.r + (gl ? rnd(-0.25, 0.25) : 0));
+      // en tema claro las formas se oscurecen para seguir viendose
+      const shift = themePal && themePal.shapeL != null ? themePal.shapeL - 63 : 0;
       const col = gl
         ? (l, a) => `hsla(${CORRUPT_HUES[corrupt] + rnd(-6, 6)} 95% ${l}% / ${a})`
-        : (l, a) => `hsla(${hue + s.h} 80% ${l}% / ${a})`;
+        : (l, a) => `hsla(${hue + s.h} 80% ${l + shift}% / ${a})`;
       let alpha = s.a * (1 + intensity * 0.7);
       if (gl) {   // el glitch se enciende de verdad: opacidad minima y halo
         alpha = Math.max(0.3, alpha * 3);
@@ -251,8 +267,9 @@
     // viñeta para que la UI respire encima: empieza lejos y termina más allá
     // del borde para que nunca se vea un corte en pantallas anchas
     const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.5, W / 2, H / 2, Math.max(W, H) * 1.05);
+    const vc = (themePal && themePal.vig) || [2, 3, 8];
     vg.addColorStop(0, 'transparent');
-    vg.addColorStop(1, `rgba(2,3,8,${scene.vig})`);
+    vg.addColorStop(1, `rgba(${vc[0]},${vc[1]},${vc[2]},${scene.vig})`);
     g.fillStyle = vg; g.fillRect(0, 0, W, H);
 
     drawSparks(dt);   

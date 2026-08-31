@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="booting">
 <span class="lang-row" id="langRow"></span>
 <div class="app">
   <div class="topbar">
@@ -30,14 +30,14 @@
           <div class="pname"><span class="dot"></span> <img class="rival-face" id="faceB" style="display:none" alt=""> <span data-i18n="card.black">Negras</span> <span class="tag" id="tagB"></span></div>
           <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
         </div>
-        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enB">10</span><small>/10</small></span></div>
+        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enB">2</span><small>/10</small></span></div>
         <div class="ebar"><div class="efill" id="efB"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matB">39</div></div></div>
+        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matB">22</div></div></div>
       </div>
     </div>
 
     <div class="board-col">
-      <div class="clock" id="clock">5:00</div>
+      <div class="clock" id="clock">3:00</div>
       <div class="board-wrap" id="boardWrap">
         <div class="grid" id="grid"></div>
         <div class="pieces" id="pieces"></div>
@@ -59,9 +59,9 @@
           <div class="pname"><span class="dot"></span> <img class="rival-face" id="faceW" style="display:none" alt=""> <span data-i18n="card.white">Blancas</span> <span class="tag" id="tagW"></span></div>
           <span class="badge-check" data-i18n="card.check">JAQUE +1</span>
         </div>
-        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enW">10</span><small>/10</small></span></div>
+        <div class="energy-top"><span class="energy-label" data-i18n="card.energy">Energía</span><span class="energy-num"><span id="enW">2</span><small>/10</small></span></div>
         <div class="ebar"><div class="efill" id="efW"></div><div class="ticks"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
-        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matW">39</div></div></div>
+        <div class="pstats"><div class="stat"><div class="k" data-i18n="card.points">Puntos</div><div class="v" id="matW">22</div></div></div>
       </div>
     </div>
 
@@ -100,12 +100,11 @@
     </div>
 
     <div id="screenSettings" style="display:none">
-      <div class="theme-row">
+      <div class="theme-head">
         <span class="theme-label" data-i18n="menu.theme">Tema</span>
-        <button class="btn tbtn" id="themeNeon" data-i18n="menu.theme.neon">Neón</button>
-        <button class="btn tbtn" id="themeClassic" data-i18n="menu.theme.classic">Clásico</button>
-        <button class="btn tbtn" id="themeCRT">🔒 CRT</button>
+        <span class="theme-count" id="themeCount"></span>
       </div>
+      <div class="theme-grid" id="themeGrid"></div>
       <div class="theme-row">
         <span class="theme-label" data-i18n="settings.music">Música</span>
         <button class="btn tbtn" id="musicLofi" data-i18n="settings.music.lofi">Lo-fi</button>
@@ -115,8 +114,17 @@
       <label class="opt-row"><input type="checkbox" id="emoteToggle"><span data-i18n="settings.emotes">Emotes en partida</span></label>
       <div class="small-note opt-note" data-i18n="settings.emotes.note"></div>
       <div class="menu-btns">
+        <button class="btn big" id="btnAch"><span data-i18n="menu.ach">Logros</span> <b class="ach-tally" id="achTally"></b></button>
         <button class="btn big" id="btnReplays" data-i18n="menu.replays">Repeticiones</button>
         <button class="btn" id="btnSettingsBack" data-i18n="friend.back">Volver</button>
+      </div>
+    </div>
+
+    <div id="screenAch" style="display:none">
+      <div class="ladder-prog" id="achProg"></div>
+      <div class="ach-list" id="achList"></div>
+      <div class="menu-btns">
+        <button class="btn" id="btnAchBack" data-i18n="friend.back">Volver</button>
       </div>
     </div>
 
@@ -263,6 +271,7 @@
 
 <script src="/config.js"></script>
 <script src="/rivals.js"></script>
+<script src="/achievements.js"></script>
 <script src="/icons.js"></script>
 <script src="/emotes.js"></script>
 <script src="/i18n.js"></script>

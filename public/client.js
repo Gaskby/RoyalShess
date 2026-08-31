@@ -46,16 +46,23 @@ let musicOn = localStorage.getItem('rs-music') !== '0';     // música lo-fi de 
 // ?music=ambient lo fuerza en esta sesión (útil para probar)
 let musicStyle = localStorage.getItem('rs-mstyle') === 'ambient' ? 'ambient' : 'lofi';
 if (new URLSearchParams(location.search).get('music') === 'ambient') musicStyle = 'ambient';
-let theme = localStorage.getItem('rs-theme') || 'neon';     // 'neon' | 'chesscom'
+let theme = localStorage.getItem('rs-theme') || 'neon';     // catalogo en achievements.js
 // escalera de leyendas: rivales vencidos hasta ahora y contra cual peleas
 const RV = window.RSRivals;
+// logros y catalogo de temas: la lista se edita en public/achievements.js
+const ACH = window.RSAch;
 let ladderProg = Math.max(0, parseInt(localStorage.getItem('rs-ladder') || '0', 10) || 0);
 // nueva vuelta: 0 es la primera pasada; cada vuelta extra es modo pesadilla,
 // con rivales mas rapidos y precisos y retratos poseidos por deep blue
 let ladderLoop = Math.max(0, parseInt(localStorage.getItem('rs-ladder-loop') || '0', 10) || 0);
-// campeon de pesadilla: vencer a toda la torre en una vuelta pesadilla
-// desbloquea el tema TERMINAL CRT y la corona sobre tu nombre
-let nightmareDone = localStorage.getItem('rs-nightmare-done') === '1';
+// racha limpia de la escalera: se rompe al perder una pelea y vuelve a empezar
+// en cada vuelta nueva. Es lo unico que pide el logro «Torre impecable»
+let ladderClean = localStorage.getItem('rs-ladder-clean') !== '0';
+// quien ya jugo no empieza con la lista de logros vacia: el campeon de la
+// pesadilla y el primer rival vencido salen de lo que el juego ya guardaba
+ACH.migrate({ nightmare: localStorage.getItem('rs-nightmare-done') === '1', ladderProg });
+// campeon de pesadilla: corona sobre tu nombre. Ahora es un logro mas
+let nightmareDone = ACH.has('pesadilla');
 let currentLadder = null;
 // reto de escalera lanzado estando en partida: el 'lobby' que responde al leave
 // llega despues y no debe borrar el rival que acabamos de elegir
@@ -102,6 +109,44 @@ function possessFx(el, on){
 let sfxOn = true, audioCtx = null;
 let ws = null;
 let prevPhase = null;
+
+// === resumen de la partida en curso, para los logros =====================
+// El servidor no manda «he comido 5 piezas»: manda fotos del tablero. Esto
+// compara cada foto con la anterior y va anotando lo que interesa; al terminar,
+// achievements.js decide con ese resumen. Se reinicia en cada cuenta atras.
+let matchStats = null;
+function resetMatchStats(){
+  matchStats = { caps: 0, lostPiece: false, lostQueen: false, maxDeficit: 0, foeStripped: false };
+}
+// el material va en PUNTOS, y «comer cinco piezas» necesita piezas
+function countPieces(board, color){
+  let n = 0;
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){
+    const p = board[r][c];
+    if (p && p.color === color) n++;
+  }
+  return n;
+}
+function hasQueen(board, color){
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++){
+    const p = board[r][c];
+    if (p && p.color === color && p.type === 'q') return true;
+  }
+  return false;
+}
+function trackMatch(prev, s){
+  if (!matchStats || s.phase !== 'live') return;
+  const foe = you === 'w' ? 'b' : 'w';
+  if (prev && prev.phase === 'live'){
+    const before = countPieces(prev.board, foe), now = countPieces(s.board, foe);
+    if (now < before) matchStats.caps += before - now;
+    if (countPieces(s.board, you) < countPieces(prev.board, you)) matchStats.lostPiece = true;
+    if (hasQueen(prev.board, you) && !hasQueen(s.board, you)) matchStats.lostQueen = true;
+  }
+  matchStats.maxDeficit = Math.max(matchStats.maxDeficit, s.material[foe] - s.material[you]);
+  // el rey vale 0 puntos: material 0 es quedarse literalmente solo con el rey
+  if (s.material[foe] === 0) matchStats.foeStripped = true;
+}
 
 // DOM
 const $ = (id) => document.getElementById(id);
@@ -454,7 +499,7 @@ function onPointerCancel(){
 }
 
 // Pantallas del overlay
-function showScreen(name){   // menu | friend | waiting | search | help | board | replays | replay | result | nullen juego
+function showScreen(name){   // menu | settings | friend | waiting | search | help | board | ladder | ach | replays | replay | result | null en juego
   if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
   if (name !== 'replay') RSReplay.stop();   // al salir del reproductor se detiene la cinta
   if (name !== 'menu') endTour();    // el tutorial de bienvenida vive solo en el menú
@@ -469,11 +514,12 @@ function showScreen(name){   // menu | friend | waiting | search | help | board 
   $('screenSearch').style.display  = name==='search'  ? '' : 'none';
   $('screenHelp').style.display    = name==='help'    ? '' : 'none';
   $('screenLadder').style.display  = name==='ladder'  ? '' : 'none';
+  $('screenAch').style.display     = name==='ach'     ? '' : 'none';
   $('screenBoard').style.display   = name==='board'   ? '' : 'none';
   $('screenReplays').style.display = name==='replays' ? '' : 'none';
   $('screenReplay').style.display  = name==='replay'  ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', settings:'sub.settings', replays:'sub.replays', replay:'sub.replay' };
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', ach:'sub.ach', settings:'sub.settings', replays:'sub.replays', replay:'sub.replay' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
   // el botón volver a la partida solo aparece si hay una partida en curso
@@ -512,7 +558,10 @@ function connect(){
 
 function onState(msg){
   const prev = state;
+  // partida nueva (o primera foto tras reconectar): el resumen de logros empieza limpio
+  if (!matchStats || (msg.phase === 'countdown' && prevPhase !== 'countdown')) resetMatchStats();
   state = msg; you = msg.you;
+  trackMatch(prev, state);
 
   // coreografia de la victoria: al capturar al rey rival, este se tumba
   // (estaba en el estado anterior) y su ejercito se disuelve en cascada
@@ -633,6 +682,7 @@ function showResult(){
   let wonLadder = false;    // vencer a un rival: retrato agrietado
   let wasPossessed = false; // vencerlo en pesadilla: exorcismo
   let finalBoss = null;     // vencer al ultimo de la torre: apagon CRT + coronacion
+  let towerDone = false;    // no queda nadie por encima: la torre esta terminada
   if (currentLadder != null && !draw){
     const r = rivalAt(currentLadder);
     const lang = I18N.getLang();
@@ -654,20 +704,16 @@ function showResult(){
       bn.style.display = next ? '' : 'none';
       if (!next){
         finalBoss = r;
+        towerDone = true;   // los logros de torre se deciden abajo, con los demas
         showToast(tr(ladderLoop > 0 ? 'ladder.doneNightmare' : 'ladder.done'), true);
-        // superar la pesadilla corona al campeon: tema CRT + corona en el nombre
-        if (ladderLoop > 0 && !nightmareDone){
-          nightmareDone = true;
-          localStorage.setItem('rs-nightmare-done', '1');
-          applyTheme();   // el boton CRT pierde el candado al instante
-          setTimeout(() => showToast(tr('reward.unlocked'), true), 5200);
-        }
       }
       // al caer el ultimo rival visible se revela el jefe secreto
       else if (next.secret && firstWin) showToast(tr('ladder.awaken'), true);
     } else {
       rqText = (r.gloat && (r.gloat[lang] || r.gloat.es)) || '';
       bn.style.display = 'none';
+      // caer en la escalera ensucia la vuelta: adios «Torre impecable»
+      if (ladderClean){ ladderClean = false; localStorage.setItem('rs-ladder-clean', '0'); }
     }
     $('rqTxt').textContent = '';
     rq.style.display = '';
@@ -675,6 +721,28 @@ function showResult(){
     rq.style.display = 'none';
     bn.style.display = 'none';
   }
+  // === logros ============================================================
+  // Un solo sitio decide: se junta el resumen de la partida con lo que sabemos
+  // de la escalera y achievements.js devuelve los que se acaban de ganar
+  const foeColor = you === 'w' ? 'b' : 'w';
+  const fresh = ACH.evaluate({
+    won, draw, reason: state.reason, vsCPU: state.vsCPU,
+    elapsed: state.matchMs - state.timeLeft,
+    foeEnergy: state.energy[foeColor],
+    ladderWin: wonLadder, towerDone, loop: ladderLoop, ladderClean,
+    caps: matchStats.caps, lostPiece: matchStats.lostPiece, lostQueen: matchStats.lostQueen,
+    maxDeficit: matchStats.maxDeficit, foeStripped: matchStats.foeStripped,
+  });
+  if (fresh.length){
+    // la corona sobre tu nombre sigue atada a superar la pesadilla
+    if (!nightmareDone && ACH.has('pesadilla')){
+      nightmareDone = true;
+      localStorage.setItem('rs-nightmare-done', '1');
+    }
+    applyTheme();     // los temas recien ganados pierden el candado al instante
+    updateAchTally();
+  }
+
   // coreografia: el rey se tumba primero (1.1s); al jefe final le sigue el
   // apagon CRT y la coronacion antes de que entre el panel
   let panelDelay = won ? 950 : 550;
@@ -697,6 +765,16 @@ function showResult(){
       if (wonLadder && wasPossessed) setTimeout(exorcise, 300);
     }
   }, panelDelay);
+  // los avisos de logro entran en fila detras del panel, uno cada vez: el toast
+  // dura 900 ms, asi que 1300 entre uno y otro deja aire para leerlos
+  fresh.forEach((id, i) => {
+    const rw = ACH.rewardOf(id);
+    const name = tr('ach.' + id + '.n');
+    const msg = rw
+      ? tr('ach.gotTheme').replace('{a}', name).replace('{t}', tr('theme.' + rw))
+      : tr('ach.got').replace('{a}', name);
+    setTimeout(() => showToast(msg, true), panelDelay + 700 + i * 1300);
+  });
 }
 
 // === piezas de la coreografia de derrota ===
@@ -1018,6 +1096,9 @@ function applyLang(){
   buildCfgPieces();
   buildHelp();
   buildLadder();
+  buildThemeGrid();   // los nombres de los temas y de los logros tambien se traducen
+  buildAch();
+  updateAchTally();
   if (curScreen) showScreen(curScreen);
   if (state) updateHUD();
   // la marca se aparta de la píldora de idiomas fija su ancho depende de cuántos haya
@@ -1605,6 +1686,9 @@ function startNightmare(){
   ladderOpen = 0;
   localStorage.setItem('rs-ladder-loop', String(ladderLoop));
   localStorage.setItem('rs-ladder', '0');
+  // vuelta nueva, racha nueva: «Torre impecable» se puede volver a intentar
+  ladderClean = true;
+  localStorage.setItem('rs-ladder-clean', '1');
   showToast(tr('ladder.loopStart'), true);
   buildLadder();
 }
@@ -1668,27 +1752,84 @@ $('btnNext').addEventListener('click', () => ascendTower(currentLadder + 1));
 // revancha: misma sala, mismos ajustes; en PvP esperan a que acepten los dos
 btnRematch.addEventListener('click', () => { ensureAudio(); send({t:'rematch'}); });
 
-// tema visual: clase en <body + fondo animado a juego persiste en localStorage
+// tema visual: clase en <body> + fondo animado a juego; persiste en localStorage.
+// El catalogo de temas y el logro que pide cada uno viven en achievements.js
 function applyTheme(){
-  if (theme === 'crt' && !nightmareDone) theme = 'neon';   // candado: aun no lo ganaste
-  document.body.classList.toggle('theme-chesscom', theme === 'chesscom');
-  document.body.classList.toggle('theme-crt', theme === 'crt');
-  $('themeNeon').classList.toggle('on', theme !== 'chesscom' && theme !== 'crt');
-  $('themeClassic').classList.toggle('on', theme === 'chesscom');
-  const crt = $('themeCRT');
-  crt.classList.toggle('on', theme === 'crt');
-  crt.classList.toggle('locked', !nightmareDone);
-  crt.innerHTML = (nightmareDone ? '' : RSIcons.svg('lock')) + 'CRT';
+  if (!ACH.themeOpen(theme)) theme = 'neon';   // candado: aun no lo has ganado
+  for (const t of ACH.THEMES) document.body.classList.toggle('theme-' + t.id, theme === t.id);
+  buildThemeGrid();
   if (window.RSBG && window.RSBG.setTheme) window.RSBG.setTheme(theme);
 }
 function setTheme(t){ theme = t; localStorage.setItem('rs-theme', t); applyTheme(); }
-$('themeNeon').addEventListener('click', () => setTheme('neon'));
-$('themeClassic').addEventListener('click', () => setTheme('chesscom'));
-$('themeCRT').addEventListener('click', () => {
-  if (!nightmareDone){ showToast(tr('theme.locked')); return; }
-  setTheme('crt');
-});
+// una muestra por tema: sus dos colores de casilla, su acento y, si esta
+// bloqueado, el candado. Los colores de cada muestra estan en style.css
+function buildThemeGrid(){
+  const grid = $('themeGrid'); if (!grid) return;
+  grid.innerHTML = '';
+  let open = 0;
+  for (const t of ACH.THEMES){
+    const unlocked = ACH.themeOpen(t.id);
+    if (unlocked) open++;
+    const b = document.createElement('button');
+    b.className = 'sw t-' + t.id + (theme === t.id ? ' on' : '') + (unlocked ? '' : ' locked');
+    b.innerHTML =
+      `<span class="sw-tile"><span class="sw-g">${GLYPH.n}</span><span class="sw-bar"></span>` +
+      (unlocked ? '' : `<span class="sw-lock">${RSIcons.svg('lock')}</span>`) +
+      `</span><span class="sw-name">${escHtml(tr('theme.' + t.id))}</span>`;
+    b.addEventListener('click', () => {
+      if (!unlocked){
+        // el candado dice QUE hay que hacer, no solo que esta cerrado
+        showToast(tr('theme.locked').replace('{a}', tr('ach.' + ACH.themeNeeds(t.id) + '.n')));
+        return;
+      }
+      setTheme(t.id);
+    });
+    grid.appendChild(b);
+  }
+  const cnt = $('themeCount');
+  if (cnt) cnt.textContent = open + '/' + ACH.THEMES.length;
+}
 applyTheme();
+
+// === logros =============================================================
+// contador «4/10» en el boton de ajustes
+function updateAchTally(){
+  const t = $('achTally');
+  if (t) t.textContent = ACH.done() + '/' + ACH.total();
+}
+// la lista reusa la fila de la escalera, con icono de trazo en vez de retrato.
+// Los bloqueados se atenuan pero se leen: son objetivos, no secretos
+function buildAch(){
+  const list = $('achList'); if (!list) return;
+  list.innerHTML = '';
+  const prog = $('achProg');
+  if (prog){
+    const done = ACH.done(), total = ACH.total();
+    prog.innerHTML =
+      `<span>${escHtml(tr('ach.prog'))}</span>` +
+      `<div class="lpbar"><i style="width:${Math.round(100 * done / total)}%"></i></div>` +
+      `<b>${done}/${total}</b>`;
+  }
+  for (const a of ACH.LIST){
+    const got = ACH.has(a.id);
+    const row = document.createElement('div');
+    row.className = 'arow ' + (got ? 'got' : 'locked');
+    // los dos que regalan tema lo anuncian con una chapa dorada
+    const reward = a.reward
+      ? `<span class="arw">${RSIcons.svg('palette')}` +
+        `${escHtml(tr('ach.reward').replace('{t}', tr('theme.' + a.reward)))}</span>`
+      : '';
+    row.innerHTML =
+      `<div class="aav">${RSIcons.svg(a.icon)}</div>` +
+      `<div><div class="an">${escHtml(tr('ach.' + a.id + '.n'))}</div>` +
+        `<div class="ad">${escHtml(tr('ach.' + a.id + '.d'))}</div>${reward}</div>` +
+      `<div class="ast">${RSIcons.svg(got ? 'check' : 'lock')}</div>`;
+    list.appendChild(row);
+  }
+}
+$('btnAch').addEventListener('click', () => { buildAch(); showScreen('ach'); });
+$('btnAchBack').addEventListener('click', () => showScreen('settings'));
+updateAchTally();
 
 // pantalla de ajustes: tema, estilo de música y arrastre viven ahí
 $('btnSettings').addEventListener('click', () => showScreen('settings'));
@@ -1731,6 +1872,10 @@ window.addEventListener('pointerup', onPointerUp);
 window.addEventListener('pointercancel', onPointerCancel);
 
 // init
+// el tema ya esta puesto: se devuelven las transiciones en cuanto acabe esta
+// tanda de trabajo. Con setTimeout y no requestAnimationFrame a proposito: en
+// una pestana en segundo plano el rAF no dispara y se quedaria sin ellas
+setTimeout(() => document.body.classList.remove('booting'), 50);
 buildGrid(); lastYou = you;
 applyLang();   // traduce todo y construye leyenda, ajustes de piezas y tutorial
 connect();

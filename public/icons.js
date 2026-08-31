@@ -33,6 +33,19 @@
     lock:     'M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4',
     smile:    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M8 14s1.5 2 4 2 4-2 4-2 M9.5 9v.01 M14.5 9v.01',
     close:    'M18 6L6 18 M6 6l12 12',
+    // --- logros (achievements.js) uno por fila de LIST, mismo orden ---
+    check:    'M4 12l5 5L20 6',
+    palette:  'M12 21a9 9 0 1 1 0-18c5 0 9 3.6 9 8 0 2.2-1.8 4-4 4h-2a2 2 0 0 0-1.4 3.4A2 2 0 0 1 12 21z M7.5 10.5v.01 M12 7.5v.01 M16.5 10.5v.01',
+    achCanibal:    'M6 3l12 15 M18 3L6 18 M4 21l4-4 M20 21l-4-4',
+    achCazador:    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 1v4 M12 19v4 M1 12h4 M19 12h4',
+    achSacrificio: 'M5 9l2 8h10l2-8-4 3-3-6-3 6-4-3z M6 20h12',
+    achRemontada:  'M3 17l6-6 4 4 8-8 M15 7h6v6',
+    achEjecucion:  'M12 22a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M12 10v4l3 2 M9 2h6',
+    achAhogo:      'M3 8h15v9H3z M21 11v3 M6 11v3',
+    achReyDesnudo: 'M12 2v6 M9 5h6 M5 12h14l-2 8H7z M5 12l7-4 7 4',
+    achIntocable:  'M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z',
+    achPesadilla:  'M7 4h10v6a5 5 0 0 1-10 0z M7 5H4v2a3 3 0 0 0 3 3 M17 5h3v2a3 3 0 0 1-3 3 M10 15h4l1 5H9z',
+    achImpecable:  'M4 20h4v-5H4z M10 20h4v-9h-4z M16 20h4V6h-4z M3 21h18',
   };
 
   // El <svg> lleva el trazo; el <path> solo la geometria. Asi morph.js puede
