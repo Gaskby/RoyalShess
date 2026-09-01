@@ -54,6 +54,39 @@ Abre **dos pestañas** (o dos navegadores) en `http://localhost:3000` y pulsa
 dispositivos distintos en tu red local, usa la IP de tu equipo
 (p. ej. `http://192.168.1.50:3000`).
 
+## Instalar como app (PWA)
+
+RoyalShess se puede instalar en el movil y abrirse a pantalla completa, sin
+barra del navegador. No hace falta tienda ni cuenta de desarrollador.
+
+- **iPhone/iPad:** abrelo en **Safari** (Chrome en iOS no puede instalar),
+  boton **Compartir** -> **Anadir a pantalla de inicio**.
+- **Android:** Chrome ofrece **Instalar aplicacion** solo.
+- **Escritorio:** icono de instalar en la barra de direcciones.
+
+Requisito: servirlo por **https** (o `localhost`). Por http plano el navegador
+no registra el service worker y no aparece la opcion de instalar.
+
+Que aporta:
+
+- Arranque instantaneo: el shell (html, css, js, iconos) sale de cache.
+- Sin conexion la app carga y avisa con **Offline** en vez de dar error del
+  navegador. **Jugar sigue necesitando servidor**: el tablero, la energia y la
+  CPU viven en `server/lobby.js`, el cliente solo dibuja.
+- Respeta el notch y la barra de gestos del iPhone (safe areas en `style.css`).
+- El audio se desbloquea al primer toque y se reanuda al volver de segundo
+  plano, y el WebSocket reconecta solo al volver a la app.
+
+### Al desplegar cambios del cliente
+
+Sube `VERSION` en `public/sw.js`. Los archivos no llevan hash en el nombre,
+asi que ese numero es lo unico que invalida la cache vieja de los navegadores.
+
+### Iconos
+
+Estan en `public/icons/` (192, 512, maskable y el de iOS de 180). Si cambia la
+marca hay que regenerarlos; `favicon.svg` es el original de la pieza.
+
 ## Estructura
 
 ```

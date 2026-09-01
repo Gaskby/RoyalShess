@@ -46,7 +46,11 @@ function rmrf(p) {
 //             pasar por el aplanado de flujo sin romperse. Son 30 lineas de
 //             pegamento, no hay nada que esconder ahi.
 const VENDOR = 'vendor';
-const SKIP = new Set(['morph.js']);
+//   sw.js     el service worker. Va tal cual por dos razones: se lee desde el
+//             navegador como archivo suelto (no pasa por index.html) y el
+//             aplanado de flujo del ofuscador rompe los addEventListener de
+//             install/activate/fetch. Ademas ahi no hay logica de juego.
+const SKIP = new Set(['morph.js', 'sw.js']);
 
 function plain(rel, name) {
   return rel.split(path.sep)[0] === VENDOR || SKIP.has(name);

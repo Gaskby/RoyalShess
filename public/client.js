@@ -530,11 +530,22 @@ function enableMenu(on){ menuEnabled=on; btnQueue.disabled=!on; btnFriend.disabl
 function setStatus(ok, key){ lastStatusKey = key; statusEl.classList.toggle('ok', ok); statusTxt.textContent = tr(key); }
 
 // WebSocket
+// El reintento vive en su propia variable para que no se acumulen timers: al
+// volver de segundo plano queremos reconectar YA, sin esperar al del onclose y
+// sin acabar con dos sockets abiertos.
+let reconnectTimer = null;
+function scheduleReconnect(ms){
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, ms);
+}
 function connect(){
+  clearTimeout(reconnectTimer); reconnectTimer = null;
+  // si ya hay un socket vivo o abriendose, no abrimos otro
+  if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}`);
   ws.onopen  = () => { setStatus(true, 'status.connected'); enableMenu(true); sendName(); };
-  ws.onclose = () => { setStatus(false, 'status.offline'); enableMenu(false); showScreen('menu'); setTimeout(connect, 1500); };
+  ws.onclose = () => { setStatus(false, 'status.offline'); enableMenu(false); showScreen('menu'); scheduleReconnect(1500); };
   ws.onerror = () => setStatus(false, 'status.netError');
   ws.onmessage = (ev) => {
     let msg; try { msg = JSON.parse(ev.data); } catch(_e){ return; }
@@ -856,7 +867,29 @@ function endFx(kind){
 }
 
 // Sonido
-function ensureAudio(){ if(!audioCtx){ try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(_e){} } }
+// iOS no deja sonar nada hasta que el usuario toca algo, y ademas SUSPENDE el
+// contexto cada vez que la app se va a segundo plano. Por eso esto hace tres
+// cosas y no una: crear, reanudar si quedo suspendido, y dar un empujon con un
+// buffer mudo (Safari a veces se queda en "running" pero callado sin el).
+function ensureAudio(){
+  if(!audioCtx){
+    try{ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }catch(_e){ return; }
+  }
+  if(audioCtx.state==='suspended'){ try{ audioCtx.resume(); }catch(_e){} }
+  if(!audioCtx._kicked){
+    audioCtx._kicked=true;
+    try{
+      const b=audioCtx.createBuffer(1,1,audioCtx.sampleRate);
+      const src=audioCtx.createBufferSource();
+      src.buffer=b; src.connect(audioCtx.destination); src.start(0);
+    }catch(_e){}
+  }
+}
+// Red de seguridad: los botones del menu ya llaman a ensureAudio, pero si la
+// primera interaccion del usuario es otra (tocar el tablero, el tutorial) el
+// contexto naceria FUERA de un gesto y por tanto mudo. Una sola vez, al primer
+// toque, pase donde pase.
+window.addEventListener('pointerdown', function unlockAudio(){ ensureAudio(); }, { once:true, capture:true });
 function sfx(kind){
   if(!sfxOn||!audioCtx) return;
   const t=audioCtx.currentTime, o=audioCtx.createOscillator(), g=audioCtx.createGain();
@@ -1870,6 +1903,17 @@ gridEl.addEventListener('pointerdown', onPointerDown);
 window.addEventListener('pointermove', onPointerMove);
 window.addEventListener('pointerup', onPointerUp);
 window.addEventListener('pointercancel', onPointerCancel);
+
+// Volver de segundo plano. En el movil esto pasa CONSTANTEMENTE: basta con
+// atender un mensaje o bloquear la pantalla. iOS congela los timers y mata el
+// WebSocket sin avisar, asi que al volver hay que mirar el estado real del
+// socket en vez de fiarse de que el onclose haya saltado.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (audioCtx && audioCtx.state === 'suspended') { try { audioCtx.resume(); } catch(_e){} }
+  if (window.RSMusic && window.RSMusic.resume) window.RSMusic.resume();
+  if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) connect();
+});
 
 // init
 // el tema ya esta puesto: se devuelven las transiciones en cuanto acabe esta

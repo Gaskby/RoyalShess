@@ -199,6 +199,9 @@ body{
     var(--bg);
   color:var(--ink); font-family:'Rajdhani',system-ui,sans-serif;
   min-height:100dvh; overflow-x:hidden; -webkit-tap-highlight-color:transparent;
+  /* el rebote elastico de iOS delata que esto es una web; ademas al arrastrar
+     una pieza cerca del borde la pagina entera se movia */
+  overscroll-behavior:none;
 }
 body::before{
   content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -210,7 +213,15 @@ body::before{
    width/height 100% OBLIGATORIOS: un canvas con solo inset:0 NO estira, usa su
    tamaño interno con zoom <100% (dpr<1) queda más chico y el fondo se ve cortado */
 #bgfx{ position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; }
-.app{ position:relative; z-index:1; max-width:1460px; margin:0 auto; padding:18px 16px 40px; }
+/* Los env(safe-area-inset-*) valen 0 en escritorio y en cualquier navegador que
+   no los conozca, asi que el max() deja el padding de siempre. En iPhone suman
+   el hueco del notch arriba y el de la barra de gestos abajo. Necesita
+   viewport-fit=cover en el meta viewport del index.html */
+.app{
+  position:relative; z-index:1; max-width:1460px; margin:0 auto;
+  padding:max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+          max(40px, calc(env(safe-area-inset-bottom) + 24px)) max(16px, env(safe-area-inset-left));
+}
 
 .topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap; }
 .brand{ display:flex; align-items:baseline; gap:10px; }
@@ -282,7 +293,7 @@ body::before{
 .clock{ font-family:'Chakra Petch'; font-weight:700; letter-spacing:.08em; font-size:clamp(30px,6vw,44px); line-height:1; padding:6px 20px; border:1px solid var(--line); border-radius:12px; background:var(--panel); min-width:170px; text-align:center; box-shadow:0 0 26px rgba(0,0,0,.5) inset; }
 .clock.low{ color:var(--danger); animation:clockflash .6s steps(2) infinite; }
 @keyframes clockflash{ 50%{ opacity:.55; } }
-.board-wrap{ width:min(90vw,70vh,680px); aspect-ratio:1; position:relative; border-radius:16px; padding:10px; background:linear-gradient(180deg,#0c0e18,#07080f); border:1px solid var(--line); box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02); }
+.board-wrap{ width:min(90vw,70dvh,680px); aspect-ratio:1; position:relative; border-radius:16px; padding:10px; background:linear-gradient(180deg,#0c0e18,#07080f); border:1px solid var(--line); box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.02); }
 .board-wrap.edge-w{ box-shadow:0 0 40px rgba(51,230,255,.18),0 30px 80px rgba(0,0,0,.6); }
 .board-wrap.edge-b{ box-shadow:0 0 40px rgba(255,59,115,.18),0 30px 80px rgba(0,0,0,.6); }
 /* la pieza que TE da jaque: glifo ardiendo en rojo + anillo en su casilla */
@@ -372,7 +383,8 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 .banner::before{ content:""; width:9px; height:9px; border-radius:50%; background:var(--gold); box-shadow:0 0 10px var(--gold); animation:rbeampulse 1s ease-in-out infinite; flex:0 0 auto; }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
-.overlay{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(4,4,10,.82); backdrop-filter:blur(6px); }
+.overlay{ position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; background:rgba(4,4,10,.82); backdrop-filter:blur(6px);
+  padding:max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)); }
 .overlay.hidden{ display:none; }
 .panelbig{ text-align:center; max-width:440px; padding:34px 30px; position:relative; }
 .gearbtn{ position:absolute; top:12px; right:12px; font-size:16px; padding:7px; line-height:1; }
@@ -439,15 +451,20 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 
 /* móviles: todo más compacto y el tablero a lo ancho */
 @media (max-width:640px){
-  .app{ padding:10px 8px 28px; }
+  /* OJO: esta regla pisa el padding con safe-area de arriba, y justo en el
+     tamano donde hace falta. Por eso repite los env() con sus minimos moviles */
+  .app{
+    padding:max(10px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+            max(28px, calc(env(safe-area-inset-bottom) + 16px)) max(8px, env(safe-area-inset-left));
+  }
   .topbar{ margin-bottom:10px; gap:8px; }
   .brand small{ display:none; }
   .brand h1{ font-size:20px; }
   .btn{ padding:7px 9px; font-size:11px; }
   .stage{ gap:10px; }
   .clock{ font-size:28px; min-width:130px; padding:4px 14px; }
-  .board-wrap{ width:min(96vw,64vh); padding:6px; border-radius:12px; }
-  .side-top, .side-bottom{ width:min(96vw,64vh); }
+  .board-wrap{ width:min(96vw,64dvh); padding:6px; border-radius:12px; }
+  .side-top, .side-bottom{ width:min(96vw,64dvh); }
   .grid,.pieces,.emotes{ inset:6px; }
   .emote-anchor{ width:15%; }   /* en pantalla chica la cara necesita algo más */
   .emote-bubble::after{ width:9px; height:9px; bottom:-5px; }
@@ -594,7 +611,7 @@ body.grabbing, body.grabbing .sq{ cursor:grabbing; }
 }
 
 /* idioma: fijo arriba a la izquierda, por encima de todo incluido el menú */
-.lang-row{ position:fixed; top:16px; left:16px; z-index:70; display:inline-flex; gap:6px; }
+.lang-row{ position:fixed; top:max(16px, calc(env(safe-area-inset-top) + 6px)); left:max(16px, calc(env(safe-area-inset-left) + 8px)); z-index:70; display:inline-flex; gap:6px; }
 .lang-row .tbtn{ padding:5px 9px; font-size:11px; }
 
 /* clasificación leaderboard */
