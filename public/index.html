@@ -2,9 +2,22 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<!-- viewport-fit=cover: sin esto el iPhone deja franjas negras arriba y abajo
+     en modo app y env(safe-area-inset-*) devuelve 0 (ver style.css) -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover">
 <title>RoyalShess</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<!-- PWA: con esto el juego se instala en la pantalla de inicio (iOS: Compartir ->
+     Anadir a pantalla de inicio) y arranca a pantalla completa, sin barra de Safari -->
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#06060d">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<!-- black-translucent: la app se mete debajo del reloj y la bateria; el hueco lo
+     reserva el padding con safe-area, no el sistema -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="RoyalShess">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -283,5 +296,16 @@
 <!-- morphicons es ESM y va al final: los iconos ya están pintados por
      icons.js, esto solo los hace transformarse al cambiar de estado -->
 <script type="module" src="/morph.js"></script>
+
+<!-- Registro del service worker (sw.js). Solo funciona en https o en localhost,
+     por eso el guard: en una IP local plana navigator.serviceWorker no existe y
+     el juego debe seguir cargando igual -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+</script>
 </body>
 </html>

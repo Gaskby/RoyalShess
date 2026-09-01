@@ -334,6 +334,11 @@ window.RSMusic = (function () {
     const spb = 60 / bpm / 4;   // duración de semicorchea
     if (amb) ambLpf.frequency.setTargetAtTime(950 + eff * 1700, ctx.currentTime, 0.6);
     else lpf.frequency.setTargetAtTime(750 + eff * 2900, ctx.currentTime, 0.4);
+    // Al volver de segundo plano el reloj del audio ha seguido corriendo pero
+    // el setInterval no: nextT queda muy atras y este while soltaria de golpe
+    // todos los pasos atrasados, o sea una rafaga de ruido. Resincronizamos al
+    // principio del compas y seguimos como si nada.
+    if (nextT < ctx.currentTime) { nextT = ctx.currentTime + 0.05; step = 0; }
     while (nextT < ctx.currentTime + 0.15) {
       scheduleStep(step, nextT + (step % 2 ? spb * swing : 0));
       step = (step + 1) % 16;
@@ -372,6 +377,10 @@ window.RSMusic = (function () {
     setIntensity(x) { target = Math.max(0, Math.min(1, x)); },
     setDanger(d) { danger = !!d; },
     isRunning() { return running; },
+    // iOS suspende el contexto al irse la app a segundo plano; client.js llama
+    // aqui al volver. Si la musica tenia su propio contexto (porque empezo
+    // antes que los efectos) este es el unico modo de reanimarlo.
+    resume() { if (ctx && ctx.state === 'suspended') { try { ctx.resume(); } catch (_e) {} } },
     // semilla de la próxima pista: llamar ANTES de start. null vuelve al azar
     setSeed(s) { songSeed = s == null ? null : (s >>> 0); },
     // 'lofi' o 'ambient'; si suena, la pista se regenera al vuelo en el estilo nuevo
