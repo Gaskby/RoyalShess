@@ -1,8 +1,9 @@
 /* RoyalShess - service worker
    Sirve para dos cosas, ninguna magica:
-     1. Arranque instantaneo: el "shell" (html, css, js, iconos) sale de cache
-        y se revalida por detras, asi la app abre sin pantalla en blanco
-        aunque la red del movil este lenta.
+     1. Arranque rapido: el "shell" (html, css, js, iconos) se guarda entero.
+        Los iconos y las imagenes salen ya de cache; el codigo se pide a red
+        con un tope de espera corto y tira de cache si la red no llega, asi la
+        app abre sin pantalla en blanco aunque el movil vaya mal de red.
      2. Fallo elegante: sin conexion la app carga igual y muestra su pantalla
         de "sin conexion" en vez del dinosaurio del navegador.
 
@@ -10,10 +11,10 @@
    viven en el servidor (server/lobby.js), el cliente solo dibuja. Cachear no
    cambia eso; solo evita que la app parezca rota mientras no hay red.
 
-   Al desplegar cambios hay que subir VERSION: es lo que invalida la cache
-   vieja. Los nombres de archivo no llevan hash, asi que sin ese numero los
-   navegadores se quedarian con el client.js de ayer. */
-const VERSION = 'v1';
+   Al desplegar cambios conviene subir VERSION: borra las caches viejas de
+   golpe. Ya no es lo unico que nos salva (el codigo va a red primero, ver
+   mas abajo), pero deja el disco limpio entre versiones. */
+const VERSION = 'v2';
 const SHELL = `royalshess-shell-${VERSION}`;
 const RUNTIME = `royalshess-runtime-${VERSION}`;
 const FONTS = `royalshess-fonts-${VERSION}`;
@@ -50,7 +51,12 @@ self.addEventListener('install', (e) => {
     const cache = await caches.open(SHELL);
     // addAll es todo o nada: si un archivo falla, la instalacion entera se cae
     // y nos quedamos sin service worker. Uno a uno perdona los huecos.
-    await Promise.all(SHELL_URLS.map((u) => cache.add(u).catch(() => {})));
+    // cache:'reload' evita guardar en la cache del SW lo que ya estaba viejo
+    // en la cache HTTP del navegador: seria empezar la casa por el tejado.
+    await Promise.all(SHELL_URLS.map((u) =>
+      fetch(u, { cache: 'reload' })
+        .then((res) => (res && res.ok ? cache.put(u, res) : null))
+        .catch(() => {})));
     self.skipWaiting();
   })());
 });
@@ -66,6 +72,38 @@ self.addEventListener('activate', (e) => {
 
 // Permite que la pagina fuerce la actualizacion sin esperar a cerrar pestanas
 self.addEventListener('message', (e) => { if (e.data === 'skip-waiting') self.skipWaiting(); });
+
+// El codigo (html, css, js) tiene que viajar junto. El index va a red siempre,
+// asi que si el resto saliera de cache tendriamos un index nuevo pidiendole
+// claves a un i18n.js viejo: ahi es donde salian los identificadores en crudo
+// (CARD.BLACK, MENU.FRIEND...) en vez del texto traducido. Por eso el codigo
+// va a red primero, con la cache como red de emergencia. El tope de espera es
+// lo que mantiene el arranque rapido en una red mala: si la red no contesta
+// en NET_TIMEOUT ms tiramos de lo guardado, igual que antes.
+const CODE_RE = /\.(?:js|css|html)$/;
+const NET_TIMEOUT = 3000;
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const id = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      (v) => { clearTimeout(id); resolve(v); },
+      (e) => { clearTimeout(id); reject(e); },
+    );
+  });
+}
+
+// red-primero: lo ultimo que haya publicado, con lo guardado de respaldo
+async function networkFirst(req, cacheName) {
+  const cache = await caches.open(cacheName);
+  try {
+    const res = await withTimeout(fetch(req), NET_TIMEOUT);
+    if (res && res.ok) cache.put(req, res.clone());
+    return res;
+  } catch (_e) {
+    return (await cache.match(req)) || Response.error();
+  }
+}
 
 // cache-primero-y-revalida: responde ya con lo guardado y actualiza por detras
 async function staleWhileRevalidate(req, cacheName) {
@@ -105,8 +143,11 @@ self.addEventListener('fetch', (e) => {
   }
 
   if (sameOrigin) {
-    const isShell = SHELL_URLS.includes(url.pathname);
-    e.respondWith(staleWhileRevalidate(req, isShell ? SHELL : RUNTIME));
+    const cacheName = SHELL_URLS.includes(url.pathname) ? SHELL : RUNTIME;
+    // codigo a red primero; imagenes e iconos, que no caducan, de cache
+    e.respondWith(CODE_RE.test(url.pathname)
+      ? networkFirst(req, cacheName)
+      : staleWhileRevalidate(req, cacheName));
     return;
   }
 
