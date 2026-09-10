@@ -27,6 +27,33 @@ Abre ese archivo, cambia los numeros, guarda y reinicia el servidor
 
 > Omitido por ahora: enroque y captura al paso; el peón corona a dama automáticamente.
 
+## Cómo se enseña a jugar
+
+`Menú → Cómo jugar` abre un **tutorial jugable** (`public/tutorial.js`), no una
+lista de reglas: seis lecciones cortas donde mueve el jugador y **no se avanza
+hasta que hace lo que se le pide**.
+
+1. **Mover** — que no hay turnos.
+2. **Energía** — gastar, quedarse a cero y esperar a que la barra suba.
+3. **Comer** — el reembolso, y que los peones no dan nada.
+4. **Jaque** — una torre le da jaque de verdad y hay que salir antes de que se
+   acabe el margen; si no reacciona, le comen el rey y repite.
+5. **Ganar** — el rey rival solo cae tras aguantar en jaque; hay que esperar al
+   aviso dorado y capturarlo.
+6. **Duelo de prueba** — posición pequeña contra la máquina, con las dos
+   energías corriendo a la vez.
+
+Es una isla como el reproductor de repeticiones: tablero propio y bucle propio,
+sin servidor. Las cuentas salen del **mismo** `engine.js` y `config.js` que usa
+el servidor, así que al cambiar un coste en la hoja de configuración el tutorial
+enseña el número nuevo sin tocarlo. El progreso se guarda en `localStorage`
+(`rs-learn`) y los textos están en `i18n.js` bajo `learn.`.
+
+Las reglas finas (racha del peón, descuento del caballo, dama que se abarata,
+carriles de torre, recaptura gratis, enroque) siguen en **Reglas y trucos**, a
+un botón del tutorial: la lista de siempre, donde cada regla se toca y se ve
+animada en un mini-tablero.
+
 ## Cómo ejecutarlo (local)
 
 Necesitas **Node.js 18+**.
@@ -101,6 +128,7 @@ royalshess/
    ├─ emotes.js     Las 6 caras de los emotes, dibujadas en SVG (editable)
    ├─ engine.js     Motor de reglas puro (compartido servidor + cliente)
    ├─ index.html    Interfaz
+   ├─ tutorial.js   Tutorial jugable (Cómo jugar)
    ├─ style.css     Estética tipo TETR.IO
    └─ client.js     Cliente WebSocket
 ```

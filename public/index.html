@@ -197,6 +197,44 @@
       </div>
     </div>
 
+    <!-- Tutorial interactivo: indice de lecciones + la leccion en curso.
+         Todo lo pinta tutorial.js; aqui solo estan los huecos. -->
+    <div id="screenTut" style="display:none">
+      <div id="tutIndex">
+        <div class="small-note tut-tally" id="tutTally"></div>
+        <div class="tut-list" id="tutList"></div>
+        <div class="menu-btns">
+          <button class="playbtn" id="tutStart" data-i18n="learn.start">Empezar</button>
+          <button class="btn" id="tutRules" data-i18n="learn.rules">Reglas y trucos</button>
+          <button class="btn" id="tutBack" data-i18n="friend.back">Volver</button>
+        </div>
+      </div>
+
+      <div id="tutPlay" style="display:none">
+        <div class="tut-head"><span class="tut-dots" id="tutDots"></span><span class="tut-step" id="tutStep"></span></div>
+        <div class="tut-goal" id="tutGoal"></div>
+        <div class="tut-board" id="tutBoard">
+          <div id="tutSqs"></div>
+          <div id="tutPieces"></div>
+        </div>
+        <div class="tut-grace" id="tutGrace" style="display:none">
+          <span id="tutGraceTxt"></span>
+          <div class="tut-gbar"><div id="tutGraceBar"></div></div>
+        </div>
+        <div class="tut-hud">
+          <div class="tut-erow"><span class="k" data-i18n="card.energy">Energia</span><span class="tut-ebar"><i class="w" id="tutFillW"></i></span><span class="v" id="tutNumW">0</span></div>
+          <div class="tut-erow" id="tutFoeRow" style="display:none"><span class="k" data-i18n="tag.rival">Rival</span><span class="tut-ebar"><i class="b" id="tutFillB"></i></span><span class="v" id="tutNumB">0</span></div>
+        </div>
+        <div class="tut-costs" id="tutCosts"></div>
+        <div class="tut-say" id="tutSay"></div>
+        <div class="tut-btns">
+          <button class="btn" id="tutRetry" style="display:none" data-i18n="learn.retry">Reintentar</button>
+          <button class="btn" id="tutNext" data-i18n="learn.skip">Saltar</button>
+          <button class="btn" id="tutExit" data-i18n="learn.exit">Salir</button>
+        </div>
+      </div>
+    </div>
+
     <div id="screenHelp" style="display:none">
       <div class="small-note demo-hint" data-i18n="tut.demoHint"></div>
       <div class="demo-wrap" id="demoWrap" style="display:none">
@@ -290,6 +328,7 @@
 <script src="/i18n.js"></script>
 <script src="/engine.js"></script>
 <script src="/replay.js"></script>
+<script src="/tutorial.js"></script>
 <script src="/bgfx.js"></script>
 <script src="/music.js"></script>
 <script src="/client.js"></script>
