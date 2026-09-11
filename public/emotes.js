@@ -1,172 +1,145 @@
-
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.RSEmotes = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
 
-  // ===== LOS EMOTES: un PEON vacilandote ================================
-  // Seis burlas, cero chat libre. El personaje es la propia pieza en plano,
-  // por capas, con la silueta maciza del icono: cabeza, collar, cuerpo y dos
-  // peanas. Los dos puntos de brillo que llevan estos iconos en la cabeza
-  // son los OJOS, y de ahi sale todo lo demas.
-  //
+  // ===== LOS EMOTES: seis burlas y las manda CHESSY =====================
+  // Chessy es el peon de pixeles del tutorial (coach.js). Aqui sale a
+  // vacilar: mismo bicho, misma silueta, los mismos cuatro colores planos.
   // Que sea un peon no es casualidad: es la pieza mas tonta del tablero, asi
   // que la burla escuece el doble. El remate del set es que se corona.
   //
-  // El DISCO de detras no es decoracion: la pieza es azul marino y el panel
-  // del juego tambien es oscuro, sin disco no se veria nada. Y ya que esta,
-  // se tiñe del color de quien manda el emote (--e-disc), asi sabes quien
-  // vacila sin leer una palabra.
+  // Por que pixeles y no dibujo vectorial: la burbuja mide 44 px. A ese
+  // tamano una curva fina es suciedad, y un bloque de 3 px se ve. Todo el
+  // diseno sale de ahi: ojos de 2x2, brazos de 2 de grosor y los gestos
+  // SIEMPRE fuera de la silueta del cuerpo, que si no se funden con el.
+  //
+  // Ya no hay disco detras: la burbuja del juego (.emote-bubble) es una
+  // ficha oscura con el borde del color de quien habla, asi que Chessy va
+  // dentro sin fondo y ocupa el cuadro entero.
+  //
+  // COMO SE EDITA
+  // -------------
+  // El cuerpo es un dibujo ASCII, una letra por pixel:
+  //     '.' nada   '#' cuerpo   '=' sombra (la columna de la derecha)
+  // Los gestos son rectangulos px(x, y, ancho, alto) en esas mismas
+  // coordenadas, agrupados por clase. La clase es la que engancha la
+  // animacion en style.css (busca «animacion de los emotes»).
 
-  // ---- el disco y el suelo ---------------------------------------------
-  // El suelo es el casquete inferior del disco: el arco va de (3.22,46) a
-  // (60.78,46), que son los cortes de y=46 con el circulo r=32
-  const DISC   = '<circle cx="32" cy="32" r="32" fill="var(--e-disc)"/>';
-  const GROUND = '<path d="M3.22 46A32 32 0 0 0 60.78 46z" fill="var(--e-ground)"/>';
-
-  // ---- el cuerpo del peon, de abajo arriba ------------------------------
-  const BODY =
-    '<rect x="20.5" y="26" width="23" height="5.5" rx="2.7" fill="var(--e-piece2)"/>' +
-    '<path d="M26 31.5q.4 8.5-3.4 12.5h18.8Q37.6 40 38 31.5z" fill="var(--e-piece)"/>' +
-    '<rect x="20" y="43.5" width="24" height="6.5" rx="3.2" fill="var(--e-piece2)"/>' +
-    '<rect x="16" y="49.5" width="32" height="7.5" rx="3.7" fill="var(--e-piece)"/>';
-  const SKULL = '<circle cx="32" cy="17" r="9.5" fill="var(--e-piece)"/>';
-
-  // ---- rasgos ------------------------------------------------------------
-  // Solo ojos y boca, y GORDOS: la burbuja mide 44 px en pantalla, ahi una
-  // linea fina no es un gesto, es suciedad
-  const eyes = {
-    open:   '<circle cx="28.2" cy="15.8" r="2.2" fill="var(--e-face)"/>' +
-            '<circle cx="35.8" cy="15.8" r="2.2" fill="var(--e-face)"/>',
-    // los arcos hacia arriba: los ojos de quien se esta riendo de ti
-    happy:  '<path d="M26.2 16.3q2-2.6 4 0" fill="none" stroke="var(--e-face)" stroke-width="2" stroke-linecap="round"/>' +
-            '<path d="M33.8 16.3q2-2.6 4 0" fill="none" stroke="var(--e-face)" stroke-width="2" stroke-linecap="round"/>',
-    shut:   '<path d="M26.2 15.6q2 2.4 4 0" fill="none" stroke="var(--e-face)" stroke-width="2" stroke-linecap="round"/>' +
-            '<path d="M33.8 15.6q2 2.4 4 0" fill="none" stroke="var(--e-face)" stroke-width="2" stroke-linecap="round"/>',
-    // dos rayas GORDAS: la mirada de medio lado del que no se cree lo que ha
-    // visto. Finas no se leian: a este tamaño una raya de 2 px es ruido
-    half:   '<rect x="25.6" y="14.6" width="5.2" height="2.6" rx="1.3" fill="var(--e-face)"/>' +
-            '<rect x="33.2" y="14.6" width="5.2" height="2.6" rx="1.3" fill="var(--e-face)"/>',
-    wink:   '<path d="M26.2 16.3q2-2.6 4 0" fill="none" stroke="var(--e-face)" stroke-width="2" stroke-linecap="round"/>' +
-            '<circle cx="35.8" cy="15.8" r="2.2" fill="var(--e-face)"/>',
-  };
-  const mouth = {
-    laugh: '<path class="ef-mouth" d="M27 20.4q5 6 10 0q-5 2.2-10 0z" fill="var(--e-face)"/>',
-    wide:  '<path d="M27.5 20.8q4.5 4 9 0q-4.5 1.6-9 0z" fill="var(--e-face)"/>',
-    // la boca del bostezo sale PEQUEÑA y la abre la animación. Dibujada ya
-    // abierta ocupaba media cabeza y no parecia un bostezo, parecia un huevo
-    yawn:  '<ellipse class="ef-mouth" cx="32" cy="21" rx="2.5" ry="3.1" fill="var(--e-face)"/>',
-    // el berrinche: boca ancha con el borde de arriba caido
-    wail:  '<path class="ef-mouth" d="M28 20.2q4 2.2 8 0q0 5.4-4 5.4t-4-5.4z" fill="var(--e-face)"/>',
-    // la sonrisilla de lado: sube por un extremo. Toda la chuleria en una
-    // curva, pero GRUESA: en creciente fino se perdia contra la cabeza
-    smirk: '<path d="M27 21.2q5.4 3.4 10-2.6q-1.4 6.4-10 2.6z" fill="var(--e-face)"/>',
-  };
-
-  // ---- bracitos ----------------------------------------------------------
-  // Capsula gruesa + mano redonda, un tono mas claro para que se despeguen
-  // del cuerpo. Cada uno en su grupo: son los que se mueven
-  const ARM_POINT =
-    '<g class="ef-arm">' +
-    '<path d="M37.5 34.5L47 30.5" fill="none" stroke="var(--e-piece2)" stroke-width="5" stroke-linecap="round"/>' +
-    '<circle cx="49.5" cy="29.5" r="3.7" fill="var(--e-hand)"/>' +
-    '<rect x="52" y="27.8" width="7" height="3.4" rx="1.7" fill="var(--e-hand)"/></g>';
-
-  // el aplauso lento: las manos empiezan SEPARADAS y se juntan despacio.
-  // La lentitud es el chiste, por eso las rayitas del golpe solo se encienden
-  // cuando chocan
-  const ARMS_CLAP =
-    '<g class="ef-clapL">' +
-    '<path d="M26.5 34.5L24 39.5" fill="none" stroke="var(--e-piece2)" stroke-width="5" stroke-linecap="round"/>' +
-    '<circle cx="24.5" cy="41" r="4" fill="var(--e-hand)"/></g>' +
-    '<g class="ef-clapR">' +
-    '<path d="M37.5 34.5L40 39.5" fill="none" stroke="var(--e-piece2)" stroke-width="5" stroke-linecap="round"/>' +
-    '<circle cx="39.5" cy="41" r="4" fill="var(--e-hand)"/></g>' +
-    '<path class="ef-tick" d="M18 38.5h2.6M18 44h2.6M43.4 38.5H46M43.4 44H46" fill="none" ' +
-    'stroke="var(--e-face)" stroke-width="1.5" stroke-linecap="round"/>';
-
-  const ARM_WAVE =
-    '<g class="ef-wave">' +
-    '<path d="M37.5 33.5L46 27" fill="none" stroke="var(--e-piece2)" stroke-width="5" stroke-linecap="round"/>' +
-    '<circle cx="48.5" cy="25" r="4.2" fill="var(--e-hand)"/>' +
-    '<rect x="50.5" y="20.2" width="3" height="4.6" rx="1.5" fill="var(--e-hand)"/>' +
-    '<rect x="53.6" y="21.4" width="3" height="4.4" rx="1.5" fill="var(--e-hand)"/>' +
-    '<rect x="56.4" y="23.4" width="3" height="4" rx="1.5" fill="var(--e-hand)"/></g>';
-
-  // los dos puños restregandose los ojos: el lloro de mentira
-  const FISTS =
-    '<path d="M23 34.5L25 27M41 34.5L39 27" fill="none" stroke="var(--e-piece2)" stroke-width="5" stroke-linecap="round"/>' +
-    '<circle class="ef-fistL" cx="24.5" cy="17.5" r="4.4" fill="var(--e-hand)"/>' +
-    '<circle class="ef-fistR" cx="39.5" cy="17.5" r="4.4" fill="var(--e-hand)"/>';
-
-  // los chorros van pegados a la cara y se mueven con ella; las gotas que
-  // CAEN van sueltas delante, con su propio bucle
-  const TEAR_STREAMS =
-    '<path d="M25.5 22q-2.6 7-2 11.6.3 2.3 2 2.3t2-2.3q.6-4.6-2-11.6z" fill="var(--e-tear)"/>' +
-    '<path d="M38.5 22q-2.6 7-2 11.6.3 2.3 2 2.3t2-2.3q.6-4.6-2-11.6z" fill="var(--e-tear)"/>';
-  const TEAR_DROPS =
-    '<path class="ef-drop ef-drop1" d="M25.5 37q2.6 3.4 0 5.2-2.6-1.8 0-5.2z" fill="var(--e-tear)"/>' +
-    '<path class="ef-drop ef-drop2" d="M38.5 37q2.6 3.4 0 5.2-2.6-1.8 0-5.2z" fill="var(--e-tear)"/>';
-
-  // LA CORONA: el remate del set. Un peon poniendose la corona del rey es
-  // «te ha ganado la pieza mas tonta del tablero», que en ajedrez duele mas
-  // que cualquier carita
-  const CROWN =
-    '<g class="ef-crown">' +
-    '<path d="M22.5 8.5l2 5.5h15l2-5.5-4.5 3-4.5-5-4.5 5z" fill="var(--e-gold)"/>' +
-    '<rect x="23.5" y="13.5" width="17" height="4" rx="1.5" fill="var(--e-gold2)"/></g>' +
-    '<path class="ef-spark ef-spark1" d="M13 12v3M11.5 13.5h3" fill="none" stroke="var(--e-gold)" ' +
-    'stroke-width="1.6" stroke-linecap="round"/>' +
-    '<path class="ef-spark ef-spark2" d="M51 10v3M49.5 11.5h3" fill="none" stroke="var(--e-gold)" ' +
-    'stroke-width="1.6" stroke-linecap="round"/>';
-
-  const ZZZ =
-    '<text class="ef-z ef-z1" x="45.5" y="17" font-family="system-ui,sans-serif" font-weight="800" ' +
-    'font-size="10" fill="var(--e-face)">z</text>' +
-    '<text class="ef-z ef-z2" x="52" y="10.5" font-family="system-ui,sans-serif" font-weight="800" ' +
-    'font-size="7.5" fill="var(--e-face)">z</text>';
+  // 14x14. La cabeza se come un tercio del cuadro a proposito: es donde
+  // esta la expresion. El cuerpo se corta por abajo, no hace falta entero
+  const BODY = [
+    '..............',   // 0  libre: aqui entra la corona
+    '.....###=.....',   // 1  coronilla
+    '....#####=....',   // 2  cabeza
+    '...#######=...',   // 3  ojos (bloques de 2x2)
+    '...#######=...',   // 4
+    '...#######=...',   // 5
+    '....#####=....',   // 6  boca
+    '.....###=.....',   // 7  cuello
+    '...#######=...',   // 8  collarin
+    '.....###=.....',   // 9
+    '....#####=....',   // 10
+    '...#######=...',   // 11
+    '..#########=..',   // 12
+    '.###########=.',   // 13 peana
+  ];
+  const N = 14;
+  const px = (x, y, w, h) => [x, y, w || 1, h || 1];
 
   // ---- la escalera de emotes -------------------------------------------
   // El ORDEN es el indice que viaja por la red y el servidor solo valida el
   // rango (EMOTE_COUNT en lobby.js). No lo cambies a la ligera: cliente y
   // servidor tienen que subir juntos o una partida en vuelo veria otra cara.
-  // face  = rasgos que van SOBRE la cabeza (se mueven con ella)
-  // front = lo que va suelto delante: brazos, corona, gotas que caen
-  // back  = lo que va detras de la cabeza pero delante del cuerpo
+  // g: [clase, color, rectangulos]
   const EMOTES = [
-    // te señala y se descojona. El clasico, y el que mas tiltea
-    { id: 'senala',  key: 'emote.senala',
-      face: eyes.happy + mouth.laugh, front: ARM_POINT },
-    // aplauso lento: «que jugada, campeon». Sarcasmo puro
+    // te senala y se descojona. El brazo se SALE del cuadro: a 44 px un
+    // bracito pegado al cuerpo no se lee, una barra que sale si
+    { id: 'senala', key: 'emote.senala',
+      g: [
+        ['ef-eyes',  'ink',   [px(4, 3, 2, 2), px(7, 3, 2, 2)]],
+        ['ef-mouth', 'ink',   [px(5, 6, 3, 2)]],
+        ['ef-arm',   'body',  [px(10, 6, 3, 2)]],
+        ['ef-hand',  'shade', [px(13, 6, 1, 2)]],
+      ] },
+    // aplauso lento: «que jugada, campeon». La lentitud es el chiste, por
+    // eso las rayitas del golpe solo se encienden cuando las manos chocan
     { id: 'aplauso', key: 'emote.aplauso',
-      face: eyes.half + mouth.smirk, front: ARMS_CLAP },
+      g: [
+        ['ef-eyes',  'ink',  [px(4, 4, 2), px(7, 4, 2)]],
+        ['ef-mouth', 'ink',  [px(5, 6, 2), px(7, 7)]],
+        ['ef-clapL', 'body', [px(0, 8, 3, 3)]],
+        ['ef-clapR', 'body', [px(11, 8, 3, 3)]],
+        ['ef-tick',  'acc',  [px(3, 7), px(3, 11), px(10, 7), px(10, 11)]],
+      ] },
     // bostezo: no se rie de tu jugada, se rie de lo que tardas
     { id: 'bostezo', key: 'emote.bostezo',
-      face: eyes.shut + mouth.yawn, front: ZZZ },
-    // llora mas: berrinche falso a dos puños
-    { id: 'llora',   key: 'emote.llora',
-      face: eyes.shut + mouth.wail, back: TEAR_STREAMS, front: FISTS + TEAR_DROPS },
-    // adios: «venga, hasta luego». Te despide antes de que acabe la partida
-    { id: 'adios',   key: 'emote.adios',
-      face: eyes.wink + mouth.wide, front: ARM_WAVE },
-    // coronacion: te ha ganado un peon
-    { id: 'corona',  key: 'emote.corona',
-      face: eyes.open + mouth.smirk, front: CROWN },
+      g: [
+        ['ef-eyes',  'ink', [px(3, 4, 3), px(7, 4, 3)]],
+        ['ef-mouth', 'ink', [px(5, 6, 3, 3)]],
+        ['ef-z',     'acc', [px(9, 0, 5), px(12, 1), px(11, 2), px(9, 3, 5)]],
+      ] },
+    // llora mas: berrinche falso, con chorros por los carrillos
+    { id: 'llora', key: 'emote.llora',
+      g: [
+        ['ef-eyes',  'ink',  [px(3, 4, 3), px(7, 4, 3)]],
+        ['ef-mouth', 'ink',  [px(5, 6, 3, 2)]],
+        ['ef-tear',  'tear', [px(3, 5, 2, 4), px(8, 5, 2, 4)]],
+        ['ef-drop',  'tear', [px(2, 10, 2, 2), px(9, 11, 2, 2)]],
+      ] },
+    // adios: te despide antes de que acabe la partida. La mano va POR ENCIMA
+    // de la cabeza, que es lo unico que se lee de lejos
+    { id: 'adios', key: 'emote.adios',
+      g: [
+        ['ef-eyes',  'ink',  [px(4, 3, 2, 2), px(7, 4, 2)]],
+        ['ef-mouth', 'ink',  [px(5, 6, 3)]],
+        ['ef-arm',   'body', [px(10, 4, 2, 4)]],
+        ['ef-hand',  'body', [px(10, 1, 3, 3)]],
+      ] },
+    // coronacion: te ha ganado un peon, y encima se corona
+    { id: 'corona', key: 'emote.corona',
+      g: [
+        ['ef-eyes',  'ink',  [px(4, 3, 2, 2), px(7, 3, 2, 2)]],
+        ['ef-mouth', 'ink',  [px(5, 6, 2), px(7, 7)]],
+        ['ef-crown', 'gold', [px(3, 1, 8), px(3, 0, 2), px(6, 0, 2), px(9, 0, 2)]],
+        ['ef-spark', 'acc',  [px(1, 2), px(12, 2), px(0, 6)]],
+      ] },
   ];
+
+  const PAINT = {
+    body:  'var(--e-body)',
+    shade: 'var(--e-shade)',
+    ink:   'var(--e-ink)',
+    gold:  'var(--e-gold)',
+    tear:  'var(--e-tear)',
+    acc:   'var(--e-acc)',
+  };
+  const rect = (q, f) => `<rect x="${q[0]}" y="${q[1]}" width="${q[2]}" height="${q[3]}" fill="${f}"/>`;
+
+  // el cuerpo se pinta por TRAMOS seguidos de cada fila, no pixel a pixel
+  let BODY_SVG = '';
+  for (let y = 0; y < N; y++) {
+    const row = BODY[y]; let x = 0;
+    while (x < N) {
+      const ch = row[x];
+      if (ch !== '#' && ch !== '=') { x++; continue; }
+      let n = 1; while (row[x + n] === ch) n++;
+      BODY_SVG += rect([x, y, n, 1], ch === '#' ? PAINT.body : PAINT.shade);
+      x += n;
+    }
+  }
 
   // devuelve el SVG completo de un emote, listo para meter en el DOM.
   // La clase e-<id> del <svg> es la que engancha su animacion en style.css
   function svg(i) {
     const e = EMOTES[i];
     if (!e) return '';
-    return '<svg class="emote-face e-' + e.id + '" viewBox="0 0 64 64" aria-hidden="true">' +
-             DISC + GROUND +
-             '<g class="ef-body">' + BODY + '</g>' +
-             (e.back || '') +
-             '<g class="ef-head">' + SKULL + e.face + '</g>' +
-             (e.front || '') +
+    return `<svg class="emote-face e-${e.id}" viewBox="0 0 ${N} ${N}" shape-rendering="crispEdges" aria-hidden="true">` +
+             `<g class="ef-body">${BODY_SVG}</g>` +
+             e.g.map(([cls, col, list]) =>
+               `<g class="${cls}">` + list.map((q) => rect(q, PAINT[col])).join('') + '</g>').join('') +
            '</svg>';
   }
 
-  return { EMOTES, svg, count: EMOTES.length };
+  return { EMOTES, svg, count: EMOTES.length, BODY };
 });

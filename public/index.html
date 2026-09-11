@@ -221,12 +221,22 @@
           <span id="tutGraceTxt"></span>
           <div class="tut-gbar"><div id="tutGraceBar"></div></div>
         </div>
+        <div class="tut-score" id="tutScore" style="display:none">
+          <span class="tut-clock" id="tutClock">0s</span>
+          <span class="tut-ptsk" data-i18n="card.points">Puntos</span>
+          <span class="tut-pts" id="tutPts">0 - 0</span>
+        </div>
         <div class="tut-hud">
           <div class="tut-erow"><span class="k" data-i18n="card.energy">Energia</span><span class="tut-ebar"><i class="w" id="tutFillW"></i></span><span class="v" id="tutNumW">0</span></div>
           <div class="tut-erow" id="tutFoeRow" style="display:none"><span class="k" data-i18n="tag.rival">Rival</span><span class="tut-ebar"><i class="b" id="tutFillB"></i></span><span class="v" id="tutNumB">0</span></div>
         </div>
         <div class="tut-costs" id="tutCosts"></div>
-        <div class="tut-say" id="tutSay"></div>
+        <!-- el que da los consejos: el peon de coach.js escribe letra a letra
+             y cambia de cara. Tocarlo acaba la frase de golpe -->
+        <div class="tut-coach" id="tutCoach">
+          <div class="tut-face" id="tutFace"></div>
+          <div class="tut-say" id="tutSay"></div>
+        </div>
         <div class="tut-btns">
           <button class="btn" id="tutRetry" style="display:none" data-i18n="learn.retry">Reintentar</button>
           <button class="btn" id="tutNext" data-i18n="learn.skip">Saltar</button>
@@ -328,6 +338,7 @@
 <script src="/i18n.js"></script>
 <script src="/engine.js"></script>
 <script src="/replay.js"></script>
+<script src="/coach.js"></script>
 <script src="/tutorial.js"></script>
 <script src="/bgfx.js"></script>
 <script src="/music.js"></script>

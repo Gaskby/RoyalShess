@@ -395,9 +395,12 @@ function updateHUD(){
     (state.phase==='countdown' || state.phase==='live' || state.phase==='over');
   $('emoteDock').classList.toggle('show', canEmote);
   if (!canEmote) closeEmoteTray();
-  // el disco de los emotes de la bandeja lleva TU color: los ves como los va
-  // a ver el rival cuando se los mandes
-  $('emoteDock').style.setProperty('--e-disc', you === 'w' ? 'var(--white-acc)' : 'var(--black-acc)');
+  // en la bandeja Chessy sale con TU color: lo ves tal y como lo va a ver el
+  // rival cuando se lo mandes
+  const dock = $('emoteDock'), mine = you === 'w';
+  dock.style.setProperty('--e-body',  mine ? 'var(--piece-w)' : 'var(--piece-b)');
+  dock.style.setProperty('--e-shade', mine ? 'var(--cz-shade)' : '#c4708f');
+  dock.style.setProperty('--e-acc',   mine ? 'var(--white-acc)' : 'var(--black-acc)');
 
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -1175,7 +1178,7 @@ function buildHelp(){
   }
 }
 // «Cómo jugar» abre el tutorial jugable; la lista de reglas cuelga de él
-btnHelp.addEventListener('click', () => { RSTutorial.open(); showScreen('tut'); });
+btnHelp.addEventListener('click', () => { showScreen('tut'); RSTutorial.open(); });
 btnHelpBack.addEventListener('click', () => showScreen('tut'));
 
 // Demos del tutorial: mini-tablero que RECREA cada regla.

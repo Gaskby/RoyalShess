@@ -14,7 +14,7 @@
    Al desplegar cambios conviene subir VERSION: borra las caches viejas de
    golpe. Ya no es lo unico que nos salva (el codigo va a red primero, ver
    mas abajo), pero deja el disco limpio entre versiones. */
-const VERSION = 'v3';
+const VERSION = 'v5';
 const SHELL = `royalshess-shell-${VERSION}`;
 const RUNTIME = `royalshess-runtime-${VERSION}`;
 const FONTS = `royalshess-fonts-${VERSION}`;
@@ -36,6 +36,7 @@ const SHELL_URLS = [
   '/engine.js',
   '/replay.js',
   '/tutorial.js',
+  '/coach.js',
   '/bgfx.js',
   '/music.js',
   '/client.js',
