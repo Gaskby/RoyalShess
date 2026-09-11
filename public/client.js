@@ -395,9 +395,12 @@ function updateHUD(){
     (state.phase==='countdown' || state.phase==='live' || state.phase==='over');
   $('emoteDock').classList.toggle('show', canEmote);
   if (!canEmote) closeEmoteTray();
-  // el disco de los emotes de la bandeja lleva TU color: los ves como los va
-  // a ver el rival cuando se los mandes
-  $('emoteDock').style.setProperty('--e-disc', you === 'w' ? 'var(--white-acc)' : 'var(--black-acc)');
+  // en la bandeja Chessy sale con TU color: lo ves tal y como lo va a ver el
+  // rival cuando se lo mandes
+  const dock = $('emoteDock'), mine = you === 'w';
+  dock.style.setProperty('--e-body',  mine ? 'var(--piece-w)' : 'var(--piece-b)');
+  dock.style.setProperty('--e-shade', mine ? 'var(--cz-shade)' : '#c4708f');
+  dock.style.setProperty('--e-acc',   mine ? 'var(--white-acc)' : 'var(--black-acc)');
 
   const s = Math.max(0, Math.ceil(state.timeLeft/1000));
   clockEl.textContent = `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
@@ -499,8 +502,9 @@ function onPointerCancel(){
 }
 
 // Pantallas del overlay
-function showScreen(name){   // menu | settings | friend | waiting | search | help | board | ladder | ach | replays | replay | result | null en juego
-  if (name !== 'help') stopDemo();   // al salir del tutorial se detiene la demo
+function showScreen(name){   // menu | settings | friend | waiting | search | tut | help | board | ladder | ach | replays | replay | result | null en juego
+  if (name !== 'help') stopDemo();   // al salir de las reglas se detiene la demo
+  if (name !== 'tut') RSTutorial.stop();   // el tutorial jugable no sigue corriendo de fondo
   if (name !== 'replay') RSReplay.stop();   // al salir del reproductor se detiene la cinta
   if (name !== 'menu') endTour();    // el tutorial de bienvenida vive solo en el menú
   curScreen = name;
@@ -512,6 +516,7 @@ function showScreen(name){   // menu | settings | friend | waiting | search | he
   $('screenFriend').style.display  = name==='friend'  ? '' : 'none';
   $('screenWaiting').style.display = name==='waiting' ? '' : 'none';
   $('screenSearch').style.display  = name==='search'  ? '' : 'none';
+  $('screenTut').style.display     = name==='tut'     ? '' : 'none';
   $('screenHelp').style.display    = name==='help'    ? '' : 'none';
   $('screenLadder').style.display  = name==='ladder'  ? '' : 'none';
   $('screenAch').style.display     = name==='ach'     ? '' : 'none';
@@ -519,7 +524,7 @@ function showScreen(name){   // menu | settings | friend | waiting | search | he
   $('screenReplays').style.display = name==='replays' ? '' : 'none';
   $('screenReplay').style.display  = name==='replay'  ? '' : 'none';
   $('screenResult').style.display  = name==='result'  ? '' : 'none';
-  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', help:'sub.help', board:'sub.board', ladder:'sub.ladder', ach:'sub.ach', settings:'sub.settings', replays:'sub.replays', replay:'sub.replay' };
+  const subs = { search:'sub.search', friend:'sub.friend', waiting:'sub.friend', tut:'sub.learn', help:'sub.help', board:'sub.board', ladder:'sub.ladder', ach:'sub.ach', settings:'sub.settings', replays:'sub.replays', replay:'sub.replay' };
   $('overlaySub').textContent = tr(subs[name] || 'sub.default');
   if (name==='friend'){ codeErr.textContent=''; }
   // el botón volver a la partida solo aparece si hay una partida en curso
@@ -1038,7 +1043,8 @@ document.addEventListener('keydown', (e) => {
   if (emoteTrayOpen()){ closeEmoteTray(); return; }   // primero se guardan los emotes
   if (tourEls){ endTour(); return; }   // el tutorial de bienvenida también se cierra con Escape
   if (curScreen === 'replays') showScreen('settings');   // cuelga de ajustes
-  else if (curScreen === 'friend' || curScreen === 'help' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
+  else if (curScreen === 'help') showScreen('tut');   // las reglas cuelgan del tutorial
+  else if (curScreen === 'friend' || curScreen === 'tut' || curScreen === 'ladder' || curScreen === 'board' || curScreen === 'settings') showScreen('menu');
   else if (curScreen === 'replay') RSReplay.back();
   else if (curScreen === 'result'){ currentLadder = null; send({t:'leave'}); }
   else if (curScreen === 'menu' && inGame()) showScreen(null);   // en partida, cierra el menú
@@ -1087,6 +1093,10 @@ RSReplay.init({
   isMatchOver: () => !!(state && state.phase === 'over'),
 });
 
+// El tutorial jugable (tutorial.js) es otra isla con el mismo trato: se le
+// pasa lo justo y no toca ninguna global de aquí
+RSTutorial.init({ showScreen, sfx, ensureAudio, toast: showToast, glyph: GLYPH });
+
 $('soundBtn').addEventListener('click', function(){ sfxOn=!sfxOn; setIcon(this, sfxOn?'sound':'mute'); ensureAudio(); });
 function musicBtnText(){
   setIcon($('musicBtn'), musicOn ? 'music' : 'mute');
@@ -1123,6 +1133,7 @@ function applyLang(){
   iconBtnText(menuBtn, tr('top.menu'));
   iconBtnText($('btnResume'), tr('menu.resume'));
   RSReplay.retitle();   // los textos de ayuda de la botonera del reproductor
+  RSTutorial.retitle();   // el tutorial repinta su índice o su lección en el idioma nuevo
   statusTxt.textContent = tr(lastStatusKey);
   enableMenu(menuEnabled);
   buildLegend();
@@ -1166,8 +1177,9 @@ function buildHelp(){
     list.appendChild(item);
   }
 }
-btnHelp.addEventListener('click', () => showScreen('help'));
-btnHelpBack.addEventListener('click', () => showScreen('menu'));
+// «Cómo jugar» abre el tutorial jugable; la lista de reglas cuelga de él
+btnHelp.addEventListener('click', () => { showScreen('tut'); RSTutorial.open(); });
+btnHelpBack.addEventListener('click', () => showScreen('tut'));
 
 // Demos del tutorial: mini-tablero que RECREA cada regla.
 // Cada demo es solo piezas + coordenadas; el reproductor anima

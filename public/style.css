@@ -916,47 +916,31 @@ body.theme-chesscom .cfg-grid{ background:var(--panel-2); }
 .code-value{ font-family:'Chakra Petch'; font-weight:700; font-size:40px; letter-spacing:.18em; color:var(--white-acc);
   text-shadow:0 0 22px rgba(51,230,255,.45); }
 
-/* === emotes rápidos: seis burlas, y las manda un PEÓN ===
+/* === emotes rápidos: seis burlas, y las manda CHESSY ===
    Solo en partidas online contra personas. Sin chat libre: 6 gestos fijos.
    Los dibujos viven en emotes.js; aquí solo se les da color y movimiento.
-   --e-disc es el disco de detrás: sin él la pieza (azul marino) sería un
-   borrón sobre el panel del juego, que también es oscuro */
-:root{
-  /* la mano va MUY por encima del cuerpo en claridad a propósito: con el
-     tono de antes los bracitos se fundían con la pieza y el gesto se perdía */
-  --e-piece:#2e2f4b; --e-piece2:#474a6d; --e-hand:#6a70a4; --e-face:#edf0ff;
-  --e-ground:#f5c25b; --e-gold:#ffc94d; --e-gold2:#e0a32e; --e-tear:#5bc8ff;
-  --e-disc:#fa4b7d;
+   Chessy es el mismo peón de píxeles que enseña en el tutorial, así que su
+   paleta cuelga de la de allí (--cz-*, más abajo) y con ella cambia de tema.
+   Ya no hay disco detrás: la burbuja es una ficha oscura con el borde del
+   color de quien habla, y Chessy sale vestido de SU bando: sabes quién
+   vacila sin leer una palabra */
+body{
+  --e-body:var(--cz-body); --e-shade:var(--cz-shade); --e-ink:var(--cz-ink);
+  --e-acc:var(--white-acc); --e-gold:#ffc94d; --e-tear:#5bc8ff;
 }
-/* el disco se tiñe de quien manda el emote: sabes quién vacila sin leer nada */
-.emote-anchor.w .emote-face{ --e-disc:var(--white-acc); }
-.emote-anchor.b .emote-face{ --e-disc:var(--black-acc); }
-/* el respaldo sobre la tarjeta se tiñe igual, según de quién sea la tarjeta */
-#cardW .emote-burst .emote-face{ --e-disc:var(--white-acc); }
-#cardB .emote-burst .emote-face{ --e-disc:var(--black-acc); }
-/* clásico: la pieza tira a marrón madera y el suelo a crema, como el tablero */
-body.theme-chesscom{
-  --e-piece:#3a3227; --e-piece2:#574b3a; --e-hand:#7a6a51; --e-face:#f6f1e6;
-  --e-ground:#e8c98a; --e-gold:#d9a441; --e-gold2:#b8862c;
+/* el que manda el emote lleva sus colores: los mismos de sus piezas */
+.emote-anchor.w .emote-face, #cardW .emote-burst .emote-face{
+  --e-body:var(--piece-w); --e-acc:var(--white-acc);
 }
-/* CRT: el monitor de fósforo verde no admite color, así que la pieza se
-   monocromatiza y el oro y las lágrimas quedan como brillos */
-/* En CRT el disco NO se oscurece: los acentos del tema ya son dos verdes
-   (#7dffb0 y #2fe07a) que funcionan de fondo, y la pieza casi negra se lee
-   encima de los dos. Con el disco oscuro que había antes, pieza y fondo eran
-   el mismo verde y el peón desaparecía. El suelo baja a un verde medio para
-   no fundirse con el disco claro de las blancas */
-body.theme-crt{
-  --e-piece:#0a3d21; --e-piece2:#125c31; --e-hand:#1e8a4e; --e-face:#c8ffdc;
-  --e-ground:#1fa85c; --e-gold:#c8ff5c; --e-gold2:#7dffb0; --e-tear:#c9ffe2;
-  --e-disc:#2fe07a;
+.emote-anchor.b .emote-face, #cardB .emote-burst .emote-face{
+  --e-body:var(--piece-b); --e-shade:#c4708f; --e-acc:var(--black-acc);
 }
 /* La bandeja está GUARDADA: solo se ve la tecla, y las caras se despliegan
    sobre ella al pulsarla. Antes eran seis botones fijos comiendo sitio y
    pidiendo spam; ahora hay que abrir, elegir y se cierra sola */
 .emote-dock{ display:none; position:relative; justify-content:center; }
 .emote-dock.show{ display:flex; }
-.emote-face{ display:block; width:100%; height:100%; }
+.emote-face{ display:block; width:100%; height:100%; image-rendering:pixelated; }
 /* la tecla: redonda, discreta, y se ilumina cuando la bandeja está abierta */
 .emote-key{
   display:flex; align-items:center; justify-content:center;
@@ -1051,12 +1035,17 @@ body.theme-crt{
 }
 
 /* --- animación de los emotes -------------------------------------------
-   Las caras están QUIETAS por defecto (seis caras bailando bajo el tablero
+   Las caras están QUIETAS por defecto (seis Chessys bailando bajo el tablero
    toda la partida es ruido) y se mueven en dos sitios: cuando llega un
    emote (el estallido) y al pasar el ratón por un botón de la fila.
    El truco: las animaciones están siempre puestas pero EN PAUSA, y la
    variable --ef-run las arranca. Por eso toda animación empieza y acaba en
-   la posición neutra: el fotograma 0 es la cara parada que ves en el botón */
+   la posición neutra: el fotograma 0 es la cara parada que ves en el botón.
+
+   Y todo va a SALTOS (steps): Chessy es un sprite de píxeles, y moverlo con
+   interpolación suave lo convierte en un muñeco de goma. Las distancias van
+   en píxeles del DIBUJO (el lienzo mide 14), así que 1px = una casilla del
+   sprite: por eso los números son tan pequeños */
 .emote-face{ --ef-run:paused; }
 .emote-bubble .emote-face,      /* el que sale del rey: es EL sitio donde se ve */
 .emote-burst .emote-face,
@@ -1064,126 +1053,60 @@ body.theme-crt{
 .emote-tray button:active .emote-face,
 .emote-tray button:focus-visible .emote-face{ --ef-run:running; }
 
-/* señalar: el dedo hace tic-tic mientras la cabeza se parte de risa */
-.e-senala .ef-arm    { animation:efPoke .52s ease-in-out infinite; }
-.e-senala .ef-head   { animation:efLaugh .52s ease-in-out infinite; }
-.e-senala .ef-mouth  { animation:efLaughMouth .52s ease-in-out infinite; }
-/* aplauso: LENTO a propósito. La lentitud es el chiste, así que el ciclo dura
-   1,4s y las rayitas del golpe solo se encienden en el instante del choque */
-.e-aplauso .ef-clapL { animation:efClapL 1.4s cubic-bezier(.4,0,.5,1) infinite; }
-.e-aplauso .ef-clapR { animation:efClapR 1.4s cubic-bezier(.4,0,.5,1) infinite; }
-.e-aplauso .ef-tick  { animation:efTick  1.4s linear infinite; }
-.e-aplauso .ef-head  { animation:efNod   1.4s ease-in-out infinite; }
-/* bostezo: la boca se abre entera y la cabeza se va hacia atrás con ella */
-.e-bostezo .ef-mouth { animation:efYawn 2.1s ease-in-out infinite; }
-.e-bostezo .ef-head  { animation:efYawnHead 2.1s ease-in-out infinite; }
-.e-bostezo .ef-z1    { animation:efZ 2.1s ease-out infinite; }
-.e-bostezo .ef-z2    { animation:efZ 2.1s .5s ease-out infinite; }
-/* llora más: los puños se restriegan los ojos y las gotas caen sin parar */
-.e-llora .ef-head    { animation:efSob .75s ease-in-out infinite; }
-.e-llora .ef-fistL   { animation:efRubL .55s ease-in-out infinite; }
-.e-llora .ef-fistR   { animation:efRubR .55s ease-in-out infinite; }
-.e-llora .ef-drop1   { animation:efFall .95s linear infinite; }
-.e-llora .ef-drop2   { animation:efFall .95s .42s linear infinite; }
-/* adiós: la mano se despide y él ladea la cabeza, encantado de conocerse */
-.e-adios .ef-wave    { animation:efBye .5s ease-in-out infinite; }
-.e-adios .ef-head    { animation:efTilt 1.5s ease-in-out infinite; }
-/* coronación: la corona cae de golpe, asienta con un rebote y suelta destellos */
-/* los tres van al mismo compás de 2,4s: la corona se cala al 50 % del ciclo
-   y el destello y el respingo de la cabeza caen justo ahí. El retardo de los
-   destellos solo cuenta en la primera vuelta, pero como comparten periodo el
-   desfase se queda fijo y no se descuadran nunca */
-.e-corona .ef-crown  { animation:efCrown 2.4s cubic-bezier(.3,1.5,.5,1) infinite; }
-.e-corona .ef-spark1 { animation:efSpark 2.4s .9s ease-out infinite; }
-.e-corona .ef-spark2 { animation:efSpark 2.4s 1.05s ease-out infinite; }
-.e-corona .ef-head   { animation:efPuff 2.4s ease-out infinite; }
+/* señalar: se parte de risa mientras el brazo hace tic-tic */
+.e-senala .ef-body, .e-senala .ef-eyes, .e-senala .ef-mouth{ animation:efLaugh .3s steps(1,end) infinite; }
+.e-senala .ef-arm, .e-senala .ef-hand{ animation:efPoke .6s steps(1,end) infinite; }
+@keyframes efLaugh{ 0%,49%{ transform:translateY(0); } 50%,100%{ transform:translateY(-.7px); } }
+@keyframes efPoke { 0%,49%{ transform:translateX(0); } 50%,100%{ transform:translateX(.9px); } }
 
-@keyframes efPoke{ 0%,100%{ transform:rotate(0) } 30%{ transform:rotate(-10deg) } 62%{ transform:rotate(-3deg) } }
-@keyframes efLaugh{
-  0%,100%{ transform:rotate(0) translateY(0) }
-  25%{ transform:rotate(-7deg) translateY(-1.2px) }
-  55%{ transform:rotate(-3deg) translateY(.4px) }
-  80%{ transform:rotate(-5deg) translateY(-.8px) }
-}
-@keyframes efLaughMouth{ 0%,100%{ transform:scaleY(1) } 40%{ transform:scaleY(1.5) } }
-/* las manos salen separadas, se juntan al 45% y vuelven. El descanso entre
-   palmada y palmada es lo que hace que suene a burla y no a ovación */
-@keyframes efClapL{ 0%,100%{ transform:translateX(0) } 45%{ transform:translateX(6.2px) } 60%{ transform:translateX(5px) } }
-@keyframes efClapR{ 0%,100%{ transform:translateX(0) } 45%{ transform:translateX(-6.2px) } 60%{ transform:translateX(-5px) } }
-@keyframes efTick{ 0%,42%{ opacity:0 } 46%{ opacity:1 } 62%,100%{ opacity:0 } }
-@keyframes efNod{ 0%,100%{ transform:rotate(0) } 45%{ transform:rotate(2.5deg) } }
-@keyframes efYawn{
-  0%,100%{ transform:scale(1) }
-  35%{ transform:scale(1.5,2.1) }
-  60%{ transform:scale(1.35,1.8) }
-}
-@keyframes efYawnHead{ 0%,100%{ transform:rotate(0) translateY(0) } 40%{ transform:rotate(-5deg) translateY(-1px) } }
-/* las zetas nacen invisibles: en la cara parada no se ven, solo al animar */
-@keyframes efZ{
-  0%{ transform:translate(0,0) scale(.5); opacity:0 }
-  30%{ opacity:.9 }
-  100%{ transform:translate(3px,-8px) scale(1.1); opacity:0 }
-}
-@keyframes efSob{
-  0%,100%{ transform:rotate(0) translateY(0) }
-  20%{ transform:rotate(-3deg) translateY(-1px) }
-  50%{ transform:rotate(3deg) translateY(.5px) }
-  80%{ transform:rotate(-2deg) translateY(-.5px) }
-}
-@keyframes efRubL{ 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(1.4px,1px) } }
-@keyframes efRubR{ 0%,100%{ transform:translate(0,0) } 50%{ transform:translate(-1.4px,1px) } }
-/* las gotas nacen invisibles, igual que las zetas */
-@keyframes efFall{
-  0%{ transform:translateY(0) scale(.6); opacity:0 }
-  20%{ transform:translateY(2px) scale(1); opacity:1 }
-  100%{ transform:translateY(13px) scale(.9); opacity:0 }
-}
-@keyframes efBye{ 0%,100%{ transform:rotate(0) } 25%{ transform:rotate(-16deg) } 75%{ transform:rotate(16deg) } }
-@keyframes efTilt{ 0%,100%{ transform:rotate(0) } 50%{ transform:rotate(-5deg) } }
-/* la corona se levanta y se vuelve a calar de golpe, con rebote. Empieza y
-   acaba PUESTA a propósito: el fotograma parado es el del botón de la
-   bandeja, y ahí el peón tiene que verse ya coronado o el chiste no se
-   entiende. Si arrancara fuera del lienzo, el botón sería un peón pelado.
-   El recorrido hacia arriba es CORTO (4,5 px) por geometría, no por gusto:
-   más arriba las puntas de la corona se salen del disco y del lienzo, y el
-   <svg> recorta, así que se vería una corona cortada. La inclinación es la
-   que da la sensación de que se la quita y se la vuelve a calar. El rotate
-   va en TODOS los fotogramas: si falta en uno, el navegador interpola por
-   matriz y el gesto se ensucia */
-@keyframes efCrown{
-  0%,16%{ transform:translateY(0) rotate(0) }
-  36%{ transform:translateY(-4.5px) rotate(-7deg) }
-  50%{ transform:translateY(1.5px) rotate(0) }
-  60%{ transform:translateY(-1px) rotate(1deg) }
-  70%,100%{ transform:translateY(0) rotate(0) }
-}
-@keyframes efSpark{ 0%,100%{ transform:scale(0) rotate(0); opacity:0 } 15%{ transform:scale(1.2) rotate(45deg); opacity:1 } 40%{ transform:scale(.9) rotate(90deg); opacity:0 } }
-@keyframes efPuff{ 0%,44%{ transform:scale(1) } 54%{ transform:scale(1.06) } 70%,100%{ transform:scale(1) } }
+/* aplauso: LENTO a propósito. La lentitud es el chiste, así que el ciclo dura
+   1,5 s y las rayitas del golpe solo se encienden en el instante del choque */
+.e-aplauso .ef-clapL{ animation:efClapL 1.5s steps(1,end) infinite; }
+.e-aplauso .ef-clapR{ animation:efClapR 1.5s steps(1,end) infinite; }
+.e-aplauso .ef-tick { animation:efTick  1.5s steps(1,end) infinite; }
+@keyframes efClapL{ 0%,40%{ transform:translateX(0); } 41%,62%{ transform:translateX(2.6px); } 63%,100%{ transform:translateX(0); } }
+@keyframes efClapR{ 0%,40%{ transform:translateX(0); } 41%,62%{ transform:translateX(-2.6px); } 63%,100%{ transform:translateX(0); } }
+@keyframes efTick { 0%,40%{ opacity:0; } 41%,54%{ opacity:1; } 55%,100%{ opacity:0; } }
+
+/* bostezo: la boca se abre entera y las zetas suben */
+.e-bostezo .ef-mouth{ animation:efYawn 2.4s steps(1,end) infinite; }
+.e-bostezo .ef-z    { animation:efZ    2.4s steps(4,end) infinite; }
+@keyframes efYawn{ 0%,22%{ transform:scaleY(.3); } 23%,80%{ transform:scaleY(1); } 81%,100%{ transform:scaleY(.3); } }
+@keyframes efZ{ 0%{ transform:translateY(2px); opacity:.15; } 99%{ transform:translateY(-2px); opacity:1; } 100%{ opacity:0; } }
+
+/* llora más: el berrinche sacude el cuerpo y las gotas caen sin parar */
+.e-llora .ef-body, .e-llora .ef-eyes, .e-llora .ef-mouth, .e-llora .ef-tear{ animation:efSob .34s steps(1,end) infinite; }
+.e-llora .ef-drop{ animation:efFall .8s steps(3,end) infinite; }
+@keyframes efSob { 0%,49%{ transform:translate(0,0); } 50%,100%{ transform:translate(.6px,.5px); } }
+@keyframes efFall{ 0%{ transform:translateY(-1px); opacity:1; } 99%{ transform:translateY(2.5px); opacity:0; } 100%{ opacity:0; } }
+
+/* adiós: la manaza saluda por encima de la cabeza y el cuerpo se ladea */
+.e-adios .ef-hand{ animation:efBye  .44s steps(1,end) infinite; }
+.e-adios .ef-body{ animation:efTilt .88s steps(1,end) infinite; }
+@keyframes efBye { 0%,49%{ transform:rotate(-16deg); } 50%,100%{ transform:rotate(16deg); } }
+@keyframes efTilt{ 0%,49%{ transform:rotate(0); } 50%,100%{ transform:rotate(3.5deg); } }
+
+/* coronación: la corona CAE, asienta de un golpe y saltan las chispas */
+.e-corona .ef-crown{ animation:efCrown 2.4s steps(1,end) infinite; }
+.e-corona .ef-spark{ animation:efSpark .5s steps(1,end) infinite; }
+@keyframes efCrown{ 0%{ transform:translateY(-4px); } 10%{ transform:translateY(.8px); } 17%,100%{ transform:translateY(0); } }
+@keyframes efSpark{ 0%,49%{ opacity:1; } 50%,100%{ opacity:.1; } }
 
 /* Origen de giro y el interruptor de pausa. Va DESPUÉS de las reglas de
    arriba a propósito: el atajo `animation:` reinicia el play-state, así que
    esto tiene que llegar el último para poder pausarlas de verdad */
-.emote-face .ef-head, .emote-face .ef-arm, .emote-face .ef-wave,
-.emote-face .ef-clapL, .emote-face .ef-clapR, .emote-face .ef-tick,
-.emote-face .ef-drop, .emote-face .ef-crown, .emote-face .ef-spark,
-.emote-face .ef-mouth, .emote-face .ef-fistL, .emote-face .ef-fistR,
-.emote-face .ef-z{
+.emote-face .ef-body, .emote-face .ef-eyes, .emote-face .ef-mouth,
+.emote-face .ef-arm, .emote-face .ef-hand, .emote-face .ef-clapL,
+.emote-face .ef-clapR, .emote-face .ef-tick, .emote-face .ef-z,
+.emote-face .ef-tear, .emote-face .ef-drop, .emote-face .ef-crown,
+.emote-face .ef-spark{
   transform-box:view-box; animation-play-state:var(--ef-run);
 }
-.emote-face .ef-head { transform-origin:32px 28px; }    /* pivota en el collar */
-.emote-face .ef-arm  { transform-origin:37px 34px; }    /* el hombro */
-.emote-face .ef-wave { transform-origin:37px 34px; }
-.emote-face .ef-mouth{ transform-origin:32px 21px; }    /* el centro de la boca */
-.emote-face .ef-crown{ transform-origin:32px 14px; }
-.emote-face .ef-spark1{ transform-origin:13px 13.5px; }
-.emote-face .ef-spark2{ transform-origin:51px 11.5px; }
-/* Las zetas y las gotas ESCALAN además de moverse, así que necesitan su
-   propio origen: con el de por defecto (la esquina del lienzo) entrarían
-   volando desde el centro del dibujo en vez de nacer donde les toca */
-.emote-face .ef-z1   { transform-origin:48px 14px; }
-.emote-face .ef-z2   { transform-origin:54px 8px; }
-.emote-face .ef-drop1{ transform-origin:25.5px 39px; }
-.emote-face .ef-drop2{ transform-origin:38.5px 39px; }
+/* los que GIRAN o ESCALAN necesitan su pivote; con el de por defecto (la
+   esquina del lienzo) la mano saludaría desde la otra punta del dibujo */
+.emote-face .ef-hand { transform-origin:11.5px 5px; }    /* la muñeca */
+.emote-face .ef-body { transform-origin:7px 13px; }      /* la peana */
+.emote-face .ef-mouth{ transform-origin:6.5px 6px; }     /* el labio de arriba: el bostezo abre hacia abajo */
 
 /* === repeticiones: lista de cintas guardadas === */
 .replay-list{
@@ -1294,3 +1217,249 @@ body.theme-chesscom .rp-progress{ background:var(--panel-2); }
 @media (max-width:640px){
   .tour-tip{ font-size:12.5px; padding:12px 14px; }
 }
+
+/* === TUTORIAL INTERACTIVO (tutorial.js) ==============================
+   Tablero propio, mas pequeno que el de la partida pero con el MISMO
+   lenguaje visual: mismas casillas, mismos puntos de destino, misma barra
+   de energia. Lo que se aprende aqui tiene que verse igual alla. */
+.tut-tally{ margin:0 0 10px; letter-spacing:.14em; text-transform:uppercase; font-size:11px; }
+.tut-list{
+  display:flex; flex-direction:column; gap:8px; text-align:left;
+  max-height:min(42vh,320px); overflow:auto; margin-bottom:12px; padding-right:4px;
+}
+.tut-card{
+  display:flex; align-items:center; gap:11px; width:100%; cursor:pointer;
+  background:var(--panel-2); border:1px solid var(--line); border-radius:10px;
+  padding:10px 12px; color:var(--ink); font-family:inherit; text-align:left;
+  transition:border-color .15s, transform .1s;
+}
+.tut-card:hover{ border-color:#3a3f64; }
+.tut-card:active{ transform:scale(.99); }
+.tut-card .n{
+  flex:0 0 26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+  background:#05060c; border:1px solid var(--line); color:var(--white-acc);
+  font-family:'Chakra Petch'; font-weight:700; font-size:13px;
+}
+.tut-card.ok .n{ color:var(--energy-a); border-color:var(--energy-a); box-shadow:0 0 10px rgba(107,255,176,.25); }
+.tut-card .tx{ display:flex; flex-direction:column; gap:2px; font-size:11.5px; color:var(--ink-dim); line-height:1.35; }
+.tut-card .tx b{ font-size:13.5px; color:var(--ink); font-weight:600; }
+
+/* cabecera de la leccion: puntos de progreso + contador */
+.tut-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.tut-dots{ display:flex; gap:5px; }
+.tut-dots i{ width:7px; height:7px; border-radius:50%; background:#2a2e4a; display:block; }
+.tut-dots i.ok{ background:var(--energy-a); }
+.tut-dots i.on{ background:var(--white-acc); box-shadow:0 0 8px var(--white-acc); transform:scale(1.25); }
+.tut-step{ font-family:'Chakra Petch'; font-size:11px; letter-spacing:.16em; color:var(--ink-dim); }
+
+/* el objetivo: lo unico que hay que leer si o si en cada leccion */
+.tut-goal{
+  background:rgba(120,220,255,.08); border:1px solid var(--white-acc); border-radius:9px;
+  padding:7px 12px; margin-bottom:9px; font-family:'Chakra Petch'; font-weight:600;
+  font-size:13px; color:var(--white-acc);
+}
+.tut-goal.good{ background:rgba(107,255,176,.10); border-color:var(--energy-a); color:var(--energy-a); }
+.tut-goal.bad{ background:rgba(255,45,74,.10); border-color:var(--danger); color:#ff9aa9; }
+
+.tut-board{
+  position:relative; width:min(70vw,33dvh,272px); aspect-ratio:1; margin:0 auto;
+  border-radius:10px; overflow:hidden; border:1px solid var(--line);
+  background:var(--sq-dark); touch-action:manipulation; cursor:pointer;
+}
+.tut-board.danger{ border-color:var(--danger); animation:dangerpulse .7s ease-in-out infinite; }
+.tut-board.shake{ animation:boardshake .45s cubic-bezier(.36,.07,.19,.97); }
+.tsq{ position:absolute; width:12.5%; height:12.5%; display:flex; align-items:center; justify-content:center; }
+.tsq.l{ background:var(--sq-light); } .tsq.d{ background:var(--sq-dark); }
+.tsq.sel::after{ content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 3px var(--sel); background:rgba(255,213,74,.10); }
+.tsq.hot::after{ content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 3px var(--danger); animation:dangerpulse .7s ease-in-out infinite; }
+.tsq.kill::after{ content:""; position:absolute; inset:0; box-shadow:inset 0 0 0 3px var(--gold); background:rgba(255,207,74,.14); animation:freepulse .8s ease-in-out infinite; }
+/* mismos puntos que en la partida: relleno = casilla libre, aro = captura,
+   discontinuo = no te llega la energia */
+/* el punto lleva DENTRO lo que cuesta ir ahi: los trucos finos (peaje de
+   torre, descuento del caballo, recaptura gratis) no se entienden hasta
+   que ves el numero cambiar de una casilla a otra */
+.thint{ position:absolute; width:38%; height:38%; border-radius:50%; background:rgba(255,255,255,.32);
+  display:flex; align-items:center; justify-content:center; pointer-events:none;
+  font-family:'Chakra Petch'; font-weight:700; font-size:9px; color:#0a0b14; }
+.thint.cap{ width:74%; height:74%; background:transparent; border:3px solid rgba(255,80,120,.75); color:#ffd9e2; }
+.thint.poor{ background:transparent; border:2px dashed rgba(255,80,120,.55); color:#ff9aa9; }
+.thint.gift{ background:var(--gold); color:#241a02; box-shadow:0 0 8px rgba(255,207,74,.6); }
+.tpiece{
+  position:absolute; width:12.5%; height:12.5%; display:flex; align-items:center; justify-content:center;
+  font-size:min(8vw,30px); line-height:1; z-index:2; pointer-events:none;
+  transition:transform .28s cubic-bezier(.3,.9,.3,1.2), opacity .25s;
+}
+.tpiece.w{ color:var(--piece-w); text-shadow:0 0 8px var(--piece-w-glow),0 1px 2px rgba(0,0,0,.5); }
+.tpiece.b{ color:var(--piece-b); text-shadow:0 0 8px var(--piece-b-glow),0 1px 2px rgba(0,0,0,.5); }
+.tpiece.gone{ opacity:0; }
+.tfloat{
+  position:absolute; width:12.5%; text-align:center; z-index:4; pointer-events:none;
+  font-family:'Chakra Petch'; font-weight:700; font-size:12px; color:#fff;
+  text-shadow:0 0 6px rgba(0,0,0,.9); animation:dfloatup 1.1s ease-out forwards;
+}
+.tfloat.good{ color:var(--energy-a); }
+
+/* margen del jaque: la cuenta atras que decide si te comen el rey */
+.tut-grace{
+  display:flex; align-items:center; gap:8px; margin:8px auto 0; max-width:min(70vw,272px);
+  font-family:'Chakra Petch'; font-size:11px; letter-spacing:.06em; color:var(--gold);
+}
+.tut-grace.mine{ color:var(--danger); }
+.tut-gbar{ flex:1; height:6px; border-radius:3px; background:#05060c; border:1px solid var(--line); overflow:hidden; }
+.tut-gbar > div{ height:100%; width:100%; background:currentColor; transition:width .1s linear; }
+
+/* energia: la misma lectura que las tarjetas de la partida */
+.tut-hud{ display:flex; flex-direction:column; gap:5px; margin:9px auto 0; max-width:min(70vw,272px); }
+.tut-erow{ display:flex; align-items:center; gap:8px; }
+.tut-erow .k{ flex:0 0 54px; text-align:left; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); }
+.tut-erow .v{ flex:0 0 26px; text-align:right; font-family:'Chakra Petch'; font-weight:700; font-size:13px; color:var(--ink); }
+.tut-ebar{ flex:1; height:12px; border-radius:6px; background:#05060c; border:1px solid var(--line); overflow:hidden; display:block; }
+.tut-ebar > i{ display:block; height:100%; width:0%; border-radius:5px; transition:width .12s linear; }
+.tut-ebar > i.w{ background:linear-gradient(90deg,#0f6,var(--energy-b)); box-shadow:0 0 12px rgba(51,230,255,.45); }
+.tut-ebar > i.b{ background:linear-gradient(90deg,#ff3b73,#ff9aa9); box-shadow:0 0 12px rgba(255,59,115,.4); }
+
+/* tabla de costes siempre a la vista: media leccion consiste en mirarla */
+.tut-costs{ display:flex; justify-content:center; flex-wrap:wrap; gap:6px; margin:9px 0 0; }
+.tut-chip{
+  display:inline-flex; align-items:center; gap:4px; background:var(--panel-2); border:1px solid var(--line);
+  border-radius:7px; padding:2px 7px; font-family:'Chakra Petch'; font-weight:700; font-size:12px; color:var(--white-acc);
+}
+.tut-chip i{ font-style:normal; font-size:14px; color:#dfe6ff; }
+
+/* el panel de dialogo: borde gordo y sombra dura, para que se lea como una
+   ficha del juego y no como un parrafo suelto. La punta de la izquierda
+   apunta al peon: el consejo SALE de el */
+.tut-coach{
+  display:flex; align-items:flex-start; gap:9px; text-align:left;
+  margin:11px auto 0; max-width:min(92vw,344px);
+}
+.tut-face{ flex:0 0 46px; width:46px; }
+.tut-say{
+  flex:1; position:relative; background:var(--panel-2); border:2px solid var(--line);
+  border-radius:9px; border-bottom-left-radius:3px; padding:8px 10px;
+  font-size:12px; line-height:1.45; color:var(--ink); min-height:46px;
+  box-shadow:0 3px 0 rgba(0,0,0,.45);
+}
+.tut-say::before{
+  content:""; position:absolute; left:-7px; top:15px; width:9px; height:9px;
+  background:var(--panel-2); border-left:2px solid var(--line); border-bottom:2px solid var(--line);
+  transform:rotate(45deg);
+}
+.tut-say b{ color:var(--white-acc); }
+.tut-say.good{ border-color:var(--energy-a); }
+.tut-say.good::before{ border-color:var(--energy-a); }
+.tut-say.bad{ border-color:var(--danger); }
+.tut-say.bad::before{ border-color:var(--danger); }
+.tut-btns{ display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.tut-btns .btn.go{ border-color:var(--energy-a); color:var(--energy-a); box-shadow:0 0 14px rgba(107,255,176,.25); }
+@media (max-height:700px){
+  .tut-board{ width:min(58vw,29dvh,230px); }
+  .tut-say{ font-size:11.5px; min-height:38px; padding:7px 9px; }
+  .tut-face{ flex-basis:40px; width:40px; }
+  .tut-list{ max-height:34vh; }
+  .tut-costs{ margin-top:7px; }
+}
+
+/* === EL PEON QUE TE ENSENA (coach.js) ================================
+   El dibujo vive en coach.js; aqui solo se le da color y movimiento, igual
+   que con los emotes. Todo va a SALTOS -steps()- a proposito: un sprite de
+   pixeles que se mueve con interpolacion suave parece un muneco de goma.
+   El cuerpo sale de la pieza blanca del tema, asi que el peon cambia de
+   color con el tablero y nunca desentona */
+:root{
+  --cz-body:var(--piece-w); --cz-shade:#5f80c4; --cz-ink:#0a0b14;
+  --cz-acc:var(--white-acc); --cz-warn:var(--danger);
+}
+body.theme-chesscom{ --cz-shade:#c9b9a3; --cz-ink:#3a3227; }
+body.theme-crt{      --cz-shade:#4fbf87; --cz-ink:#03150b; }
+body.theme-madera{   --cz-shade:#c9a887; --cz-ink:#3a2a1c; }
+body.theme-synthwave{--cz-shade:#86a9e8; --cz-ink:#160a22; }
+body.theme-artico{   --cz-shade:#a9c2d8; --cz-ink:#14212e; }
+body.theme-oro{      --cz-shade:#d7b76a; --cz-ink:#241a02; }
+
+.cz{
+  display:block; width:100%; height:auto; image-rendering:pixelated;
+  /* el halo es el MISMO que llevan las piezas del tablero, pero corto: mas
+     abierto se come los bordes del pixel y el sprite pierde la silueta */
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.55)) drop-shadow(0 0 3px var(--piece-w-glow));
+  animation:czbob 1.7s steps(1,end) infinite, czpop .34s cubic-bezier(.3,1.7,.4,1) 1;
+}
+@keyframes czbob{ 0%,49%{ transform:translateY(0); } 50%,100%{ transform:translateY(-2px); } }
+/* al cambiar de cara entra dando un bote: es el mismo peon, pero se nota */
+@keyframes czpop{ 0%{ transform:translateY(4px) scale(.86); } 60%{ transform:translateY(-2px) scale(1.06); } 100%{ transform:none; } }
+
+/* parpadeo: los ojos abiertos se apagan y el guion se enciende, a la vez.
+   Las caras con ojos ya cerrados (cz-fixed) no parpadean */
+.cz-shut{ opacity:0; }
+.cz:not(.cz-fixed) .cz-eyes{ animation:czeye 4.4s steps(1,end) infinite; }
+.cz:not(.cz-fixed) .cz-shut{ animation:czshut 4.4s steps(1,end) infinite; }
+.cz.cz-fixed .cz-shut{ display:none; }
+@keyframes czeye{  0%,93%{ opacity:1; } 94%,97%{ opacity:0; } 98%,100%{ opacity:1; } }
+@keyframes czshut{ 0%,93%{ opacity:0; } 94%,97%{ opacity:1; } 98%,100%{ opacity:0; } }
+
+/* la boca solo se mueve MIENTRAS escribe el panel: la clase la pone y la
+   quita tutorial.js, asi que el peon calla cuando termina la frase */
+.cz-mouth2{ opacity:0; }
+.talking .cz .cz-mouth{  animation:czm1 .26s steps(1,end) infinite; }
+.talking .cz .cz-mouth2{ animation:czm2 .26s steps(1,end) infinite; }
+@keyframes czm1{ 0%,49%{ opacity:1; } 50%,100%{ opacity:0; } }
+@keyframes czm2{ 0%,49%{ opacity:0; } 50%,100%{ opacity:1; } }
+
+/* los brazos y los adornos se mueven de pixel en pixel (1 = una casilla del
+   dibujo), nunca medio pixel: si no, el sprite se emborrona */
+.cz-point .cz-arm{ animation:czarm .74s steps(1,end) infinite; }
+.cz-win .cz-arm{   animation:czarm .4s steps(1,end) infinite; }
+@keyframes czarm{ 0%,49%{ transform:translateY(0); } 50%,100%{ transform:translateY(-1px); } }
+.cz-win .cz-extra, .cz-wait .cz-extra{ animation:czspark .7s steps(1,end) infinite; }
+@keyframes czspark{ 0%,49%{ opacity:1; } 50%,100%{ opacity:.15; } }
+.cz-oops .cz-extra{ animation:czbang .38s steps(1,end) infinite; }
+@keyframes czbang{ 0%,49%{ opacity:1; transform:translateX(0); } 50%,100%{ opacity:.4; transform:translateX(1px); } }
+/* la gota del susto: cae, desaparece y vuelve a salir */
+.cz-worry .cz-extra{ animation:czdrop 1.5s steps(3,end) infinite; }
+@keyframes czdrop{ 0%{ transform:translateY(0); opacity:1; } 99%{ transform:translateY(3px); opacity:0; } 100%{ transform:none; opacity:1; } }
+/* el susto y la celebracion sacuden al bicho entero */
+.cz-worry{ animation:czbob 1.7s steps(1,end) infinite, czshiver .5s steps(1,end) infinite; }
+@keyframes czshiver{ 0%,49%{ margin-left:0; } 50%,100%{ margin-left:1.5px; } }
+.cz-win{ animation:czjump .52s steps(1,end) infinite; }
+@keyframes czjump{ 0%,49%{ transform:translateY(-3px); } 50%,100%{ transform:translateY(1px); } }
+
+/* === reloj y Puntos: la otra forma de ganar =========================== */
+.tut-score{ display:flex; align-items:center; justify-content:center; gap:9px; margin:9px 0 0; }
+.tut-clock{
+  font-family:'Chakra Petch'; font-weight:700; font-size:14px; color:var(--ink);
+  background:#05060c; border:1px solid var(--line); border-radius:7px; padding:1px 9px;
+}
+.tut-clock.low{ color:var(--danger); border-color:var(--danger); animation:dangerpulse .7s ease-in-out infinite; }
+.tut-ptsk{ font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); }
+.tut-pts{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; color:var(--ink); }
+.tut-pts.good{ color:var(--energy-a); }
+
+/* carriles de torre y casilla de recaptura gratis, como en la partida */
+.tbeam{
+  position:absolute; left:0; right:0; top:46%; height:8%; pointer-events:none;
+  background:rgba(51,230,255,.32); box-shadow:0 0 7px rgba(51,230,255,.35);
+  animation:rbeampulse 1.6s ease-in-out infinite;
+}
+.tbeam.v{ left:46%; right:auto; top:0; bottom:0; width:8%; height:auto; }
+.tsq.free::before{
+  content:""; position:absolute; inset:1px; border:2px solid var(--gold); border-radius:4px;
+  box-shadow:0 0 8px rgba(255,207,74,.55); animation:freepulse .8s ease-in-out infinite;
+}
+
+/* === indice por capitulos: se abren en cadena ========================= */
+.tut-ch{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  margin:12px 2px 3px; font-family:'Chakra Petch'; font-weight:700; font-size:11px;
+  letter-spacing:.18em; text-transform:uppercase; color:var(--white-acc);
+}
+.tut-ch:first-child{ margin-top:0; }
+.tut-ch.locked{ color:var(--ink-dim); }
+.tut-ch.full{ color:var(--energy-a); }
+.tut-chn{ font-family:'Rajdhani'; font-size:11px; letter-spacing:.08em; color:var(--ink-dim); }
+.tut-card.locked{ opacity:.38; cursor:not-allowed; }
+.tut-card.locked:hover{ border-color:var(--line); }
+.tut-card.locked:active{ transform:none; }
+
+/* el objetivo cumplido da un bote: es el premio de la leccion */
+.tut-goal.pop{ animation:goalpop .45s cubic-bezier(.2,1.6,.4,1); }
+@keyframes goalpop{ 0%{ transform:scale(.92); } 55%{ transform:scale(1.05); } 100%{ transform:scale(1); } }
